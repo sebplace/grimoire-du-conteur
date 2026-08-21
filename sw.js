@@ -1,11 +1,12 @@
 /* Service worker — Grimoire du Conteur (cache pour usage hors-ligne) */
-const CACHE = "grimoire-mj-v4";
+const CACHE = "grimoire-mj-v5";
 const ASSETS = [
   "./",
   "index.html",
   "css/theme.css",
   "js/app.js",
   "data/game.json",
+  "data/all-roles.json",
   "data/scripts/trouble-brewing.json",
   "data/scripts/sects-and-violets.json",
   "data/scripts/bad-moon-rising.json",

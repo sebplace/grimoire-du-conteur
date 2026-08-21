@@ -127,6 +127,7 @@ const I18N = {
 let GAME = null;            // data/game.json
 let SCRIPTS = {};           // id -> { meta, characters, charById }
 let CUSTOM = {};            // id -> script (importés)
+let MASTER = null;          // { rolesById, jinxes } base complète (lazy)
 let S = null;              // état de session (persistant)
 
 function defaultState() {
@@ -192,6 +193,11 @@ async function boot() {
   load();
   if (S.timer && S.timer.running) S.timer.running = false;
   GAME = await fetchJSON("data/game.json");
+  try {
+    const m = await fetchJSON("data/all-roles.json");
+    const rolesById = {}; (m.roles || []).forEach(r => rolesById[r.id] = r);
+    MASTER = { rolesById, jinxes: m.jinxes || {} };
+  } catch (e) { MASTER = { rolesById: {}, jinxes: {} }; }
   for (const s of BUNDLED_SCRIPTS) {
     try {
       const data = await fetchJSON(s.file);
@@ -1278,6 +1284,21 @@ function renderReference() {
       <div class="char-grid">${cards}</div>
     </div>`;
   });
+  const jinx = scriptJinxes();
+  if (jinx.length) {
+    const rows = jinx.map(j => {
+      const a = charById(j.a), b = charById(j.b);
+      return `<div class="char-card" style="border-left-color:var(--warn)">
+        <div class="cn"><span>⚡ ${escapeHtml(loc(a.name))} × ${escapeHtml(loc(b.name))}</span></div>
+        <div class="ca">${escapeHtml(j.reason)}</div>
+      </div>`;
+    }).join("");
+    html += `<div class="team-block">
+      <div class="team-title"><span class="team-dot" style="background:var(--warn)"></span>${t("jinxes")} <span style="color:var(--muted);font-size:.85rem">(${jinx.length})</span></div>
+      <p class="hint">${t("jinxNote")}</p>
+      <div class="char-grid">${rows}</div>
+    </div>`;
+  }
   v.innerHTML = html;
 }
 
@@ -1325,28 +1346,42 @@ function importScript(e) {
   };
   reader.readAsText(file);
 }
-// Accepte soit le format complet du projet, soit un simple tableau d'IDs (format officiel léger).
+// Accepte soit le format complet du projet, soit un simple tableau d'IDs (format officiel clocktower.online).
+function masterRole(id) { return MASTER && MASTER.rolesById[id]; }
 function normalizeScript(data, fname) {
   if (Array.isArray(data)) {
     // format officiel : [{id:"_meta",name,author}, "washerwoman", {id:"custom",...}]
     const metaEntry = data.find(x => x && x.id === "_meta") || {};
     const ids = data.filter(x => typeof x === "string" || (x && x.id && x.id !== "_meta"));
     const chars = ids.map(x => {
-      const id = typeof x === "string" ? x : x.id;
-      const known = SCRIPTS["trouble-brewing"] && SCRIPTS["trouble-brewing"].charById[id];
-      if (known) return known;
+      const id = (typeof x === "string" ? x : x.id).replace(/^_+/, "");
+      const m = masterRole(id) || (SCRIPTS["trouble-brewing"] && SCRIPTS["trouble-brewing"].charById[id]);
+      if (m) return m;
       const c = typeof x === "object" ? x : { id };
       return { id, name: c.name || id, team: c.team || "townsfolk", ability: c.ability || "",
         firstNight: c.firstNight || 0, otherNight: c.otherNight || 0, setup: !!c.setup,
         firstNightReminder: c.firstNightReminder || "", otherNightReminder: c.otherNightReminder || "", reminders: c.reminders || [] };
     });
     const id = (metaEntry.name || fname.replace(/\.json$/i, "")).toLowerCase().replace(/[^a-z0-9]+/g, "-");
-    return { meta: { id, name: metaEntry.name || id, author: metaEntry.author || "", note: "" }, characters: chars };
+    return { meta: { id, name: metaEntry.name || id, author: metaEntry.author || "", note: { fr: "Script importé — rôles résolus depuis la base complète.", en: "Imported script — roles resolved from the master database." } }, characters: chars };
   }
   // format complet du projet
   const meta = data.meta || {};
   meta.id = meta.id || (fname.replace(/\.json$/i, "").toLowerCase().replace(/[^a-z0-9]+/g, "-"));
   return { meta, characters: data.characters || [] };
+}
+
+/* Jinxes : paires de rôles avec règle spéciale, présentes dans le script courant. */
+function scriptJinxes() {
+  if (!MASTER || !MASTER.jinxes) return [];
+  const sc = currentScript(); if (!sc) return [];
+  const ids = new Set(sc.characters.map(c => c.id));
+  const out = [];
+  Object.keys(MASTER.jinxes).forEach(a => {
+    if (!ids.has(a)) return;
+    MASTER.jinxes[a].forEach(j => { if (ids.has(j.id)) out.push({ a, b: j.id, reason: j.reason }); });
+  });
+  return out;
 }
 
 /* =========================================================================
