@@ -1,5 +1,5 @@
 /* Service worker — Grimoire du Conteur (cache pour usage hors-ligne) */
-const CACHE = "grimoire-mj-v9";
+const CACHE = "grimoire-mj-v10";
 const ASSETS = [
   "./",
   "index.html",
@@ -12,7 +12,9 @@ const ASSETS = [
   "data/scripts/bad-moon-rising.json",
   "manifest.webmanifest",
   "assets/icons/icon.svg",
-  "assets/icons/icon-maskable.svg"
+  "assets/icons/icon-maskable.svg",
+  "assets/fonts/cinzel-latin.woff2",
+  "assets/fonts/cinzel-latinext.woff2"
 ];
 
 self.addEventListener("install", (e) => {

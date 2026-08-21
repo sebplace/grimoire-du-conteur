@@ -499,3 +499,30 @@ body.bright .statusbar { background:rgba(233,228,239,.7); color:#5c4a6c; border-
 .warn-row.bad { background:rgba(160,30,44,.12); border-color:var(--blood); color:#f0b0ba; }
 .warn-row.info { background:rgba(217,179,107,.10); border-color:#6a5a1e; color:var(--gold-soft); }
 .warn-row.ok { background:rgba(60,150,90,.10); border-color:#2f7a3f; color:#9fe0a8; }
+
+/* ===== Phase 6 Lot2 : police Cinzel, vignette, particules, drag jeton ===== */
+@font-face { font-family:"Cinzel"; font-weight:600 700; font-display:swap;
+  src:url("../assets/fonts/cinzel-latin.woff2") format("woff2");
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+2000-206F,U+20AC,U+2122; }
+@font-face { font-family:"Cinzel"; font-weight:600 700; font-display:swap;
+  src:url("../assets/fonts/cinzel-latinext.woff2") format("woff2");
+  unicode-range:U+0100-02BA,U+1E00-1E9F,U+2020,U+2C60-2C7F,U+A720-A7FF; }
+.brand, h2, h3, .team-title, .reveal-name, .reveal-small { font-family:"Cinzel", var(--serif); letter-spacing:.5px; }
+
+/* Vignettage doux */
+body::after { content:""; position:fixed; inset:0; pointer-events:none; z-index:5;
+  box-shadow:inset 0 0 180px 40px rgba(0,0,0,.45); }
+body.bright::after { box-shadow:inset 0 0 160px 30px rgba(90,60,90,.12); }
+
+/* Particules d'ambiance */
+#particles { position:fixed; inset:0; pointer-events:none; z-index:1; overflow:hidden; }
+.particle { position:absolute; bottom:-12px; border-radius:50%; opacity:0; animation:rise linear infinite; }
+body.is-night .particle { background:radial-gradient(circle, #e8a24d, transparent 70%); }
+body.is-day .particle { background:radial-gradient(circle, #f0d79a, transparent 70%); }
+@keyframes rise { 0%{ transform:translateY(0) translateX(0); opacity:0; } 10%{opacity:.5;} 90%{opacity:.4;} 100%{ transform:translateY(-104vh) translateX(20px); opacity:0; } }
+@media (prefers-reduced-motion: reduce) { #particles { display:none; } }
+
+/* Glisser un jeton de rappel */
+.badge.custom { cursor:grab; touch-action:none; }
+.badge.custom.dragging { opacity:.5; }
+.seat.drop-target .token { outline:3px dashed var(--gold); }

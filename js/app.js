@@ -249,6 +249,7 @@ async function boot() {
   for (const id in CUSTOM) registerScript(id, CUSTOM[id], true);
   if (!currentScript()) S.scriptId = BUNDLED_SCRIPTS[0].id;
   wireChrome();
+  initParticles();
   applyLang();
   renderAll();
   if (!S.tutoDone) showWelcome();
@@ -326,6 +327,19 @@ function handleShortcuts(e) {
   else if (e.key === "j" || e.key === "d") switchView("day");
 }
 function applyTheme() { document.body.classList.toggle("bright", !!(S.settings && S.settings.bright)); }
+function initParticles() {
+  const p = document.getElementById("particles"); if (!p) return;
+  if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  let html = "";
+  for (let i = 0; i < 16; i++) {
+    const size = 3 + Math.random() * 5;
+    const left = Math.random() * 100;
+    const dur = 14 + Math.random() * 16;
+    const delay = -Math.random() * dur;
+    html += `<span class="particle" style="width:${size.toFixed(1)}px;height:${size.toFixed(1)}px;left:${left.toFixed(1)}%;animation-duration:${dur.toFixed(1)}s;animation-delay:${delay.toFixed(1)}s"></span>`;
+  }
+  p.innerHTML = html;
+}
 function showPrivacy() {
   const pov = $("#privacy-overlay");
   pov.innerHTML = `<div class="privacy-inner"><div class="privacy-glyph">🕶️</div><div>${t("hidden")}</div><div class="privacy-hint">👆 ${t("tapReveal")}</div></div>`;
@@ -786,7 +800,7 @@ function renderGrimoire() {
     if (p.statuses.protected) badges.push(`<span class="badge protected">🛡</span>`);
     if (!p.alive && p.ghostUsed) badges.push(`<span class="badge ghost">👻✔</span>`);
     else if (!p.alive) badges.push(`<span class="badge ghost">👻</span>`);
-    (p.reminders || []).forEach(r => badges.push(`<span class="badge custom">${escapeHtml(r.label)}</span>`));
+    (p.reminders || []).forEach((r, ri) => badges.push(`<span class="badge custom" data-pid="${p.id}" data-ridx="${ri}">${escapeHtml(r.label)}</span>`));
     const claimHtml = p.claim ? `<div class="seat-claim">💬 ${escapeHtml(p.claim)}</div>` : "";
     const flags = [];
     if (nomineesToday.has(p.name)) flags.push(`<span class="flag" title="${t("nominatedFlag")}">⚖️</span>`);
@@ -802,6 +816,40 @@ function renderGrimoire() {
     circle.appendChild(seat);
   });
   if (n > 1) { const h = document.createElement("div"); h.className = "hint"; h.style.textAlign = "center"; h.style.marginTop = "6px"; h.textContent = "↔ " + t("dragHint") + " · " + t("longPressHint"); v.appendChild(h); }
+  attachReminderDrags();
+}
+function attachReminderDrags() {
+  $$("#circle .badge.custom[data-pid]").forEach(el => {
+    el.addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      const rd = { pid: el.dataset.pid, ridx: +el.dataset.ridx, el, moved: false };
+      try { el.setPointerCapture(e.pointerId); } catch (_) {}
+      const move = (ev) => {
+        if (!rd.moved && Math.hypot(ev.clientX - e.clientX, ev.clientY - e.clientY) > 6) { rd.moved = true; el.classList.add("dragging"); }
+        if (rd.moved) {
+          const near = nearestSeatIdx(ev.clientX, ev.clientY);
+          $$("#circle .seat").forEach(s => s.classList.toggle("drop-target", +s.dataset.idx === near));
+        }
+      };
+      const up = (ev) => {
+        el.removeEventListener("pointermove", move); el.removeEventListener("pointerup", up);
+        el.classList.remove("dragging");
+        $$("#circle .seat").forEach(s => s.classList.remove("drop-target"));
+        if (!rd.moved) return;
+        const near = nearestSeatIdx(ev.clientX, ev.clientY);
+        const target = (near != null) ? S.players[near] : null;
+        const src = S.players.find(x => x.id === rd.pid);
+        if (target && src && target.id !== src.id && src.reminders[rd.ridx]) {
+          pushHistory();
+          const [tok] = src.reminders.splice(rd.ridx, 1);
+          target.reminders = target.reminders || []; target.reminders.push(tok);
+          save(); renderGrimoire(); buzz(12); toast("→ " + target.name);
+        }
+      };
+      el.addEventListener("pointermove", move);
+      el.addEventListener("pointerup", up);
+    });
+  });
 }
 const TEAM_GLYPH = { townsfolk: "🛡️", outsider: "🎭", minion: "🗡️", demon: "👹", traveler: "🧳", fabled: "✨" };
 function hashStr(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
