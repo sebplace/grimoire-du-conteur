@@ -317,3 +317,38 @@ body.is-day .topbar { background:linear-gradient(180deg,#33264a,#1c0f24); }
 .ntarget { padding:5px 10px; border:1px solid var(--line); border-radius:999px; cursor:pointer; font-size:.8rem; background:#1c1024; }
 .ntarget:hover { border-color:var(--gold); }
 .ntarget.dead { opacity:.5; text-decoration:line-through; }
+
+/* ===== Phase 4 : emblèmes, noms, thème clair, animations ===== */
+.token { position:relative; }
+.token .token-label { position:relative; z-index:1; }
+.team-glyph { position:absolute; top:-6px; right:-4px; font-size:.7rem; z-index:2; filter:drop-shadow(0 1px 1px #000); }
+.token.shrink .token-label { font-size:.62rem; }
+.token.shrink2 .token-label { font-size:.54rem; letter-spacing:-.3px; }
+
+/* Thème clair « salle éclairée » */
+body.bright { background:#e9e4ef; color:#241a2e; }
+body.bright .topbar { background:linear-gradient(180deg,#c9bcd8,#b7a8c8); border-color:#a898bd; }
+body.bright .brand-name, body.bright h2, body.bright h3 { color:#5a2a6a; }
+body.bright .tabs { background:rgba(233,228,239,.9); border-color:#c3b6d3; }
+body.bright .tab { color:#5c4a6c; }
+body.bright .tab.active { color:#5a2a6a; background:#d7cae0; border-color:#b7a8c8; }
+body.bright .char-card, body.bright .nom-card, body.bright .setup-cell, body.bright .stat, body.bright .night-step { background:#f4f0f8; color:#241a2e; border-color:#c9bcd8; }
+body.bright .modal { background:#f4f0f8; color:#241a2e; }
+body.bright .seat-name { color:#241a2e; }
+body.bright input[type=text], body.bright input[type=number], body.bright select { background:#fff; color:#241a2e; border-color:#b7a8c8; }
+body.bright .hint, body.bright .muted { color:#6a5a7a; }
+
+/* Animations */
+@keyframes pop { 0%{transform:scale(.7);opacity:0} 60%{transform:scale(1.12)} 100%{transform:scale(1);opacity:1} }
+.night-targets .ntarget { transition:transform .1s ease, border-color .15s ease; }
+.night-targets .ntarget:active { transform:scale(.94); }
+
+/* Thème clair : correctifs lisibilité */
+body.bright .ntarget { background:#e7dff0; color:#241a2e; border-color:#b7a8c8; }
+body.bright .badge { background:#e7dff0; color:#3a2a48; border-color:#b7a8c8; }
+body.bright .badge.custom { background:#f0dde6; color:#7a2f45; }
+body.bright .chip { background:#eee7f4; color:#241a2e; }
+body.bright .btn { color:#241a2e; }
+body.bright .btn.ghost { background:transparent; }
+body.bright .seat-claim { color:#6a3a7a; }
+body.bright .circle-center { border-color:#b7a8c8; }

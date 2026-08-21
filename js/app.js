@@ -65,7 +65,17 @@ const I18N = {
     gameName: "Nom de la partie", exportJSON: "Exporter (JSON)", importJSON: "Importer (JSON)", noSaved: "Aucune partie sauvegardée.",
     jinxes: "Interactions (jinx)", jinxNote: "Règles spéciales quand ces rôles coexistent.",
     chooseTarget: "Choisir la cible", applyToken: "Poser le jeton", targetDone: "Jeton posé",
-    tutorialTitle: "Bienvenue, Conteur !", tutorialSkip: "Commencer"
+    tutorialTitle: "Bienvenue, Conteur !", tutorialSkip: "Commencer",
+    infoCalc: "Info calculée", impaired: "ivre/empoisonné → donnez une FAUSSE info",
+    steps: "sièges", pairs: "paires", evilNb: "voisin(s) maléfique(s)", deadEvil: "mort(s) maléfique(s)",
+    showRole: "Montrez", point: "pointez", decoy: "leurre",
+    expireTokens: "Expirer les jetons de nuit", expireQ: "Retirer les jetons temporaires (Protégé, Empoisonné) ?",
+    lockBluffs: "Verrouiller 3 bluffs", reroll: "Relancer", bluffsLocked: "Bluffs verrouillés",
+    addFabled: "Ajouter un Légendaire", fabledT: "Légendaire", glossary: "Règles & glossaire",
+    searchRole: "Rechercher un rôle…", brightTheme: "Salle éclairée",
+    ambient: "Ambiance sonore", snapshots: "Captures par nuit", noSnapshots: "Aucune capture.",
+    print: "Imprimer", share: "Partager (QR)", whatsNew: "Nouveautés", resetData: "Effacer toutes les données",
+    resetQ: "Effacer TOUTES les données (parties, sauvegardes, réglages) ? Irréversible.", longPressHint: "Appui long : actions rapides"
   },
   en: {
     appName: "Storyteller's Grimoire",
@@ -119,7 +129,17 @@ const I18N = {
     gameName: "Game name", exportJSON: "Export (JSON)", importJSON: "Import (JSON)", noSaved: "No saved games.",
     jinxes: "Jinxes", jinxNote: "Special rules when these roles coexist.",
     chooseTarget: "Choose target", applyToken: "Place token", targetDone: "Token placed",
-    tutorialTitle: "Welcome, Storyteller!", tutorialSkip: "Start"
+    tutorialTitle: "Welcome, Storyteller!", tutorialSkip: "Start",
+    infoCalc: "Computed info", impaired: "drunk/poisoned → give FALSE info",
+    steps: "seats", pairs: "pairs", evilNb: "evil neighbour(s)", deadEvil: "dead evil",
+    showRole: "Show", point: "point to", decoy: "decoy",
+    expireTokens: "Expire night tokens", expireQ: "Remove temporary tokens (Protected, Poisoned)?",
+    lockBluffs: "Lock 3 bluffs", reroll: "Reroll", bluffsLocked: "Bluffs locked",
+    addFabled: "Add a Fabled", fabledT: "Fabled", glossary: "Rules & glossary",
+    searchRole: "Search a role…", brightTheme: "Bright room",
+    ambient: "Ambient sound", snapshots: "Night snapshots", noSnapshots: "No snapshots.",
+    print: "Print", share: "Share (QR)", whatsNew: "What's new", resetData: "Erase all data",
+    resetQ: "Erase ALL data (games, saves, settings)? Irreversible.", longPressHint: "Long-press: quick actions"
   }
 };
 
@@ -247,9 +267,43 @@ function wireChrome() {
   $("#btn-fs").onclick = toggleFullscreen;
   $("#btn-settings").onclick = openSettings;
   applyAccent();
+  applyTheme();
+  if (S.settings.ambient) setTimeout(startAmbient, 500);
   initWakeLock();
+  document.addEventListener("keydown", handleShortcuts);
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") requestWakeLock(); });
 }
+function handleShortcuts(e) {
+  if (e.target && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
+  if (e.key === " " && currentView === "night") { e.preventDefault(); const cb = document.querySelector(".night-step:not(.checked) .night-check"); if (cb) cb.click(); }
+  else if (e.key === "z" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); undo(); }
+  else if (e.key === "g") switchView("grimoire");
+  else if (e.key === "n") switchView("night");
+  else if (e.key === "j" || e.key === "d") switchView("day");
+}
+function applyTheme() { document.body.classList.toggle("bright", !!(S.settings && S.settings.bright)); }
+
+/* ---------- Ambiance sonore (drone discret nuit/jour) ---------- */
+let AMB = null;
+function startAmbient() {
+  if (!S.settings.ambient) return;
+  try {
+    AUDIO_CTX = AUDIO_CTX || new (window.AudioContext || window.webkitAudioContext)();
+    const ctx = AUDIO_CTX; if (ctx.state === "suspended") ctx.resume();
+    stopAmbient();
+    const o = ctx.createOscillator(), o2 = ctx.createOscillator(), g = ctx.createGain();
+    const night = S.phase === "night";
+    o.type = "sine"; o.frequency.value = night ? 70 : 130;
+    o2.type = "sine"; o2.frequency.value = night ? 105 : 196;
+    g.gain.value = 0; o.connect(g); o2.connect(g); g.connect(ctx.destination);
+    o.start(); o2.start();
+    AMB = { o, o2, g };
+    setAmbientVolume();
+  } catch (_) {}
+}
+function setAmbientVolume() { if (AMB) { const v = (S.settings.volume || 0.6) * 0.05; AMB.g.gain.setTargetAtTime(v, AUDIO_CTX.currentTime, 0.5); } }
+function stopAmbient() { if (AMB) { try { AMB.o.stop(); AMB.o2.stop(); } catch (_) {} AMB = null; } }
+function updateAmbientPhase() { if (S.settings.ambient) startAmbient(); }
 
 /* ---------- Wake Lock (garder l'écran allumé) ---------- */
 let WAKE = null;
@@ -290,6 +344,8 @@ function openSettings() {
     <div class="set-row"><span>🔆 ${t("keepAwake")}</span><label class="switch"><input type="checkbox" id="set-awake" ${st.keepAwake ? "checked" : ""}><span class="slider2"></span></label></div>
     <div class="set-row"><span>📳 ${t("haptics")}</span><label class="switch"><input type="checkbox" id="set-haptics" ${st.haptics ? "checked" : ""}><span class="slider2"></span></label></div>
     <div class="set-row"><span>❓ ${t("confirmActions")}</span><label class="switch"><input type="checkbox" id="set-confirm" ${st.confirmActions ? "checked" : ""}><span class="slider2"></span></label></div>
+    <div class="set-row"><span>💡 ${t("brightTheme")}</span><label class="switch"><input type="checkbox" id="set-bright" ${st.bright ? "checked" : ""}><span class="slider2"></span></label></div>
+    <div class="set-row"><span>🎵 ${t("ambient")}</span><label class="switch"><input type="checkbox" id="set-ambient" ${st.ambient ? "checked" : ""}><span class="slider2"></span></label></div>
     <label class="field">🔊 ${t("volume")}</label>
     <input type="range" id="set-volume" min="0" max="1" step="0.05" value="${st.volume}" style="width:100%">
     <label class="field">🎨 ${t("accent")}</label>
@@ -300,22 +356,38 @@ function openSettings() {
     <div class="row">
       <button class="btn small" id="set-saves">💾 ${t("savedGames")}</button>
       <button class="btn small" id="set-log">📜 ${t("gameLog")}</button>
+      <button class="btn small" id="set-snaps">📸 ${t("snapshots")}</button>
+      <button class="btn small" id="set-gloss">📖 ${t("glossary")}</button>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <button class="btn small ghost" id="set-print">🖨 ${t("print")}</button>
       <button class="btn small ghost" id="set-export">⬇ ${t("exportJSON")}</button>
       <button class="btn small ghost" id="set-import">⬆ ${t("importJSON")}</button>
+      <button class="btn small ghost" id="set-whatsnew">✨ ${t("whatsNew")}</button>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <button class="btn small ghost" id="set-reset" style="color:var(--blood-bright)">🧹 ${t("resetData")}</button>
     </div>
     <div class="modal-actions"><button class="btn gold" onclick="closeModal()">${t("close")}</button></div>
   `);
   $("#set-awake").onchange = (e) => { st.keepAwake = e.target.checked; save(); e.target.checked ? requestWakeLock() : releaseWakeLock(); };
   $("#set-haptics").onchange = (e) => { st.haptics = e.target.checked; save(); buzz(15); };
   $("#set-confirm").onchange = (e) => { st.confirmActions = e.target.checked; save(); };
-  $("#set-volume").oninput = (e) => { st.volume = +e.target.value; save(); };
+  $("#set-bright").onchange = (e) => { st.bright = e.target.checked; save(); applyTheme(); };
+  $("#set-ambient").onchange = (e) => { st.ambient = e.target.checked; save(); if (st.ambient) startAmbient(); else stopAmbient(); };
+  $("#set-volume").oninput = (e) => { st.volume = +e.target.value; save(); setAmbientVolume(); };
   $("#set-volume").onchange = () => playBell(660, 0.25);
   $("#set-timer").onchange = (e) => { const m = Math.max(1, Math.min(20, +e.target.value || 5)); S.timer.total = m * 60; if (!S.timer.running) S.timer.remaining = m * 60; save(); };
   $$("[data-accent]").forEach(c => c.onclick = () => { st.accent = c.dataset.accent; save(); applyAccent(); openSettings(); });
   $("#set-saves").onclick = openSavedGames;
   $("#set-log").onclick = openGameLog;
+  $("#set-snaps").onclick = openSnapshots;
+  $("#set-gloss").onclick = openGlossary;
+  $("#set-print").onclick = printSheet;
   $("#set-export").onclick = exportGameJSON;
   $("#set-import").onclick = importGameJSON;
+  $("#set-whatsnew").onclick = showWelcome;
+  $("#set-reset").onclick = () => { if (confirm(t("resetQ"))) { localStorage.clear(); location.reload(); } };
 }
 
 /* =========================================================================
@@ -332,6 +404,26 @@ function pushHistory() {
   S.history = S.history || [];
   S.history.push(snapshot());
   if (S.history.length > 50) S.history.shift();
+}
+function captureSnapshot() {
+  S.snapshots = S.snapshots || [];
+  S.snapshots.push({
+    night: S.night.number - 1,
+    players: S.players.map(p => ({ name: p.name, roleId: p.roleId, alive: p.alive, team: p.roleId && charById(p.roleId) ? charById(p.roleId).team : null }))
+  });
+  if (S.snapshots.length > 40) S.snapshots.shift();
+}
+function openSnapshots() {
+  const snaps = (S.snapshots || []);
+  const rows = snaps.slice().reverse().map(s => {
+    const chips = s.players.map(p => `<span class="badge ${p.alive ? "" : "ghost"}" style="${p.team ? "border-color:var(--" + p.team + ")" : ""}">${escapeHtml(p.name)}${p.roleId ? ": " + escapeHtml(loc((charById(p.roleId) || { name: p.roleId }).name)) : ""}${p.alive ? "" : " ✝"}</span>`).join(" ");
+    return `<div class="nom-card"><div style="color:var(--gold-soft);font-weight:700;margin-bottom:4px">🌙 ${t("nightNum")} ${s.night}</div><div class="seat-badges" style="justify-content:flex-start;max-width:none">${chips}</div></div>`;
+  }).join("") || `<p class="list-empty">${t("noSnapshots")}</p>`;
+  openModal(`
+    <button class="close-x" onclick="closeModal()">×</button>
+    <h3>📸 ${t("snapshots")}</h3>
+    <div style="max-height:60vh;overflow-y:auto">${rows}</div>
+    <div class="modal-actions"><button class="btn gold" onclick="closeModal()">${t("close")}</button></div>`);
 }
 function undo() {
   if (!S.history || !S.history.length) { toast(t("nothingUndo")); return; }
@@ -469,6 +561,7 @@ function applyLang() {
   $("#lang-en").classList.toggle("active", S.lang === "en");
 }
 let currentView = "grimoire";
+let GZOOM = 1;
 function switchView(view) {
   currentView = view;
   $$(".tab").forEach(x => x.classList.toggle("active", x.dataset.view === view));
@@ -516,20 +609,26 @@ function renderGrimoire() {
     <div class="grimoire-toolbar">
       <button class="btn small" id="g-add">＋ ${t("addPlayer")}</button>
       <button class="btn small ghost" id="g-traveler">🧳 ${t("addTraveler")}</button>
+      <button class="btn small ghost" id="g-fabled">✨ ${t("addFabled")}</button>
       <button class="btn small ghost" id="g-shuffle">🎲 ${t("shuffle")}</button>
       <button class="btn small ghost" id="g-clear">✧ ${t("clearRoles")}</button>
       <button class="btn small ghost" id="g-undo">↶ ${t("undo")}</button>
+      <button class="btn small ghost" id="g-zoomout">➖</button>
+      <button class="btn small ghost" id="g-zoomin">➕</button>
       <span class="spacer"></span>
       <span class="badge">${n} ${t("players")}</span>
       <button class="btn small primary" id="g-new">${t("newGame")}</button>
     </div>
-    <div class="circle-wrap" id="circle"></div>
+    <div class="circle-wrap" id="circle" style="transform:scale(${GZOOM});transform-origin:top center"></div>
   `;
   $("#g-add").onclick = addPlayerPrompt;
   $("#g-traveler").onclick = addTravelerPrompt;
+  $("#g-fabled").onclick = addFabledPrompt;
   $("#g-shuffle").onclick = shuffleRoles;
   $("#g-clear").onclick = () => { if (confirmAction(t("confirmClear"))) { pushHistory(); S.players.forEach(p => p.roleId = null); save(); renderGrimoire(); } };
   $("#g-undo").onclick = undo;
+  $("#g-zoomin").onclick = () => { GZOOM = Math.min(1.8, GZOOM + 0.15); $("#circle").style.transform = `scale(${GZOOM})`; };
+  $("#g-zoomout").onclick = () => { GZOOM = Math.max(0.6, GZOOM - 0.15); $("#circle").style.transform = `scale(${GZOOM})`; };
   $("#g-new").onclick = newGame;
 
   const circle = $("#circle");
@@ -567,6 +666,8 @@ function renderGrimoire() {
     const teamCls = role ? "t-" + role.team : "empty";
     const label = role ? loc(role.name) : t("emptySeat");
     const evilCls = (p.align === "evil") ? " evil-align" : "";
+    const glyph = role ? TEAM_GLYPH[role.team] || "" : "";
+    const shrink = label.length > 9 ? " shrink" : (label.length > 13 ? " shrink2" : "");
     const badges = [];
     if (p.statuses.poisoned) badges.push(`<span class="badge poisoned">☠</span>`);
     if (p.statuses.drunk) badges.push(`<span class="badge drunk">🍺</span>`);
@@ -576,28 +677,31 @@ function renderGrimoire() {
     (p.reminders || []).forEach(r => badges.push(`<span class="badge custom">${escapeHtml(r.label)}</span>`));
     const claimHtml = p.claim ? `<div class="seat-claim">💬 ${escapeHtml(p.claim)}</div>` : "";
     seat.innerHTML = `
-      <div class="token ${teamCls}${evilCls}">${escapeHtml(label)}</div>
+      <div class="token ${teamCls}${evilCls}${shrink}">${glyph ? `<span class="team-glyph">${glyph}</span>` : ""}<span class="token-label">${escapeHtml(label)}</span></div>
       <div class="seat-name">${escapeHtml(p.name)}</div>
       ${claimHtml}
       <div class="seat-badges">${badges.join("")}</div>`;
     attachSeatPointer(seat, p.id, i);
     circle.appendChild(seat);
   });
-  if (n > 1) { const h = document.createElement("div"); h.className = "hint"; h.style.textAlign = "center"; h.style.marginTop = "6px"; h.textContent = "↔ " + t("dragHint"); v.appendChild(h); }
+  if (n > 1) { const h = document.createElement("div"); h.className = "hint"; h.style.textAlign = "center"; h.style.marginTop = "6px"; h.textContent = "↔ " + t("dragHint") + " · " + t("longPressHint"); v.appendChild(h); }
 }
+const TEAM_GLYPH = { townsfolk: "🛡️", outsider: "🎭", minion: "🗡️", demon: "👹", traveler: "🧳", fabled: "✨" };
 
-/* Interaction siège : tap = fiche joueur ; glisser = réordonner. */
+/* Interaction siège : tap = fiche ; appui long = actions rapides ; glisser = réordonner. */
 let DRAG = null;
+let LONGPRESS = null;
 function attachSeatPointer(seat, pid, idx) {
   seat.style.touchAction = "none";
   seat.addEventListener("pointerdown", (e) => {
-    DRAG = { pid, idx, x0: e.clientX, y0: e.clientY, moved: false, el: seat };
+    DRAG = { pid, idx, x0: e.clientX, y0: e.clientY, moved: false, el: seat, longFired: false };
     try { seat.setPointerCapture(e.pointerId); } catch (_) {}
+    LONGPRESS = setTimeout(() => { if (DRAG && !DRAG.moved) { DRAG.longFired = true; buzz(25); quickActions(pid, e.clientX, e.clientY); } }, 500);
   });
   seat.addEventListener("pointermove", (e) => {
     if (!DRAG || DRAG.pid !== pid) return;
     const dx = e.clientX - DRAG.x0, dy = e.clientY - DRAG.y0;
-    if (!DRAG.moved && Math.hypot(dx, dy) > 8) DRAG.moved = true;
+    if (!DRAG.moved && Math.hypot(dx, dy) > 8) { DRAG.moved = true; clearTimeout(LONGPRESS); }
     if (DRAG.moved) {
       seat.style.zIndex = 20;
       seat.querySelector(".token").style.transform = `translate(${dx}px,${dy}px) scale(1.08)`;
@@ -605,7 +709,9 @@ function attachSeatPointer(seat, pid, idx) {
     }
   });
   const finish = (e) => {
+    clearTimeout(LONGPRESS);
     if (!DRAG || DRAG.pid !== pid) return;
+    if (DRAG.longFired) { DRAG = null; return; }
     if (!DRAG.moved) { DRAG = null; openSeatModal(pid); return; }
     const target = nearestSeatIdx(e.clientX, e.clientY);
     DRAG = null;
@@ -613,7 +719,26 @@ function attachSeatPointer(seat, pid, idx) {
     else renderGrimoire();
   };
   seat.addEventListener("pointerup", finish);
-  seat.addEventListener("pointercancel", () => { DRAG = null; renderGrimoire(); });
+  seat.addEventListener("pointercancel", () => { clearTimeout(LONGPRESS); DRAG = null; renderGrimoire(); });
+}
+function quickActions(pid) {
+  const p = S.players.find(x => x.id === pid); if (!p) return;
+  openModal(`
+    <button class="close-x" onclick="closeModal()">×</button>
+    <h3>${escapeHtml(p.name)}</h3>
+    <div class="chip-wrap">
+      <button class="btn ${p.alive ? "" : "gold"}" id="qa-kill">${p.alive ? "☠ " + t("dead") : "🌿 " + t("alive")}</button>
+      <button class="btn ${p.statuses.poisoned ? "gold" : "ghost"}" id="qa-poison">☠ ${t("poisoned")}</button>
+      <button class="btn ${p.statuses.protected ? "gold" : "ghost"}" id="qa-protect">🛡 ${t("protected")}</button>
+      <button class="btn ${p.statuses.drunk ? "gold" : "ghost"}" id="qa-drunk">🍺 ${t("drunk")}</button>
+    </div>
+    <div class="modal-actions"><button class="btn small ghost" id="qa-full">✎ ${t("assignRole")}…</button><span class="spacer"></span><button class="btn gold" onclick="closeModal()">${t("close")}</button></div>`);
+  const rr = () => { save(); renderGrimoire(); quickActions(pid); };
+  $("#qa-kill").onclick = () => { pushHistory(); p.alive = !p.alive; if (p.alive) p.ghostUsed = false; const rn = p.roleId ? loc(charById(p.roleId).name) : ""; logEvent(`${p.name}${rn ? " (" + rn + ")" : ""} ${p.alive ? t("revived") : t("killed")}`, p.alive ? "✚" : "☠"); buzz(p.alive ? 15 : [20, 40]); save(); renderGrimoire(); if (!p.alive) announceEndIfAny(); quickActions(pid); };
+  $("#qa-poison").onclick = () => { p.statuses.poisoned = !p.statuses.poisoned; rr(); };
+  $("#qa-protect").onclick = () => { p.statuses.protected = !p.statuses.protected; rr(); };
+  $("#qa-drunk").onclick = () => { p.statuses.drunk = !p.statuses.drunk; rr(); };
+  $("#qa-full").onclick = () => { closeModal(); openSeatModal(pid); };
 }
 function nearestSeatIdx(x, y) {
   let best = null, bestD = Infinity;
@@ -741,7 +866,8 @@ function openSeatModal(pid) {
     <input type="text" id="s-claim" value="${escapeHtml(p.claim || "")}" placeholder="${t("claimNone")}" />
 
     <h3>${t("assignRole")}</h3>
-    ${roleChips}
+    <input type="text" id="role-search" placeholder="🔎 ${t("searchRole")}" style="width:100%;margin-bottom:6px" />
+    <div id="role-chips">${roleChips}</div>
 
     <h3>${t("addReminder")}</h3>
     <div class="chip-wrap" id="rem-src">${remChips}
@@ -775,6 +901,14 @@ function openSeatModal(pid) {
   $("#s-evil").onclick = () => { p.align = (p.align === "evil") ? null : "evil"; rerender(); };
   const claimEl = $("#s-claim");
   if (claimEl) claimEl.onchange = () => { p.claim = claimEl.value.trim(); save(); renderGrimoire(); };
+  const rs = $("#role-search");
+  if (rs) rs.oninput = () => {
+    const q = rs.value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    $$("#role-chips [data-role]").forEach(ch => {
+      const nm = ch.textContent.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      ch.style.display = nm.includes(q) ? "" : "none";
+    });
+  };
   $$("[data-role]").forEach(ch => ch.onclick = () => {
     p.roleId = (p.roleId === ch.dataset.role) ? null : ch.dataset.role;
     const c = p.roleId && charById(p.roleId);
@@ -844,11 +978,84 @@ function bluffsBlock() {
   const inPlay = inPlayRoleIds();
   const good = sc.characters.filter(c => (c.team === "townsfolk" || c.team === "outsider") && !inPlay.has(c.id));
   if (!good.length) return "";
+  const locked = (S.bluffs || []).map(id => charById(id)).filter(Boolean);
+  if (locked.length === 3) {
+    const names = locked.map(c => `<span class="badge" style="background:#2a2410;border-color:#6a5a1e;color:var(--gold-soft)">${escapeHtml(loc(c.name))}</span>`).join(" ");
+    return `<div style="margin-top:8px;padding:8px;border:1px solid #6a5a1e;border-radius:8px;background:rgba(217,179,107,.07)">
+      <div style="font-size:.78rem;color:var(--gold-soft);font-weight:700">🔒 ${t("bluffsLocked")}</div>
+      <div class="seat-badges" style="justify-content:flex-start;max-width:none;margin-top:4px">${names}</div>
+      <button class="btn small ghost" data-bluff-lock="1" style="margin-top:6px">🎲 ${t("reroll")}</button>
+    </div>`;
+  }
   const names = good.map(c => `<span class="badge" style="background:#1c2a1c;border-color:#3f6a3f;color:#a9e0a0">${escapeHtml(loc(c.name))}</span>`).join(" ");
   return `<div style="margin-top:8px;padding:8px;border:1px dashed #3f6a3f;border-radius:8px;background:rgba(60,120,60,.06)">
     <div style="font-size:.78rem;color:#9fd08f;font-weight:700">🎭 ${t("bluffsTitle")}</div>
     <div style="font-size:.72rem;color:var(--muted);margin:2px 0 6px">${t("bluffsHint")}</div>
     <div class="seat-badges" style="justify-content:flex-start;max-width:none">${names}</div>
+    <button class="btn small gold" data-bluff-lock="1" style="margin-top:6px">🔒 ${t("lockBluffs")}</button>
+  </div>`;
+}
+function lockBluffs() {
+  const sc = currentScript();
+  const inPlay = inPlayRoleIds();
+  const good = sc.characters.filter(c => (c.team === "townsfolk" || c.team === "outsider") && !inPlay.has(c.id));
+  S.bluffs = shuffleArr(good).slice(0, 3).map(c => c.id);
+  save(); renderNight();
+}
+
+/* ---------- Calculateur d'infos (vraie info depuis le grimoire) ---------- */
+function isEvilTrue(p) { const c = p.roleId && charById(p.roleId); return (c && (c.team === "minion" || c.team === "demon")) || p.align === "evil"; }
+function holderOf(charId) { return S.players.find(p => p.roleId === charId); }
+function aliveNeighbours(idx) {
+  const n = S.players.length; const res = [];
+  for (const dir of [-1, 1]) {
+    let k = idx;
+    for (let s = 0; s < n; s++) { k = (k + dir + n) % n; if (k === idx) break; if (S.players[k].alive) { res.push(S.players[k]); break; } }
+  }
+  return res;
+}
+function seatDistance(i, j) { const n = S.players.length; const d = Math.abs(i - j); return Math.min(d, n - d); }
+function computeNightInfo(charId) {
+  const sc = currentScript(); const holder = holderOf(charId); if (!holder) return null;
+  const idx = S.players.indexOf(holder);
+  const impaired = holder.statuses && (holder.statuses.poisoned || holder.statuses.drunk);
+  let text = null;
+  if (charId === "empath") {
+    const nb = aliveNeighbours(idx); const evil = nb.filter(isEvilTrue).length;
+    text = `${evil} ${t("evilNb")}`;
+  } else if (charId === "chef") {
+    let pairs = 0; const n = S.players.length;
+    for (let i = 0; i < n; i++) { if (isEvilTrue(S.players[i]) && isEvilTrue(S.players[(i + 1) % n])) pairs++; }
+    text = `${pairs} ${t("pairs")}`;
+  } else if (charId === "oracle") {
+    const de = S.players.filter(p => !p.alive && isEvilTrue(p)).length;
+    text = `${de} ${t("deadEvil")}`;
+  } else if (charId === "clockmaker") {
+    const demons = S.players.map((p, i) => ({ p, i })).filter(x => { const c = x.p.roleId && charById(x.p.roleId); return c && c.team === "demon"; });
+    const minions = S.players.map((p, i) => ({ p, i })).filter(x => { const c = x.p.roleId && charById(x.p.roleId); return c && c.team === "minion"; });
+    if (demons.length && minions.length) { const d = Math.min(...minions.map(m => Math.min(...demons.map(dm => seatDistance(dm.i, m.i))))); text = `${d} ${t("steps")}`; }
+  } else if (charId === "flowergirl") {
+    const demonVoted = (S.day.nominations || []).some(nm => (nm.voters || []).some(id => { const p = S.players.find(x => x.id === id); return p && isEvilTrue(p) && (p.roleId && charById(p.roleId).team === "demon"); }));
+    text = demonVoted ? "✅ oui/yes" : "❌ non/no";
+  } else if (charId === "washerwoman" || charId === "librarian" || charId === "investigator") {
+    const wantTeam = charId === "washerwoman" ? "townsfolk" : (charId === "librarian" ? "outsider" : "minion");
+    const cands = S.players.filter(p => { const c = p.roleId && charById(p.roleId); return c && c.team === wantTeam && p.id !== holder.id; });
+    if (cands.length) {
+      const pick = cands[0];
+      const others = S.players.filter(p => p.id !== holder.id && p.id !== pick.id);
+      const decoy = others.length ? shuffleArr(others)[0] : null;
+      text = `${t("showRole")} « ${loc(charById(pick.roleId).name)} » · ${t("point")} ${pick.name}${decoy ? " + " + decoy.name + " (" + t("decoy") + ")" : ""}`;
+    } else if (charId === "librarian") { text = "0 (aucun Marginal / no Outsider)"; }
+  }
+  if (text == null) return null;
+  return { text, impaired };
+}
+function infoBlock(charId) {
+  const info = computeNightInfo(charId); if (!info) return "";
+  return `<div style="margin-top:8px;padding:7px 9px;border:1px solid ${info.impaired ? "var(--blood)" : "var(--outsider)"};border-radius:8px;background:${info.impaired ? "rgba(160,30,44,.10)" : "rgba(47,165,160,.08)"}">
+    <span style="font-size:.72rem;color:${info.impaired ? "var(--blood-bright)" : "var(--outsider)"};font-weight:700">🧮 ${t("infoCalc")}: </span>
+    <span style="font-weight:700">${escapeHtml(info.text)}</span>
+    ${info.impaired ? `<div style="font-size:.7rem;color:var(--blood-bright);margin-top:3px">⚠ ${t("impaired")}</div>` : ""}
   </div>`;
 }
 function renderNight() {
@@ -886,6 +1093,7 @@ function renderNight() {
     const dotColor = s.type === "char" ? `var(--${s.team})` : "#6a6ad0";
     let extra = "";
     if (s.key === "meta:demoninfo") extra = bluffsBlock();
+    if (s.type === "char") extra += infoBlock(s.charId);
     if (s.type === "char" && s.reminders && s.reminders.length) {
       const rem0 = loc(s.reminders[0]);
       const targets = S.players.map(p =>
@@ -929,6 +1137,7 @@ function renderNight() {
     e.target.closest(".night-step").classList.toggle("checked", e.target.checked);
   });
   $$("[data-tgt]").forEach(el => el.onclick = () => applyNightAction(el.dataset.char, el.dataset.tgt));
+  $$("[data-bluff-lock]").forEach(el => el.onclick = lockBluffs);
   if ($("#n-end")) $("#n-end").onclick = endNight;
   if ($("#n-start")) $("#n-start").onclick = startNight;
 }
@@ -944,14 +1153,14 @@ function applyNightAction(charId, playerId) {
   const remLabel = rem ? loc(rem) : "";
   // Retirer un éventuel jeton identique déjà posé par ce rôle ailleurs (source unique).
   const statusKey = STATUS_MAP[remEn];
-  if (statusKey) S.players.forEach(x => { x.reminders = (x.reminders || []).filter(r => r.label !== remLabel); if (x.statuses) x.statuses[statusKey] = false; });
+  if (statusKey) S.players.forEach(x => { x.reminders = (x.reminders || []).filter(r => r.key !== remEn); if (x.statuses) x.statuses[statusKey] = false; });
   if (remEn === "Dead") {
     p.alive = false; p.ghostUsed = false;
   } else if (statusKey) {
     p.statuses[statusKey] = true;
-    p.reminders.push({ label: remLabel });
+    p.reminders.push({ label: remLabel, key: remEn });
   } else {
-    p.reminders.push({ label: remLabel });
+    p.reminders.push({ label: remLabel, key: remEn });
   }
   logEvent(`${loc(c.name)} → ${p.name} (${remLabel})`, "🌙");
   buzz(remEn === "Dead" ? [20, 40] : 12);
@@ -959,11 +1168,23 @@ function applyNightAction(charId, playerId) {
   if (remEn === "Dead") announceEndIfAny();
   toast("✔ " + p.name);
 }
+function expireNightTokens(keys) {
+  const map = { Protected: "protected", Poisoned: "poisoned", Drunk: "drunk" };
+  let n = 0;
+  S.players.forEach(p => {
+    const before = (p.reminders || []).length;
+    p.reminders = (p.reminders || []).filter(r => !keys.includes(r.key));
+    n += before - p.reminders.length;
+    keys.forEach(k => { if (map[k] && p.statuses) p.statuses[map[k]] = false; });
+  });
+  return n;
+}
 function startNight() {
   S.phase = "night";
   if (S.night.mode === "first" && S.night.number > 1) S.night.mode = "other";
   S.night.checked = {};
-  playBell(330, 0.7); flashPhase("night"); buzz(20);
+  expireNightTokens(["Poisoned"]); // le poison expire au crépuscule suivant
+  playBell(330, 0.7); flashPhase("night"); buzz(20); updateAmbientPhase();
   logEvent(`${t("nightPhase")} — ${t("nightNum")} ${S.night.number}`, "🌙");
   save(); renderAll();
 }
@@ -974,7 +1195,9 @@ function endNight() {
   S.night.mode = "other";
   S.night.checked = {};
   S.day.nominations = [];
-  playBell(560, 0.7); flashPhase("day"); buzz(20);
+  captureSnapshot();                  // capture du grimoire à l'aube
+  expireNightTokens(["Protected"]);   // la protection expire à l'aube
+  playBell(560, 0.7); flashPhase("day"); buzz(20); updateAmbientPhase();
   logEvent(`${t("dayPhase")} — ${t("dayNum")} ${S.day.number}`, "☀️");
   save(); switchView("day");
 }
@@ -1104,7 +1327,7 @@ function startNightFromDay() {
   S.night.mode = "other";
   S.night.checked = {};
   stopTimer();
-  playBell(330, 0.7); flashPhase("night"); buzz(20);
+  playBell(330, 0.7); flashPhase("night"); buzz(20); updateAmbientPhase();
   logEvent(`${t("nightPhase")} — ${t("nightNum")} ${S.night.number}`, "🌙");
   save(); switchView("night");
 }
@@ -1278,7 +1501,8 @@ function renderReference() {
   const sc = currentScript();
   const order = ["townsfolk", "outsider", "minion", "demon", "traveler", "fabled"];
   const byTeam = {}; sc.characters.forEach(c => (byTeam[c.team] = byTeam[c.team] || []).push(c));
-  let html = `<h2>${loc(sc.meta.name)}</h2><p class="hint">${loc(sc.meta.note)}</p>`;
+  let html = `<h2>${loc(sc.meta.name)}</h2><p class="hint">${loc(sc.meta.note)}</p>
+    <input type="text" id="ref-search" placeholder="🔎 ${t("searchRole")}" style="width:100%;max-width:340px;margin-bottom:12px" />`;
   order.forEach(team => {
     if (!byTeam[team]) return;
     const cards = byTeam[team].map(c => {
@@ -1312,6 +1536,14 @@ function renderReference() {
     </div>`;
   }
   v.innerHTML = html;
+  const rsr = $("#ref-search");
+  if (rsr) rsr.oninput = () => {
+    const q = rsr.value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    $$("#view-reference .char-card").forEach(card => {
+      const txt = card.textContent.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      card.style.display = txt.includes(q) ? "" : "none";
+    });
+  };
 }
 
 /* =========================================================================
@@ -1394,6 +1626,73 @@ function scriptJinxes() {
     MASTER.jinxes[a].forEach(j => { if (ids.has(j.id)) out.push({ a, b: j.id, reason: j.reason }); });
   });
   return out;
+}
+
+/* =========================================================================
+   Glossaire / règles, Fabled, impression
+   ========================================================================= */
+function openGlossary() {
+  const fabled = MASTER ? Object.values(MASTER.rolesById).filter(r => r.team === "fabled") : [];
+  const fabledRows = fabled.map(r => `<div class="char-card" style="border-left-color:var(--traveler)"><div class="cn"><span>${escapeHtml(loc(r.name))}</span></div><div class="ca">${escapeHtml(loc(r.ability) || r.ability.en)}</div></div>`).join("");
+  const rules = S.lang === "fr" ? [
+    ["Exécution", "Il faut au moins la moitié des joueurs vivants (arrondi au supérieur) votant pour exécuter. Une seule exécution par jour."],
+    ["Mort", "Les joueurs morts gardent 1 seul vote (jeton de fantôme) pour toute la partie et peuvent continuer à parler."],
+    ["Ivre / Empoisonné", "Le joueur agit normalement mais sa capacité ne fonctionne pas et il peut recevoir de fausses informations."],
+    ["Fin de partie", "Le Bien gagne si le Démon meurt. Le Mal gagne s'il ne reste que 2 joueurs vivants."],
+    ["Folie (madness)", "Un joueur « fou » doit tenter de convaincre les autres de ce qu'on lui impose, sous peine d'exécution."]
+  ] : [
+    ["Execution", "At least half the living players (rounded up) must vote to execute. Only one execution per day."],
+    ["Death", "Dead players keep 1 vote (ghost vote) for the rest of the game and may keep talking."],
+    ["Drunk / Poisoned", "The player acts normally but their ability malfunctions and they may get false information."],
+    ["Game end", "Good wins if the Demon dies. Evil wins when only 2 players remain alive."],
+    ["Madness", "A 'mad' player must try to convince others of what they've been told, or risk execution."]
+  ];
+  const ruleRows = rules.map(r => `<div class="nom-card"><strong style="color:var(--gold-soft)">${r[0]}</strong><div style="font-size:.88rem;margin-top:3px">${r[1]}</div></div>`).join("");
+  openModal(`
+    <button class="close-x" onclick="closeModal()">×</button>
+    <h3>📖 ${t("glossary")}</h3>
+    <div style="max-height:64vh;overflow-y:auto">
+      ${ruleRows}
+      <h3>✨ ${t("fabledT")} (${fabled.length})</h3>
+      <div class="char-grid">${fabledRows}</div>
+    </div>
+    <div class="modal-actions"><button class="btn gold" onclick="closeModal()">${t("close")}</button></div>`);
+}
+function printSheet() {
+  const sc = currentScript();
+  const rows = S.players.map((p, i) => { const c = p.roleId && charById(p.roleId); return `<tr><td>${i + 1}</td><td>${escapeHtml(p.name)}</td><td>${c ? escapeHtml(loc(c.name)) : "—"}</td><td>${c ? teamName(c.team) : ""}</td><td>${p.alive ? "" : "✝"}</td></tr>`; }).join("");
+  const order = ["townsfolk", "outsider", "minion", "demon"].map(tm => {
+    const cs = sc.characters.filter(c => c.team === tm);
+    return cs.length ? `<h3>${teamName(tm)}</h3><ul>${cs.map(c => `<li><b>${escapeHtml(loc(c.name))}</b> — ${escapeHtml(loc(c.ability))}</li>`).join("")}</ul>` : "";
+  }).join("");
+  const w = window.open("", "_blank");
+  if (!w) { toast("⚠"); return; }
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${loc(sc.meta.name)}</title>
+    <style>body{font-family:Georgia,serif;color:#111;padding:20px}h1{color:#5a2a6a}h3{color:#7a3a1e;margin:14px 0 4px;border-bottom:1px solid #ccc}table{width:100%;border-collapse:collapse;margin:10px 0}td,th{border:1px solid #999;padding:5px 8px;text-align:left}li{margin:3px 0}</style>
+    </head><body><h1>🕰️ ${loc(sc.meta.name)}</h1>
+    <h3>${t("players")} (${S.players.length})</h3>
+    <table><tr><th>#</th><th>${t("playerName")}</th><th>${t("role")}</th><th>${t("alignment")}</th><th></th></tr>${rows}</table>
+    ${order}
+    </body></html>`);
+  w.document.close(); setTimeout(() => w.print(), 400);
+}
+function addFabledPrompt() {
+  const fabled = MASTER ? Object.values(MASTER.rolesById).filter(r => r.team === "fabled") : [];
+  if (!fabled.length) { toast("—"); return; }
+  const chips = fabled.map(c => `<span class="chip t-traveler" data-fb="${c.id}">${escapeHtml(loc(c.name))}</span>`).join("");
+  openModal(`
+    <h3>✨ ${t("addFabled")}</h3>
+    <p class="hint">${t("fabledT")}</p>
+    <div class="chip-wrap">${chips}</div>
+    <div class="modal-actions"><button class="btn ghost" onclick="closeModal()">${t("cancel")}</button></div>`);
+  $$("[data-fb]").forEach(c => c.onclick = () => {
+    const role = MASTER.rolesById[c.dataset.fb];
+    // enregistre le rôle Fabled dans le script courant pour l'afficher en référence
+    const sc = currentScript(); if (!sc.charById[role.id]) { sc.characters.push(role); sc.charById[role.id] = role; }
+    S.players.push({ id: uid(), name: loc(role.name), roleId: role.id, alive: true, ghostUsed: false, align: null, statuses: { poisoned: false, drunk: false, protected: false }, reminders: [], claim: "" });
+    logEvent(`${t("fabledT")}: ${loc(role.name)}`, "✨");
+    save(); closeModal(); renderGrimoire(); toast("✨");
+  });
 }
 
 /* =========================================================================
