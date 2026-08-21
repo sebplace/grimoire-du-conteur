@@ -16,20 +16,21 @@ et un **assistant d'animation** (ordre de nuit, aide au setup, suivi des votes).
 > Ce projet est un outil **non officiel**. Il n'inclut **aucun texte ni illustration officiels** :
 > les descriptions de capacités sont **rédigées par ce projet** et les icônes sont maison.
 
-## Fonctionnalités (Phase 1)
+## Fonctionnalités
 
 | Onglet | Contenu |
 |---|---|
-| **Grimoire** | Cercle des joueurs, attribution des rôles, vie/mort, vote de fantôme, statuts (empoisonné, ivre, protégé), jetons de rappel, tirage au sort, **glisser-déposer pour réordonner les sièges**. |
-| **Nuit** | Ordre de nuit (1ʳᵉ nuit / nuits suivantes), filtré sur les rôles en jeu, cases à cocher, instructions du MJ, **bluffs suggérés pour le Démon** (personnages bons hors jeu). |
-| **Jour** | Nominations, décompte des voix, seuil de majorité automatique, exécution, **minuteur de phase de jour** (presets 3/5/10 min + cloche). |
-| **Setup** | Répartition Villageois / Étrangers / Sbires / Démon selon le nombre de joueurs. |
-| **Personnages** | Référence complète du script (capacités, ordre de nuit). |
-| **Scripts** | Choix du script, import JSON. |
+| **Grimoire** | Cercle des joueurs, attribution des rôles, vie/mort, vote de fantôme, statuts (empoisonné, ivre, protégé), jetons de rappel, **alignement** & **revendication** par joueur, **glisser-déposer** pour réordonner, **annuler** (undo), ajout de **Voyageur** en cours de partie. |
+| **Nuit** | Ordre de nuit (1ʳᵉ nuit / nuits suivantes), filtré sur les rôles en jeu, **nuit interactive** (touchez la cible → le jeton/statut se pose automatiquement), **bluffs suggérés** pour le Démon. |
+| **Jour** | Nominations, **historique de vote** (votants, votes de fantôme), seuil de majorité auto, exécution, **minuteur** (presets 3/5/10 min + cloche). |
+| **Setup** | **Constructeur de sac** : choix des rôles, ajustement auto des **modificateurs** (Baron, Fang Gu, Vigormortis…), remplissage aléatoire, **distribution** automatique. |
+| **Personnages** | Référence complète du script (capacités, ordre de nuit) + **interactions (jinx)**. |
+| **Scripts** | Choix du script, **import de n'importe quel script** clocktower.online (base de 143 rôles). |
 
-Scripts inclus : les **3 scripts officiels** — **Trouble Brewing**, **Sects & Violets**, **Bad Moon Rising** (rôles + Voyageurs).
-Autres options : **sons** (cloche synthétisée aux transitions nuit/jour et fin de minuteur, activable via 🔔).
-À venir : Fabled, scripts personnalisés enrichis, glisser-déposer des jetons.
+Confort & réglages (⚙) : **écran maintenu allumé** (Wake Lock), **plein écran**, **vibrations**, **volume**, **couleur d'accent**, **journal de partie** exportable, **sauvegardes nommées**, **export/import JSON**, **détection de fin de partie**, transitions nuit/jour, horloge vivante.
+
+Scripts inclus : les **3 scripts officiels** — **Trouble Brewing**, **Sects & Violets**, **Bad Moon Rising** — plus une base de **143 rôles** (FR/EN) pour les scripts personnalisés.
+Bilingue **FR/EN**, **PWA installable** et **hors-ligne**, thème gothique/horloge.
 
 ## Lancer en local
 
@@ -69,6 +70,7 @@ blood-clocktower-mj/
 ├─ js/app.js                 # moteur applicatif
 ├─ data/
 │  ├─ game.json              # équipes, table de setup, étapes de nuit
+│  ├─ all-roles.json         # base complète (143 rôles FR/EN + jinxes)
 │  └─ scripts/
 │     ├─ trouble-brewing.json
 │     ├─ sects-and-violets.json

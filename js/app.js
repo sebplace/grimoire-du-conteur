@@ -210,6 +210,18 @@ async function boot() {
   wireChrome();
   applyLang();
   renderAll();
+  if (!S.tutoDone) showWelcome();
+}
+function showWelcome() {
+  openModal(`
+    <h3>🕰️ ${t("tutorialTitle")}</h3>
+    <p class="hint" style="font-size:.95rem;line-height:1.6">
+      ${S.lang === "fr"
+        ? "Cet assistant vous aide à animer <b>Blood on the Clocktower</b> en présentiel : composez le sac dans <b>Setup</b>, distribuez les rôles, suivez l'<b>ordre de nuit</b> (touchez une cible pour poser les jetons), gérez les <b>votes</b> et le <b>minuteur</b> au <b>Jour</b>. Tout se sauvegarde automatiquement et fonctionne <b>hors-ligne</b>. Réglages via ⚙."
+        : "This assistant helps you run <b>Blood on the Clocktower</b> in person: build the bag in <b>Setup</b>, deal roles, follow the <b>night order</b> (tap a target to place tokens), manage <b>votes</b> and the <b>timer</b> in <b>Day</b>. Everything saves automatically and works <b>offline</b>. Settings via ⚙."}
+    </p>
+    <div class="modal-actions"><button class="btn gold" id="tuto-ok">${t("tutorialSkip")}</button></div>`);
+  $("#tuto-ok").onclick = () => { S.tutoDone = true; save(); closeModal(); };
 }
 function registerScript(id, data, custom = false) {
   const charById = {};
@@ -1387,7 +1399,12 @@ function scriptJinxes() {
 /* =========================================================================
    Modale & utilitaires
    ========================================================================= */
-function openModal(html) { $("#modal").innerHTML = html; $("#modal-overlay").classList.remove("hidden"); }
+function openModal(html) {
+  const m = $("#modal"); m.innerHTML = html;
+  $("#modal-overlay").classList.remove("hidden");
+  const f = m.querySelector("input, select, textarea, button.gold, button");
+  if (f) setTimeout(() => { try { f.focus(); } catch (_) {} }, 30);
+}
 function closeModal() { $("#modal-overlay").classList.add("hidden"); $("#modal").innerHTML = ""; }
 window.closeModal = closeModal;
 function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
