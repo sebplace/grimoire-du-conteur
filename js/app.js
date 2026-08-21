@@ -141,7 +141,8 @@ function defaultState() {
     timer: { total: 300, remaining: 300, running: false },
     settings: { keepAwake: true, volume: 0.6, accent: "purple", haptics: true, confirmActions: true },
     log: [],
-    history: []
+    history: [],
+    bag: []
   };
 }
 
@@ -496,6 +497,7 @@ function renderGrimoire() {
   v.innerHTML = `
     <div class="grimoire-toolbar">
       <button class="btn small" id="g-add">＋ ${t("addPlayer")}</button>
+      <button class="btn small ghost" id="g-traveler">🧳 ${t("addTraveler")}</button>
       <button class="btn small ghost" id="g-shuffle">🎲 ${t("shuffle")}</button>
       <button class="btn small ghost" id="g-clear">✧ ${t("clearRoles")}</button>
       <button class="btn small ghost" id="g-undo">↶ ${t("undo")}</button>
@@ -506,6 +508,7 @@ function renderGrimoire() {
     <div class="circle-wrap" id="circle"></div>
   `;
   $("#g-add").onclick = addPlayerPrompt;
+  $("#g-traveler").onclick = addTravelerPrompt;
   $("#g-shuffle").onclick = shuffleRoles;
   $("#g-clear").onclick = () => { if (confirmAction(t("confirmClear"))) { pushHistory(); S.players.forEach(p => p.roleId = null); save(); renderGrimoire(); } };
   $("#g-undo").onclick = undo;
@@ -545,6 +548,7 @@ function renderGrimoire() {
     const role = p.roleId ? charById(p.roleId) : null;
     const teamCls = role ? "t-" + role.team : "empty";
     const label = role ? loc(role.name) : t("emptySeat");
+    const evilCls = (p.align === "evil") ? " evil-align" : "";
     const badges = [];
     if (p.statuses.poisoned) badges.push(`<span class="badge poisoned">☠</span>`);
     if (p.statuses.drunk) badges.push(`<span class="badge drunk">🍺</span>`);
@@ -552,9 +556,11 @@ function renderGrimoire() {
     if (!p.alive && p.ghostUsed) badges.push(`<span class="badge ghost">👻✔</span>`);
     else if (!p.alive) badges.push(`<span class="badge ghost">👻</span>`);
     (p.reminders || []).forEach(r => badges.push(`<span class="badge custom">${escapeHtml(r.label)}</span>`));
+    const claimHtml = p.claim ? `<div class="seat-claim">💬 ${escapeHtml(p.claim)}</div>` : "";
     seat.innerHTML = `
-      <div class="token ${teamCls}">${escapeHtml(label)}</div>
+      <div class="token ${teamCls}${evilCls}">${escapeHtml(label)}</div>
       <div class="seat-name">${escapeHtml(p.name)}</div>
+      ${claimHtml}
       <div class="seat-badges">${badges.join("")}</div>`;
     attachSeatPointer(seat, p.id, i);
     circle.appendChild(seat);
@@ -635,6 +641,39 @@ function addPlayerPrompt() {
   inp.focus();
 }
 
+function addTravelerPrompt() {
+  const sc = currentScript();
+  const travs = sc.characters.filter(c => c.team === "traveler");
+  if (!travs.length) { toast("—"); return; }
+  const chips = travs.map(c => `<span class="chip t-traveler" data-tv="${c.id}">${escapeHtml(loc(c.name))}</span>`).join("");
+  openModal(`
+    <h3>🧳 ${t("addTraveler")}</h3>
+    <label class="field">${t("playerName")}</label>
+    <input type="text" id="tv-name" placeholder="${t("playerName")}" />
+    <label class="field">${t("traveler")}</label>
+    <div class="chip-wrap">${chips}</div>
+    <label class="field">${t("alignment")}</label>
+    <div class="row"><button class="btn small ghost" id="tv-good">🔵 ${t("good")}</button><button class="btn small ghost" id="tv-evil">🔴 ${t("evil")}</button></div>
+    <div class="modal-actions"><button class="btn ghost" onclick="closeModal()">${t("cancel")}</button></div>`);
+  let roleId = null, align = null;
+  const refresh = () => {
+    $$("[data-tv]").forEach(c => c.classList.toggle("on", c.dataset.tv === roleId));
+    $("#tv-good").classList.toggle("gold", align === "good");
+    $("#tv-evil").classList.toggle("gold", align === "evil");
+    if (roleId && align) commit();
+  };
+  const commit = () => {
+    const name = $("#tv-name").value.trim() || (loc(charById(roleId).name));
+    S.players.push({ id: uid(), name, roleId, alive: true, ghostUsed: false, align,
+      statuses: { poisoned: false, drunk: false, protected: false }, reminders: [], claim: "" });
+    logEvent(`${name} — ${t("traveler")} (${loc(charById(roleId).name)})`, "🧳");
+    save(); closeModal(); renderGrimoire(); toast("🧳");
+  };
+  $$("[data-tv]").forEach(c => c.onclick = () => { roleId = c.dataset.tv; refresh(); });
+  $("#tv-good").onclick = () => { align = "good"; refresh(); };
+  $("#tv-evil").onclick = () => { align = "evil"; refresh(); };
+}
+
 function openSeatModal(pid) {
   const p = S.players.find(x => x.id === pid); if (!p) return;
   const sc = currentScript();
@@ -674,6 +713,15 @@ function openSeatModal(pid) {
       <button class="btn small ghost ${p.statuses.protected ? "gold" : ""}" id="s-protect">🛡 ${t("protected")}</button>
     </div>
 
+    <div class="row" style="margin-top:8px">
+      <span style="color:var(--muted);font-size:.85rem">${t("alignment")} :</span>
+      <button class="btn small ghost ${p.align === "good" ? "gold" : ""}" id="s-good">🔵 ${t("good")}</button>
+      <button class="btn small ghost ${p.align === "evil" ? "gold" : ""}" id="s-evil">🔴 ${t("evil")}</button>
+    </div>
+
+    <label class="field">💬 ${t("claim")} <span style="opacity:.6">(${t("claimHint")})</span></label>
+    <input type="text" id="s-claim" value="${escapeHtml(p.claim || "")}" placeholder="${t("claimNone")}" />
+
     <h3>${t("assignRole")}</h3>
     ${roleChips}
 
@@ -705,8 +753,15 @@ function openSeatModal(pid) {
   $("#s-poison").onclick = () => { p.statuses.poisoned = !p.statuses.poisoned; rerender(); };
   $("#s-drunk").onclick = () => { p.statuses.drunk = !p.statuses.drunk; rerender(); };
   $("#s-protect").onclick = () => { p.statuses.protected = !p.statuses.protected; rerender(); };
+  $("#s-good").onclick = () => { p.align = (p.align === "good") ? null : "good"; rerender(); };
+  $("#s-evil").onclick = () => { p.align = (p.align === "evil") ? null : "evil"; rerender(); };
+  const claimEl = $("#s-claim");
+  if (claimEl) claimEl.onchange = () => { p.claim = claimEl.value.trim(); save(); renderGrimoire(); };
   $$("[data-role]").forEach(ch => ch.onclick = () => {
-    p.roleId = (p.roleId === ch.dataset.role) ? null : ch.dataset.role; rerender();
+    p.roleId = (p.roleId === ch.dataset.role) ? null : ch.dataset.role;
+    const c = p.roleId && charById(p.roleId);
+    if (c) { if (c.team === "demon" || c.team === "minion") p.align = p.align || "evil"; else if (c.team !== "traveler") p.align = p.align || "good"; }
+    rerender();
   });
   $$("[data-rem]").forEach(ch => ch.onclick = () => {
     p.reminders.push({ label: ch.dataset.rem }); rerender();
@@ -796,8 +851,9 @@ function renderNight() {
     const ord = c[nightField] || 0;
     if (ord > 0 && inPlay.has(c.id)) {
       const holders = S.players.filter(p => p.roleId === c.id).map(p => p.name).join(", ");
-      steps.push({ key: "char:" + c.id, order: ord, type: "char", team: c.team,
-        title: loc(c.name), text: loc(c[remField]) || loc(c.ability), who: holders });
+      steps.push({ key: "char:" + c.id, charId: c.id, order: ord, type: "char", team: c.team,
+        title: loc(c.name), text: loc(c[remField]) || loc(c.ability), who: holders,
+        reminders: c.reminders || [] });
     }
   });
   steps.sort((a, b) => a.order - b.order);
@@ -812,6 +868,12 @@ function renderNight() {
     const dotColor = s.type === "char" ? `var(--${s.team})` : "#6a6ad0";
     let extra = "";
     if (s.key === "meta:demoninfo") extra = bluffsBlock();
+    if (s.type === "char" && s.reminders && s.reminders.length) {
+      const rem0 = loc(s.reminders[0]);
+      const targets = S.players.map(p =>
+        `<span class="ntarget ${p.alive ? "" : "dead"}" data-tgt="${p.id}" data-char="${s.charId}">${escapeHtml(p.name)}</span>`).join("");
+      extra += `<div class="night-targets"><span style="color:var(--muted);font-size:.72rem;width:100%">👉 ${t("chooseTarget")} → « ${escapeHtml(rem0)} »</span>${targets}</div>`;
+    }
     return `
       <div class="night-step ${s.type} ${checked ? "checked" : ""}" data-key="${s.key}">
         <div class="nnum">${idx + 1}</div>
@@ -848,8 +910,36 @@ function renderNight() {
     S.night.checked[e.target.dataset.check] = e.target.checked; save();
     e.target.closest(".night-step").classList.toggle("checked", e.target.checked);
   });
+  $$("[data-tgt]").forEach(el => el.onclick = () => applyNightAction(el.dataset.char, el.dataset.tgt));
   if ($("#n-end")) $("#n-end").onclick = endNight;
   if ($("#n-start")) $("#n-start").onclick = startNight;
+}
+
+/* Applique le jeton/statut du rôle à la cible désignée pendant la nuit. */
+const STATUS_MAP = { Poisoned: "poisoned", Drunk: "drunk", Protected: "protected" };
+function applyNightAction(charId, playerId) {
+  const c = charById(charId); const p = S.players.find(x => x.id === playerId);
+  if (!c || !p) return;
+  pushHistory();
+  const rem = c.reminders && c.reminders[0];
+  const remEn = rem ? (rem.en || "") : "";
+  const remLabel = rem ? loc(rem) : "";
+  // Retirer un éventuel jeton identique déjà posé par ce rôle ailleurs (source unique).
+  const statusKey = STATUS_MAP[remEn];
+  if (statusKey) S.players.forEach(x => { x.reminders = (x.reminders || []).filter(r => r.label !== remLabel); if (x.statuses) x.statuses[statusKey] = false; });
+  if (remEn === "Dead") {
+    p.alive = false; p.ghostUsed = false;
+  } else if (statusKey) {
+    p.statuses[statusKey] = true;
+    p.reminders.push({ label: remLabel });
+  } else {
+    p.reminders.push({ label: remLabel });
+  }
+  logEvent(`${loc(c.name)} → ${p.name} (${remLabel})`, "🌙");
+  buzz(remEn === "Dead" ? [20, 40] : 12);
+  save(); renderNight(); renderGrimoire();
+  if (remEn === "Dead") announceEndIfAny();
+  toast("✔ " + p.name);
 }
 function startNight() {
   S.phase = "night";
@@ -881,20 +971,24 @@ function renderDay() {
   const majority = Math.ceil(living / 2);
 
   const noms = S.day.nominations.map(nm => {
-    const pass = nm.votes >= majority;
+    nm.voters = nm.voters || [];
+    const vcount = nm.votes || 0;
+    const pass = vcount >= majority;
     return `
       <div class="nom-card" data-nom="${nm.id}">
         <div class="row">
           <strong>${escapeHtml(nm.nominee || "?")}</strong>
-          <span style="color:var(--muted)">${t("nominator")}: ${escapeHtml(nm.nominator || "—")}</span>
+          <span style="color:var(--muted);font-size:.82rem">${t("nominator")}: ${escapeHtml(nm.nominator || "—")}</span>
           <span class="spacer"></span>
           <button class="btn small ghost" data-vminus="${nm.id}">−</button>
-          <span class="vote-count ${pass ? "pass" : ""}">${nm.votes}</span>
+          <span class="vote-count ${pass ? "pass" : ""}">${vcount}</span>
           <button class="btn small ghost" data-vplus="${nm.id}">＋</button>
           <span style="color:var(--muted)">/ ${majority}</span>
+          <button class="btn small ghost" data-voters="${nm.id}">👥 ${t("voters")}</button>
           <button class="btn small ${nm.executed ? "primary" : "ghost"}" data-exec="${nm.id}">${nm.executed ? "✔ " + t("executed") : t("execute")}</button>
           <button class="btn small ghost" data-ndel="${nm.id}" style="color:var(--blood-bright)">🗑</button>
         </div>
+        ${nm.voters.length ? `<div style="font-size:.75rem;color:var(--muted);margin-top:6px">👥 ${nm.voters.map(id => { const p = S.players.find(x => x.id === id); return p ? escapeHtml(p.name) : ""; }).filter(Boolean).join(", ")}</div>` : ""}
       </div>`;
   }).join("") || `<p class="list-empty">${t("noNoms")}</p>`;
 
@@ -931,8 +1025,38 @@ function renderDay() {
   $$("[data-tset]").forEach(b => b.onclick = () => { setTimer(+b.dataset.tset); });
   $$("[data-vplus]").forEach(b => b.onclick = () => adjVote(b.dataset.vplus, 1));
   $$("[data-vminus]").forEach(b => b.onclick = () => adjVote(b.dataset.vminus, -1));
+  $$("[data-voters]").forEach(b => b.onclick = () => openVoters(b.dataset.voters));
   $$("[data-exec]").forEach(b => b.onclick = () => execNom(b.dataset.exec));
   $$("[data-ndel]").forEach(b => b.onclick = () => { S.day.nominations = S.day.nominations.filter(x => x.id !== b.dataset.ndel); save(); renderDay(); });
+}
+
+function openVoters(nomId) {
+  const nm = S.day.nominations.find(x => x.id === nomId); if (!nm) return;
+  nm.voters = nm.voters || [];
+  const chips = S.players.map(p => {
+    const voted = nm.voters.includes(p.id);
+    const ghostSpent = !p.alive && p.ghostUsed && !voted;
+    const cls = voted ? "on" : (ghostSpent ? "" : "");
+    const tag = !p.alive ? ` <span style="opacity:.6">👻${p.ghostUsed && !voted ? "✖" : ""}</span>` : "";
+    return `<span class="chip ${voted ? "on" : ""}" data-vp="${p.id}" style="${ghostSpent ? "opacity:.45" : ""}">${escapeHtml(p.name)}${tag}</span>`;
+  }).join("");
+  openModal(`
+    <button class="close-x" onclick="closeModal()">×</button>
+    <h3>👥 ${t("voters")} — ${escapeHtml(nm.nominee)}</h3>
+    <p class="hint">${t("markVoters")} · 👻 = ${t("ghostVoteShort")}</p>
+    <div class="chip-wrap">${chips}</div>
+    <div class="modal-actions"><button class="btn gold" onclick="closeModal()">${t("close")}</button></div>`);
+  $$("[data-vp]").forEach(el => el.onclick = () => {
+    const pid = el.dataset.vp; const p = S.players.find(x => x.id === pid);
+    const idx = nm.voters.indexOf(pid);
+    if (idx >= 0) { nm.voters.splice(idx, 1); if (!p.alive) p.ghostUsed = false; }
+    else {
+      if (!p.alive && p.ghostUsed) { toast("👻✖"); return; }
+      nm.voters.push(pid); if (!p.alive) p.ghostUsed = true;
+    }
+    nm.votes = nm.voters.length;
+    save(); openVoters(nomId); renderDay();
+  });
 }
 let TIMER_HANDLE = null;
 function fmtTime(sec) { sec = Math.max(0, sec | 0); const m = (sec / 60) | 0, s = sec % 60; return m + ":" + String(s).padStart(2, "0"); }
@@ -1000,43 +1124,132 @@ function execNom(id) {
 }
 
 /* =========================================================================
-   VUE : Setup (répartition)
+   VUE : Setup (constructeur de sac)
    ========================================================================= */
+const SETUP_MODIFIERS = { baron: { outsider: +2 }, fanggu: { outsider: +1 }, vigormortis: { outsider: -1 }, godfather: { outsider: 0, note: true } };
+function bagTeamCounts() {
+  const cur = { townsfolk: 0, outsider: 0, minion: 0, demon: 0, traveler: 0 };
+  (S.bag || []).forEach(id => { const c = charById(id); if (c && cur[c.team] != null) cur[c.team]++; });
+  return cur;
+}
+function targetCounts(n) {
+  const base = GAME.setupTable[String(Math.min(15, n))] || [0, 0, 0, 0];
+  let [town, out, min, dem] = base;
+  (S.bag || []).forEach(id => { const m = SETUP_MODIFIERS[id]; if (m && m.outsider) { out += m.outsider; town -= m.outsider; } });
+  return { townsfolk: town, outsider: out, minion: min, demon: dem };
+}
 function renderSetup() {
   const v = $("#view-setup");
-  const count = Math.min(15, Math.max(5, S.players.length || 7));
-  const dist = GAME.setupTable[String(count)] || [0, 0, 0, 0];
-  const labels = [["townsfolk", t("tab.reference")], ["outsider"], ["minion"], ["demon"]];
+  const n = Math.max(5, S.players.length || 7);
+  const tgt = targetCounts(n);
+  const cur = bagTeamCounts();
   const teamKeys = ["townsfolk", "outsider", "minion", "demon"];
+  const sc = currentScript();
+  const byTeam = {}; sc.characters.forEach(c => { if (c.team !== "traveler" && c.team !== "fabled") (byTeam[c.team] = byTeam[c.team] || []).push(c); });
 
-  // comptage actuel des rôles attribués par équipe
-  const cur = { townsfolk: 0, outsider: 0, minion: 0, demon: 0, traveler: 0 };
-  S.players.forEach(p => { const c = p.roleId && charById(p.roleId); if (c && cur[c.team] != null) cur[c.team]++; });
-
-  const cells = teamKeys.map((tk, i) => `
-    <div class="setup-cell ${tk}">
-      <div class="num">${dist[i]}</div>
+  const cells = teamKeys.map(tk => {
+    const ok = cur[tk] === tgt[tk];
+    return `<div class="setup-cell ${tk}">
+      <div class="num">${tgt[tk]}</div>
       <div class="lbl">${teamName(tk)}</div>
-      <div class="lbl" style="margin-top:4px;color:var(--gold-soft)">${t("current")}: ${cur[tk]}</div>
-    </div>`).join("");
+      <div class="lbl bag-counter ${ok ? "ok" : (cur[tk] > tgt[tk] ? "bad" : "")}" style="margin-top:4px">${t("bag")}: ${cur[tk]}</div>
+    </div>`;
+  }).join("");
+
+  let picker = "";
+  teamKeys.forEach(tk => {
+    if (!byTeam[tk]) return;
+    const roles = byTeam[tk].map(c => {
+      const on = (S.bag || []).includes(c.id);
+      const mod = SETUP_MODIFIERS[c.id] ? " ⚙" : "";
+      return `<span class="bag-role t-${tk} ${on ? "on" : ""}" data-bag="${c.id}">${escapeHtml(loc(c.name))}${mod}</span>`;
+    }).join("");
+    picker += `<div style="margin:10px 0 4px;color:var(--muted);font-size:.8rem">${teamName(tk)}</div><div class="row">${roles}</div>`;
+  });
+
+  const bagTotal = (S.bag || []).length;
+  const targetTotal = tgt.townsfolk + tgt.outsider + tgt.minion + tgt.demon;
+  const valid = teamKeys.every(tk => cur[tk] === tgt[tk]);
 
   v.innerHTML = `
     <h2>${t("tab.setup")}</h2>
-    <div class="row">
+    <div class="row" style="margin-bottom:6px">
       <label class="field" style="margin:0">${t("playersCount")}</label>
-      <input type="number" id="su-count" min="5" max="20" value="${S.players.length || count}" style="width:90px">
+      <input type="number" id="su-count" min="5" max="20" value="${S.players.length || n}" style="width:80px">
+      <span class="spacer"></span>
+      <span class="bag-counter ${valid ? "ok" : "bad"}">${bagTotal}/${targetTotal} ${t("bagCount")}</span>
     </div>
-    <h3>${t("setupFor")} ${S.players.length || count} ${t("players")}</h3>
     <div class="setup-grid">${cells}</div>
+    <div class="row" style="margin:6px 0 4px">
+      <button class="btn small gold" id="su-auto">🎲 ${t("autoFill")}</button>
+      <button class="btn small ghost" id="su-clearbag">✧ ${t("clearBag")}</button>
+      <span class="spacer"></span>
+      <button class="btn ${valid ? "primary" : "ghost"}" id="su-deal" ${bagTotal ? "" : "disabled"}>🎯 ${t("dealBag")}</button>
+    </div>
     <p class="hint">${loc(GAME.setupNote)}</p>
+    ${picker}
   `;
   $("#su-count").onchange = (e) => {
     const target = Math.max(5, Math.min(20, +e.target.value || 5));
-    // ajuste le nombre de joueurs (ajoute/retire des sièges vides)
-    while (S.players.length < target) S.players.push({ id: uid(), name: `${t("players").slice(0,6)} ${S.players.length + 1}`, roleId: null, alive: true, ghostUsed: false, statuses: { poisoned: false, drunk: false, protected: false }, reminders: [] });
+    while (S.players.length < target) S.players.push(newPlayer());
     while (S.players.length > target) S.players.pop();
     save(); renderSetup();
   };
+  $$("[data-bag]").forEach(el => el.onclick = () => {
+    S.bag = S.bag || [];
+    const id = el.dataset.bag;
+    const i = S.bag.indexOf(id);
+    if (i >= 0) S.bag.splice(i, 1); else S.bag.push(id);
+    save(); renderSetup();
+  });
+  $("#su-clearbag").onclick = () => { S.bag = []; save(); renderSetup(); };
+  $("#su-auto").onclick = () => autoFillBag(n);
+  $("#su-deal").onclick = () => dealBag();
+}
+function newPlayer(name) {
+  return { id: uid(), name: name || `${t("players").slice(0, 6)} ${S.players.length + 1}`, roleId: null, alive: true, ghostUsed: false, align: null, statuses: { poisoned: false, drunk: false, protected: false }, reminders: [], claim: "" };
+}
+function autoFillBag(n) {
+  const sc = currentScript();
+  const tgt = targetCounts(n);
+  // itère car choisir un modificateur change la cible
+  let bag = [];
+  const byTeam = {}; sc.characters.forEach(c => { if (c.team !== "traveler" && c.team !== "fabled") (byTeam[c.team] = byTeam[c.team] || []).push(c); });
+  const pick = (team, k) => shuffleArr(byTeam[team] || []).slice(0, Math.max(0, k)).map(c => c.id);
+  // 1er tirage sans modificateur
+  const base = GAME.setupTable[String(Math.min(15, n))] || [0, 0, 0, 0];
+  bag = [...pick("townsfolk", base[0]), ...pick("outsider", base[1]), ...pick("minion", base[2]), ...pick("demon", base[3])];
+  S.bag = bag;
+  // recalcule cible avec modificateurs sélectionnés, réajuste outsiders/townsfolk
+  const t2 = targetCounts(n);
+  const cur = bagTeamCounts();
+  const adjust = (team, want) => {
+    const have = (S.bag || []).filter(id => charById(id).team === team);
+    if (have.length > want) S.bag = S.bag.filter(id => charById(id).team !== team).concat(shuffleArr(have).slice(0, want));
+    else if (have.length < want) {
+      const pool = (byTeam[team] || []).filter(c => !S.bag.includes(c.id));
+      S.bag = S.bag.concat(shuffleArr(pool).slice(0, want - have.length).map(c => c.id));
+    }
+  };
+  adjust("outsider", t2.outsider); adjust("townsfolk", t2.townsfolk);
+  save(); renderSetup(); toast("🎲");
+}
+function dealBag() {
+  if (!(S.bag || []).length) return;
+  pushHistory();
+  const n = S.bag.length;
+  while (S.players.length < n) S.players.push(newPlayer());
+  while (S.players.length > n) S.players.pop();
+  const roles = shuffleArr(S.bag.slice());
+  S.players.forEach((p, i) => {
+    p.roleId = roles[i] || null;
+    const c = p.roleId && charById(p.roleId);
+    p.align = c ? ((c.team === "minion" || c.team === "demon") ? "evil" : "good") : null;
+    p.alive = true; p.ghostUsed = false;
+    p.statuses = { poisoned: false, drunk: false, protected: false }; p.reminders = [];
+  });
+  logEvent(`${t("dealBag")} (${n})`, "🎯");
+  save(); switchView("grimoire"); toast("🎯");
 }
 
 /* =========================================================================

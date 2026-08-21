@@ -308,3 +308,12 @@ body.is-day .topbar { background:linear-gradient(180deg,#33264a,#1c0f24); }
 .bag-counter { font-weight:700; }
 .bag-counter.bad { color:var(--blood-bright); }
 .bag-counter.ok { color:var(--ok); }
+
+/* Revendication & alignement */
+.seat-claim { font-size:.66rem; color:#c9a0d0; max-width:84px; text-align:center; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.token.evil-align { box-shadow:0 0 0 2px var(--evil), 0 4px 10px rgba(0,0,0,.4); }
+/* Nuit interactive : cibles cliquables */
+.night-targets { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+.ntarget { padding:5px 10px; border:1px solid var(--line); border-radius:999px; cursor:pointer; font-size:.8rem; background:#1c1024; }
+.ntarget:hover { border-color:var(--gold); }
+.ntarget.dead { opacity:.5; text-decoration:line-through; }
