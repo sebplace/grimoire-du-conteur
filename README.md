@@ -20,15 +20,16 @@ et un **assistant d'animation** (ordre de nuit, aide au setup, suivi des votes).
 
 | Onglet | Contenu |
 |---|---|
-| **Grimoire** | Cercle des joueurs, attribution des rôles, vie/mort, vote de fantôme, statuts (empoisonné, ivre, protégé), jetons de rappel, tirage au sort. |
-| **Nuit** | Ordre de nuit (1ʳᵉ nuit / nuits suivantes), filtré sur les rôles en jeu, cases à cocher, instructions du MJ. |
-| **Jour** | Nominations, décompte des voix, seuil de majorité automatique, exécution. |
+| **Grimoire** | Cercle des joueurs, attribution des rôles, vie/mort, vote de fantôme, statuts (empoisonné, ivre, protégé), jetons de rappel, tirage au sort, **glisser-déposer pour réordonner les sièges**. |
+| **Nuit** | Ordre de nuit (1ʳᵉ nuit / nuits suivantes), filtré sur les rôles en jeu, cases à cocher, instructions du MJ, **bluffs suggérés pour le Démon** (personnages bons hors jeu). |
+| **Jour** | Nominations, décompte des voix, seuil de majorité automatique, exécution, **minuteur de phase de jour** (presets 3/5/10 min + cloche). |
 | **Setup** | Répartition Villageois / Étrangers / Sbires / Démon selon le nombre de joueurs. |
 | **Personnages** | Référence complète du script (capacités, ordre de nuit). |
 | **Scripts** | Choix du script, import JSON. |
 
-Script inclus : **Trouble Brewing** (22 personnages + 5 Voyageurs).
-À venir : *Sects & Violets*, *Bad Moon Rising*, bluffs du Démon, glisser-déposer.
+Scripts inclus : les **3 scripts officiels** — **Trouble Brewing**, **Sects & Violets**, **Bad Moon Rising** (rôles + Voyageurs).
+Autres options : **sons** (cloche synthétisée aux transitions nuit/jour et fin de minuteur, activable via 🔔).
+À venir : Fabled, scripts personnalisés enrichis, glisser-déposer des jetons.
 
 ## Lancer en local
 
@@ -69,7 +70,9 @@ blood-clocktower-mj/
 ├─ data/
 │  ├─ game.json              # équipes, table de setup, étapes de nuit
 │  └─ scripts/
-│     └─ trouble-brewing.json
+│     ├─ trouble-brewing.json
+│     ├─ sects-and-violets.json
+│     └─ bad-moon-rising.json
 └─ assets/icons/             # icônes SVG maison
 ```
 

@@ -6,7 +6,9 @@
 
 const STORE_KEY = "botc-mj-state-v1";
 const BUNDLED_SCRIPTS = [
-  { id: "trouble-brewing", name: "Trouble Brewing", file: "data/scripts/trouble-brewing.json" }
+  { id: "trouble-brewing", name: "Trouble Brewing", file: "data/scripts/trouble-brewing.json" },
+  { id: "sects-and-violets", name: "Sects & Violets", file: "data/scripts/sects-and-violets.json" },
+  { id: "bad-moon-rising", name: "Bad Moon Rising", file: "data/scripts/bad-moon-rising.json" }
 ];
 
 /* ---------- i18n (chaînes d'interface) ---------- */
@@ -42,7 +44,10 @@ const I18N = {
     setupModifier: "modifie le setup", bluffHint: "Pensez aux 3 personnages « bluff » (non en jeu) pour le Démon.",
     exportGame: "Exporter la partie", nightGuide: "Réveillez les personnages dans cet ordre.",
     toastSaved: "Enregistré", toastNew: "Nouvelle partie prête",
-    dayPhase: "Phase de jour", nightPhase: "Phase de nuit"
+    dayPhase: "Phase de jour", nightPhase: "Phase de nuit",
+    bluffsTitle: "Bluffs suggérés pour le Démon", bluffsHint: "Personnages bons NON en jeu — donnez-en 3 au Démon.",
+    timer: "Minuteur", start: "Démarrer", pause: "Pause", reset: "Réinit.", minutes: "min",
+    sound: "Sons", dragHint: "Glissez un jeton pour réordonner les sièges.", timeUp: "Temps écoulé !"
   },
   en: {
     appName: "Storyteller's Grimoire",
@@ -75,7 +80,10 @@ const I18N = {
     setupModifier: "modifies setup", bluffHint: "Remember 3 not-in-play 'bluff' characters for the Demon.",
     exportGame: "Export game", nightGuide: "Wake the characters in this order.",
     toastSaved: "Saved", toastNew: "New game ready",
-    dayPhase: "Day phase", nightPhase: "Night phase"
+    dayPhase: "Day phase", nightPhase: "Night phase",
+    bluffsTitle: "Suggested bluffs for the Demon", bluffsHint: "Good characters NOT in play — give the Demon 3 of these.",
+    timer: "Timer", start: "Start", pause: "Pause", reset: "Reset", minutes: "min",
+    sound: "Sound", dragHint: "Drag a token to reorder the seats.", timeUp: "Time's up!"
   }
 };
 
@@ -92,7 +100,9 @@ function defaultState() {
     players: [],
     night: { mode: "first", number: 1, checked: {} },
     day: { number: 0, nominations: [] },
-    phase: "night"
+    phase: "night",
+    sound: true,
+    timer: { total: 300, remaining: 300, running: false }
   };
 }
 
@@ -140,6 +150,7 @@ async function fetchJSON(url) {
 }
 async function boot() {
   load();
+  if (S.timer && S.timer.running) S.timer.running = false;
   GAME = await fetchJSON("data/game.json");
   for (const s of BUNDLED_SCRIPTS) {
     try {
@@ -171,6 +182,31 @@ function wireChrome() {
   $$(".tab").forEach(tab => tab.onclick = () => switchView(tab.dataset.view));
   $("#btn-menu").onclick = () => switchView("scripts");
   $("#modal-overlay").onclick = (e) => { if (e.target.id === "modal-overlay") closeModal(); };
+  const sb = $("#btn-sound");
+  sb.textContent = S.sound ? "🔔" : "🔕";
+  sb.onclick = () => { S.sound = !S.sound; sb.textContent = S.sound ? "🔔" : "🔕"; save(); if (S.sound) playBell(660, 0.25); };
+}
+
+/* ---------- Cloche synthétisée (Web Audio, sans fichier) ---------- */
+let AUDIO_CTX = null;
+function playBell(freq = 440, dur = 0.6) {
+  if (!S || !S.sound) return;
+  try {
+    AUDIO_CTX = AUDIO_CTX || new (window.AudioContext || window.webkitAudioContext)();
+    const ctx = AUDIO_CTX;
+    if (ctx.state === "suspended") ctx.resume();
+    const now = ctx.currentTime;
+    [freq, freq * 2, freq * 2.8].forEach((f, i) => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = "sine"; o.frequency.value = f;
+      const amp = 0.28 / (i + 1);
+      g.gain.setValueAtTime(0, now);
+      g.gain.linearRampToValueAtTime(amp, now + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+      o.connect(g); g.connect(ctx.destination);
+      o.start(now); o.stop(now + dur);
+    });
+  } catch (e) { /* audio indisponible */ }
 }
 function setLang(lang) {
   S.lang = lang; save();
@@ -254,6 +290,7 @@ function renderGrimoire() {
     const top = 50 + R * Math.sin(angle);
     const seat = document.createElement("div");
     seat.className = "seat" + (p.alive ? "" : " dead");
+    seat.dataset.idx = i;
     seat.style.left = left + "%";
     seat.style.top = top + "%";
     const role = p.roleId ? charById(p.roleId) : null;
@@ -270,9 +307,62 @@ function renderGrimoire() {
       <div class="token ${teamCls}">${escapeHtml(label)}</div>
       <div class="seat-name">${escapeHtml(p.name)}</div>
       <div class="seat-badges">${badges.join("")}</div>`;
-    seat.onclick = () => openSeatModal(p.id);
+    attachSeatPointer(seat, p.id, i);
     circle.appendChild(seat);
   });
+  if (n > 1) { const h = document.createElement("div"); h.className = "hint"; h.style.textAlign = "center"; h.style.marginTop = "6px"; h.textContent = "↔ " + t("dragHint"); v.appendChild(h); }
+}
+
+/* Interaction siège : tap = fiche joueur ; glisser = réordonner. */
+let DRAG = null;
+function attachSeatPointer(seat, pid, idx) {
+  seat.style.touchAction = "none";
+  seat.addEventListener("pointerdown", (e) => {
+    DRAG = { pid, idx, x0: e.clientX, y0: e.clientY, moved: false, el: seat };
+    try { seat.setPointerCapture(e.pointerId); } catch (_) {}
+  });
+  seat.addEventListener("pointermove", (e) => {
+    if (!DRAG || DRAG.pid !== pid) return;
+    const dx = e.clientX - DRAG.x0, dy = e.clientY - DRAG.y0;
+    if (!DRAG.moved && Math.hypot(dx, dy) > 8) DRAG.moved = true;
+    if (DRAG.moved) {
+      seat.style.zIndex = 20;
+      seat.querySelector(".token").style.transform = `translate(${dx}px,${dy}px) scale(1.08)`;
+      highlightNearest(e.clientX, e.clientY, idx);
+    }
+  });
+  const finish = (e) => {
+    if (!DRAG || DRAG.pid !== pid) return;
+    if (!DRAG.moved) { DRAG = null; openSeatModal(pid); return; }
+    const target = nearestSeatIdx(e.clientX, e.clientY);
+    DRAG = null;
+    if (target != null && target !== idx) reorderPlayer(idx, target);
+    else renderGrimoire();
+  };
+  seat.addEventListener("pointerup", finish);
+  seat.addEventListener("pointercancel", () => { DRAG = null; renderGrimoire(); });
+}
+function nearestSeatIdx(x, y) {
+  let best = null, bestD = Infinity;
+  $$("#circle .seat").forEach(s => {
+    const r = s.getBoundingClientRect();
+    const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    const d = Math.hypot(x - cx, y - cy);
+    if (d < bestD) { bestD = d; best = +s.dataset.idx; }
+  });
+  return best;
+}
+function highlightNearest(x, y, exceptIdx) {
+  const near = nearestSeatIdx(x, y);
+  $$("#circle .seat").forEach(s => {
+    const on = (+s.dataset.idx === near && near !== exceptIdx);
+    s.querySelector(".token").style.outline = on ? "3px solid var(--gold)" : "";
+  });
+}
+function reorderPlayer(from, to) {
+  const [p] = S.players.splice(from, 1);
+  S.players.splice(to, 0, p);
+  save(); renderGrimoire();
 }
 
 function addPlayerPrompt() {
@@ -418,6 +508,18 @@ function inPlayRoleIds() {
   S.players.forEach(p => { if (p.roleId) ids.add(p.roleId); });
   return ids;
 }
+function bluffsBlock() {
+  const sc = currentScript();
+  const inPlay = inPlayRoleIds();
+  const good = sc.characters.filter(c => (c.team === "townsfolk" || c.team === "outsider") && !inPlay.has(c.id));
+  if (!good.length) return "";
+  const names = good.map(c => `<span class="badge" style="background:#1c2a1c;border-color:#3f6a3f;color:#a9e0a0">${escapeHtml(loc(c.name))}</span>`).join(" ");
+  return `<div style="margin-top:8px;padding:8px;border:1px dashed #3f6a3f;border-radius:8px;background:rgba(60,120,60,.06)">
+    <div style="font-size:.78rem;color:#9fd08f;font-weight:700">🎭 ${t("bluffsTitle")}</div>
+    <div style="font-size:.72rem;color:var(--muted);margin:2px 0 6px">${t("bluffsHint")}</div>
+    <div class="seat-badges" style="justify-content:flex-start;max-width:none">${names}</div>
+  </div>`;
+}
 function renderNight() {
   const v = $("#view-night");
   const mode = S.night.mode;
@@ -450,6 +552,8 @@ function renderNight() {
   let stepHtml = steps.map((s, idx) => {
     const checked = !!S.night.checked[s.key];
     const dotColor = s.type === "char" ? `var(--${s.team})` : "#6a6ad0";
+    let extra = "";
+    if (s.key === "meta:demoninfo") extra = bluffsBlock();
     return `
       <div class="night-step ${s.type} ${checked ? "checked" : ""}" data-key="${s.key}">
         <div class="nnum">${idx + 1}</div>
@@ -458,6 +562,7 @@ function renderNight() {
           <div class="ntitle">${escapeHtml(s.title)}</div>
           <div class="ntext">${escapeHtml(s.text)}</div>
           ${s.who ? `<div class="nwho">👤 ${escapeHtml(s.who)}</div>` : ""}
+          ${extra}
         </div>
         <input type="checkbox" class="night-check" ${checked ? "checked" : ""} data-check="${s.key}">
       </div>`;
@@ -492,6 +597,7 @@ function startNight() {
   S.phase = "night";
   if (S.night.mode === "first" && S.night.number > 1) S.night.mode = "other";
   S.night.checked = {};
+  playBell(330, 0.7);
   save(); renderAll();
 }
 function endNight() {
@@ -501,6 +607,7 @@ function endNight() {
   S.night.mode = "other";
   S.night.checked = {};
   S.day.nominations = [];
+  playBell(560, 0.7);
   save(); switchView("day");
 }
 
@@ -543,19 +650,59 @@ function renderDay() {
       <span class="spacer"></span>
       <button class="btn primary" id="d-night">🌙 ${t("startNight")}</button>
     </div>
+    <div class="nom-card" id="timer-card">
+      <div class="row">
+        <strong>⏱️ ${t("timer")}</strong>
+        <span id="timer-display" class="vote-count" style="min-width:70px">${fmtTime(S.timer.remaining)}</span>
+        <button class="btn small ${S.timer.running ? "" : "gold"}" id="tm-start">${S.timer.running ? "⏸ " + t("pause") : "▶ " + t("start")}</button>
+        <button class="btn small ghost" id="tm-reset">↺ ${t("reset")}</button>
+        <span class="spacer"></span>
+        <button class="btn small ghost" data-tset="180">3 ${t("minutes")}</button>
+        <button class="btn small ghost" data-tset="300">5 ${t("minutes")}</button>
+        <button class="btn small ghost" data-tset="600">10 ${t("minutes")}</button>
+      </div>
+    </div>
     ${noms}
   `;
   $("#d-nom").onclick = nominatePrompt;
-  $("#d-night").onclick = () => { S.night.number = Math.max(S.night.number, (S.day.number || 1) + 1 - 1); startNightFromDay(); };
+  $("#d-night").onclick = startNightFromDay;
+  $("#tm-start").onclick = () => { S.timer.running ? pauseTimer() : startTimer(); };
+  $("#tm-reset").onclick = () => { resetTimer(); };
+  $$("[data-tset]").forEach(b => b.onclick = () => { setTimer(+b.dataset.tset); });
   $$("[data-vplus]").forEach(b => b.onclick = () => adjVote(b.dataset.vplus, 1));
   $$("[data-vminus]").forEach(b => b.onclick = () => adjVote(b.dataset.vminus, -1));
   $$("[data-exec]").forEach(b => b.onclick = () => execNom(b.dataset.exec));
   $$("[data-ndel]").forEach(b => b.onclick = () => { S.day.nominations = S.day.nominations.filter(x => x.id !== b.dataset.ndel); save(); renderDay(); });
 }
+let TIMER_HANDLE = null;
+function fmtTime(sec) { sec = Math.max(0, sec | 0); const m = (sec / 60) | 0, s = sec % 60; return m + ":" + String(s).padStart(2, "0"); }
+function timerTick() {
+  if (!S.timer.running) return;
+  S.timer.remaining -= 1;
+  if (S.timer.remaining <= 0) {
+    S.timer.remaining = 0; pauseTimer(); playBell(700, 1.0); toast("⏰ " + t("timeUp"));
+  }
+  const d = $("#timer-display"); if (d) d.textContent = fmtTime(S.timer.remaining);
+  save();
+}
+function startTimer() {
+  if (S.timer.remaining <= 0) S.timer.remaining = S.timer.total;
+  S.timer.running = true; save();
+  if (TIMER_HANDLE) clearInterval(TIMER_HANDLE);
+  TIMER_HANDLE = setInterval(timerTick, 1000);
+  if (currentView === "day") renderDay();
+}
+function pauseTimer() { S.timer.running = false; if (TIMER_HANDLE) { clearInterval(TIMER_HANDLE); TIMER_HANDLE = null; } save(); if (currentView === "day") renderDay(); }
+function stopTimer() { pauseTimer(); }
+function resetTimer() { S.timer.remaining = S.timer.total; pauseTimer(); }
+function setTimer(sec) { S.timer.total = sec; S.timer.remaining = sec; S.timer.running = false; if (TIMER_HANDLE) { clearInterval(TIMER_HANDLE); TIMER_HANDLE = null; } save(); renderDay(); }
+
 function startNightFromDay() {
   S.phase = "night";
   S.night.mode = "other";
   S.night.checked = {};
+  stopTimer();
+  playBell(330, 0.7);
   save(); switchView("night");
 }
 function nominatePrompt() {

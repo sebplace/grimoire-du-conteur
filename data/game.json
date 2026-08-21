@@ -26,17 +26,17 @@
   },
   "firstNightMeta": [
     {
-      "id": "dusk", "order": 2, "type": "info",
+      "id": "dusk", "order": 1, "type": "info",
       "name": { "fr": "Crépuscule", "en": "Dusk" },
       "text": { "fr": "Annoncez la tombée de la nuit. Tout le monde ferme les yeux.", "en": "Announce nightfall. Everyone closes their eyes." }
     },
     {
-      "id": "minioninfo", "order": 8, "type": "info",
+      "id": "minioninfo", "order": 6, "type": "info",
       "name": { "fr": "Information des Sbires", "en": "Minion information" },
       "text": { "fr": "Réveillez les Sbires. S'il y a 7 joueurs ou plus, montrez-leur les autres Sbires et le Démon (pouce levé = « vous êtes maléfiques ensemble »).", "en": "Wake the Minions. If 7+ players, show them the other Minions and the Demon." }
     },
     {
-      "id": "demoninfo", "order": 9, "type": "info",
+      "id": "demoninfo", "order": 7, "type": "info",
       "name": { "fr": "Information du Démon", "en": "Demon information" },
       "text": { "fr": "Réveillez le Démon. Montrez-lui ses Sbires, puis donnez-lui 3 personnages « bluff » qui ne sont PAS en jeu.", "en": "Wake the Demon. Show them their Minions, then give 3 not-in-play 'bluff' characters." }
     },
@@ -48,7 +48,7 @@
   ],
   "otherNightMeta": [
     {
-      "id": "dusk", "order": 2, "type": "info",
+      "id": "dusk", "order": 1, "type": "info",
       "name": { "fr": "Crépuscule", "en": "Dusk" },
       "text": { "fr": "Annoncez la tombée de la nuit. Tout le monde ferme les yeux.", "en": "Announce nightfall. Everyone closes their eyes." }
     },
