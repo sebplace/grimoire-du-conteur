@@ -47,7 +47,25 @@ const I18N = {
     dayPhase: "Phase de jour", nightPhase: "Phase de nuit",
     bluffsTitle: "Bluffs suggérés pour le Démon", bluffsHint: "Personnages bons NON en jeu — donnez-en 3 au Démon.",
     timer: "Minuteur", start: "Démarrer", pause: "Pause", reset: "Réinit.", minutes: "min",
-    sound: "Sons", dragHint: "Glissez un jeton pour réordonner les sièges.", timeUp: "Temps écoulé !"
+    sound: "Sons", dragHint: "Glissez un jeton pour réordonner les sièges.", timeUp: "Temps écoulé !",
+    settings: "Réglages", fullscreen: "Plein écran", keepAwake: "Garder l'écran allumé",
+    volume: "Volume", accent: "Couleur d'accent", haptics: "Vibrations", confirmActions: "Demander confirmation",
+    accentPurple: "Pourpre", accentBlood: "Sang", accentTeal: "Sarcelle", accentGold: "Or",
+    gameLog: "Journal de partie", exportLog: "Exporter", clearLog: "Vider le journal", noLog: "Aucun événement enregistré.",
+    undo: "Annuler", nothingUndo: "Rien à annuler",
+    endGood: "Le Bien l'emporte", endEvil: "Le Mal l'emporte", endCheck: "Vérifier la fin de partie",
+    killed: "tué(e)", revived: "ressuscité(e)", nominatedLog: "nomination", executedLog: "exécuté(e)",
+    bag: "Sac", buildBag: "Composer le sac", dealBag: "Distribuer le sac", bagOk: "Sac valide",
+    bagCount: "dans le sac", clearBag: "Vider le sac", autoFill: "Remplir au hasard",
+    addTraveler: "Ajouter un Voyageur", traveler: "Voyageur", alignment: "Alignement", good: "Bien", evil: "Mal",
+    claim: "Revendication", claimHint: "Ce que le joueur prétend être (public).", claimNone: "aucune",
+    voteHistory: "Historique des votes", voters: "Votants", markVoters: "Cocher les votants",
+    ghostVoteShort: "Fantôme", oneNomWarn: "a déjà nominé aujourd'hui",
+    savedGames: "Parties sauvegardées", saveGame: "Sauvegarder la partie", loadGame: "Charger", deleteGame: "Supprimer",
+    gameName: "Nom de la partie", exportJSON: "Exporter (JSON)", importJSON: "Importer (JSON)", noSaved: "Aucune partie sauvegardée.",
+    jinxes: "Interactions (jinx)", jinxNote: "Règles spéciales quand ces rôles coexistent.",
+    chooseTarget: "Choisir la cible", applyToken: "Poser le jeton", targetDone: "Jeton posé",
+    tutorialTitle: "Bienvenue, Conteur !", tutorialSkip: "Commencer"
   },
   en: {
     appName: "Storyteller's Grimoire",
@@ -83,7 +101,25 @@ const I18N = {
     dayPhase: "Day phase", nightPhase: "Night phase",
     bluffsTitle: "Suggested bluffs for the Demon", bluffsHint: "Good characters NOT in play — give the Demon 3 of these.",
     timer: "Timer", start: "Start", pause: "Pause", reset: "Reset", minutes: "min",
-    sound: "Sound", dragHint: "Drag a token to reorder the seats.", timeUp: "Time's up!"
+    sound: "Sound", dragHint: "Drag a token to reorder the seats.", timeUp: "Time's up!",
+    settings: "Settings", fullscreen: "Fullscreen", keepAwake: "Keep screen awake",
+    volume: "Volume", accent: "Accent colour", haptics: "Vibration", confirmActions: "Ask for confirmation",
+    accentPurple: "Purple", accentBlood: "Blood", accentTeal: "Teal", accentGold: "Gold",
+    gameLog: "Game log", exportLog: "Export", clearLog: "Clear log", noLog: "No events recorded.",
+    undo: "Undo", nothingUndo: "Nothing to undo",
+    endGood: "Good wins", endEvil: "Evil wins", endCheck: "Check end of game",
+    killed: "killed", revived: "revived", nominatedLog: "nomination", executedLog: "executed",
+    bag: "Bag", buildBag: "Build the bag", dealBag: "Deal the bag", bagOk: "Bag valid",
+    bagCount: "in the bag", clearBag: "Clear bag", autoFill: "Random fill",
+    addTraveler: "Add a Traveller", traveler: "Traveller", alignment: "Alignment", good: "Good", evil: "Evil",
+    claim: "Claim", claimHint: "What the player publicly claims to be.", claimNone: "none",
+    voteHistory: "Vote history", voters: "Voters", markVoters: "Mark voters",
+    ghostVoteShort: "Ghost", oneNomWarn: "already nominated today",
+    savedGames: "Saved games", saveGame: "Save game", loadGame: "Load", deleteGame: "Delete",
+    gameName: "Game name", exportJSON: "Export (JSON)", importJSON: "Import (JSON)", noSaved: "No saved games.",
+    jinxes: "Jinxes", jinxNote: "Special rules when these roles coexist.",
+    chooseTarget: "Choose target", applyToken: "Place token", targetDone: "Token placed",
+    tutorialTitle: "Welcome, Storyteller!", tutorialSkip: "Start"
   }
 };
 
@@ -102,7 +138,10 @@ function defaultState() {
     day: { number: 0, nominations: [] },
     phase: "night",
     sound: true,
-    timer: { total: 300, remaining: 300, running: false }
+    timer: { total: 300, remaining: 300, running: false },
+    settings: { keepAwake: true, volume: 0.6, accent: "purple", haptics: true, confirmActions: true },
+    log: [],
+    history: []
   };
 }
 
@@ -182,9 +221,198 @@ function wireChrome() {
   $$(".tab").forEach(tab => tab.onclick = () => switchView(tab.dataset.view));
   $("#btn-menu").onclick = () => switchView("scripts");
   $("#modal-overlay").onclick = (e) => { if (e.target.id === "modal-overlay") closeModal(); };
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeModal(); });
   const sb = $("#btn-sound");
   sb.textContent = S.sound ? "🔔" : "🔕";
   sb.onclick = () => { S.sound = !S.sound; sb.textContent = S.sound ? "🔔" : "🔕"; save(); if (S.sound) playBell(660, 0.25); };
+  $("#btn-fs").onclick = toggleFullscreen;
+  $("#btn-settings").onclick = openSettings;
+  applyAccent();
+  initWakeLock();
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") requestWakeLock(); });
+}
+
+/* ---------- Wake Lock (garder l'écran allumé) ---------- */
+let WAKE = null;
+async function requestWakeLock() {
+  if (!S.settings.keepAwake || !("wakeLock" in navigator)) return;
+  try { WAKE = await navigator.wakeLock.request("screen"); WAKE.addEventListener("release", () => {}); } catch (_) {}
+}
+function releaseWakeLock() { if (WAKE) { try { WAKE.release(); } catch (_) {} WAKE = null; } }
+function initWakeLock() { if (S.settings.keepAwake) requestWakeLock(); }
+
+function toggleFullscreen() {
+  const d = document;
+  if (!d.fullscreenElement) { (d.documentElement.requestFullscreen || d.documentElement.webkitRequestFullscreen || (() => {})).call(d.documentElement); }
+  else { (d.exitFullscreen || d.webkitExitFullscreen || (() => {})).call(d); }
+  buzz(10);
+}
+function buzz(pattern) { if (S.settings.haptics && navigator.vibrate) { try { navigator.vibrate(pattern); } catch (_) {} } }
+
+const ACCENTS = {
+  purple: { a: "#d9b36b", ring: "#4a2f57" },
+  blood: { a: "#d43046", ring: "#5a2030" },
+  teal: { a: "#2fa5a0", ring: "#1f4f4d" },
+  gold: { a: "#f0d79a", ring: "#6a5a1e" }
+};
+function applyAccent() {
+  const ac = ACCENTS[S.settings.accent] || ACCENTS.purple;
+  document.documentElement.style.setProperty("--gold", ac.a);
+}
+
+function openSettings() {
+  const st = S.settings;
+  const accents = ["purple", "blood", "teal", "gold"];
+  const accentChips = accents.map(a =>
+    `<span class="chip ${st.accent === a ? "on" : ""}" data-accent="${a}">${t("accent" + a[0].toUpperCase() + a.slice(1))}</span>`).join("");
+  openModal(`
+    <button class="close-x" onclick="closeModal()">×</button>
+    <h3>⚙ ${t("settings")}</h3>
+    <div class="set-row"><span>🔆 ${t("keepAwake")}</span><label class="switch"><input type="checkbox" id="set-awake" ${st.keepAwake ? "checked" : ""}><span class="slider2"></span></label></div>
+    <div class="set-row"><span>📳 ${t("haptics")}</span><label class="switch"><input type="checkbox" id="set-haptics" ${st.haptics ? "checked" : ""}><span class="slider2"></span></label></div>
+    <div class="set-row"><span>❓ ${t("confirmActions")}</span><label class="switch"><input type="checkbox" id="set-confirm" ${st.confirmActions ? "checked" : ""}><span class="slider2"></span></label></div>
+    <label class="field">🔊 ${t("volume")}</label>
+    <input type="range" id="set-volume" min="0" max="1" step="0.05" value="${st.volume}" style="width:100%">
+    <label class="field">🎨 ${t("accent")}</label>
+    <div class="chip-wrap">${accentChips}</div>
+    <label class="field">⏱️ ${t("timer")} (${t("minutes")})</label>
+    <input type="number" id="set-timer" min="1" max="20" value="${Math.round(S.timer.total / 60)}" style="width:90px">
+    <hr style="border-color:var(--line);margin:16px 0">
+    <div class="row">
+      <button class="btn small" id="set-saves">💾 ${t("savedGames")}</button>
+      <button class="btn small" id="set-log">📜 ${t("gameLog")}</button>
+      <button class="btn small ghost" id="set-export">⬇ ${t("exportJSON")}</button>
+      <button class="btn small ghost" id="set-import">⬆ ${t("importJSON")}</button>
+    </div>
+    <div class="modal-actions"><button class="btn gold" onclick="closeModal()">${t("close")}</button></div>
+  `);
+  $("#set-awake").onchange = (e) => { st.keepAwake = e.target.checked; save(); e.target.checked ? requestWakeLock() : releaseWakeLock(); };
+  $("#set-haptics").onchange = (e) => { st.haptics = e.target.checked; save(); buzz(15); };
+  $("#set-confirm").onchange = (e) => { st.confirmActions = e.target.checked; save(); };
+  $("#set-volume").oninput = (e) => { st.volume = +e.target.value; save(); };
+  $("#set-volume").onchange = () => playBell(660, 0.25);
+  $("#set-timer").onchange = (e) => { const m = Math.max(1, Math.min(20, +e.target.value || 5)); S.timer.total = m * 60; if (!S.timer.running) S.timer.remaining = m * 60; save(); };
+  $$("[data-accent]").forEach(c => c.onclick = () => { st.accent = c.dataset.accent; save(); applyAccent(); openSettings(); });
+  $("#set-saves").onclick = openSavedGames;
+  $("#set-log").onclick = openGameLog;
+  $("#set-export").onclick = exportGameJSON;
+  $("#set-import").onclick = importGameJSON;
+}
+
+/* =========================================================================
+   Infrastructure : journal, annuler (undo), sauvegardes, fin de partie
+   ========================================================================= */
+const SAVES_KEY = "botc-mj-saves-v1";
+function snapshot() {
+  return JSON.parse(JSON.stringify({
+    players: S.players, night: S.night, day: S.day, phase: S.phase,
+    scriptId: S.scriptId, log: S.log
+  }));
+}
+function pushHistory() {
+  S.history = S.history || [];
+  S.history.push(snapshot());
+  if (S.history.length > 50) S.history.shift();
+}
+function undo() {
+  if (!S.history || !S.history.length) { toast(t("nothingUndo")); return; }
+  const snap = S.history.pop();
+  Object.assign(S, snap);
+  save(); buzz(15); renderAll(); toast("↶ " + t("undo"));
+}
+function logEvent(text, icon) {
+  S.log = S.log || [];
+  S.log.push({ ph: S.phase, num: S.phase === "night" ? S.night.number : (S.day.number || 1), text, icon: icon || "•", ts: Date.now() });
+}
+function openGameLog() {
+  const rows = (S.log || []).slice().reverse().map(e => {
+    const badge = e.ph === "night" ? `🌙 ${t("nightNum")} ${e.num}` : `☀️ ${t("dayNum")} ${e.num}`;
+    return `<div class="log-row"><span class="badge">${badge}</span> <span>${e.icon} ${escapeHtml(e.text)}</span></div>`;
+  }).join("") || `<p class="list-empty">${t("noLog")}</p>`;
+  openModal(`
+    <button class="close-x" onclick="closeModal()">×</button>
+    <h3>📜 ${t("gameLog")}</h3>
+    <div style="max-height:52vh;overflow-y:auto">${rows}</div>
+    <div class="modal-actions">
+      <button class="btn small ghost" id="log-export">⬇ ${t("exportLog")}</button>
+      <button class="btn small ghost" id="log-clear" style="color:var(--blood-bright)">🗑 ${t("clearLog")}</button>
+      <span class="spacer"></span>
+      <button class="btn gold" onclick="closeModal()">${t("close")}</button>
+    </div>`);
+  $("#log-export").onclick = () => {
+    const txt = (S.log || []).map(e => `[${e.ph === "night" ? "N" : "J"}${e.num}] ${e.text}`).join("\n");
+    downloadFile("journal-partie.txt", txt, "text/plain");
+  };
+  $("#log-clear").onclick = () => { S.log = []; save(); openGameLog(); };
+}
+
+function downloadFile(name, content, mime) {
+  const blob = new Blob([content], { type: mime || "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a"); a.href = url; a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+function exportGameJSON() {
+  downloadFile("partie-" + new Date().toISOString().slice(0, 10) + ".json", JSON.stringify(snapshot(), null, 2), "application/json");
+}
+function importGameJSON() {
+  const inp = document.createElement("input"); inp.type = "file"; inp.accept = "application/json,.json";
+  inp.onchange = () => {
+    const f = inp.files[0]; if (!f) return;
+    const r = new FileReader();
+    r.onload = () => { try { const d = JSON.parse(r.result); Object.assign(S, d); save(); closeModal(); renderAll(); toast("✔"); } catch (e) { alert("Import: " + e.message); } };
+    r.readAsText(f);
+  };
+  inp.click();
+}
+function getSaves() { try { return JSON.parse(localStorage.getItem(SAVES_KEY) || "{}"); } catch (_) { return {}; } }
+function setSaves(o) { localStorage.setItem(SAVES_KEY, JSON.stringify(o)); }
+function openSavedGames() {
+  const saves = getSaves();
+  const ids = Object.keys(saves).sort((a, b) => saves[b].date - saves[a].date);
+  const rows = ids.map(id => `
+    <div class="nom-card"><div class="row">
+      <strong>${escapeHtml(saves[id].name)}</strong>
+      <span style="color:var(--muted);font-size:.8rem">${new Date(saves[id].date).toLocaleString()}</span>
+      <span class="spacer"></span>
+      <button class="btn small gold" data-load="${id}">${t("loadGame")}</button>
+      <button class="btn small ghost" data-del="${id}" style="color:var(--blood-bright)">🗑</button>
+    </div></div>`).join("") || `<p class="list-empty">${t("noSaved")}</p>`;
+  openModal(`
+    <button class="close-x" onclick="closeModal()">×</button>
+    <h3>💾 ${t("savedGames")}</h3>
+    <div class="row" style="margin-bottom:10px"><button class="btn gold" id="sv-new">＋ ${t("saveGame")}</button></div>
+    <div style="max-height:50vh;overflow-y:auto">${rows}</div>
+    <div class="modal-actions"><button class="btn gold" onclick="closeModal()">${t("close")}</button></div>`);
+  $("#sv-new").onclick = () => {
+    const name = prompt(t("gameName"), loc(currentScript().meta.name) + " " + new Date().toLocaleDateString());
+    if (!name) return;
+    const s = getSaves(); const id = uid(); s[id] = { name, date: Date.now(), state: snapshot() }; setSaves(s); openSavedGames(); toast("💾");
+  };
+  $$("[data-load]").forEach(b => b.onclick = () => {
+    const s = getSaves()[b.dataset.load]; if (!s) return;
+    Object.assign(S, s.state); save(); closeModal(); renderAll(); toast("✔ " + s.name);
+  });
+  $$("[data-del]").forEach(b => b.onclick = () => { const s = getSaves(); delete s[b.dataset.del]; setSaves(s); openSavedGames(); });
+}
+
+/* Détection de fin de partie (suggestion, non contraignante) */
+function checkEndGame() {
+  const alive = S.players.filter(p => p.alive);
+  const demonInPlay = S.players.some(p => { const c = p.roleId && charById(p.roleId); return c && c.team === "demon"; });
+  const demonAlive = alive.some(p => { const c = p.roleId && charById(p.roleId); return c && c.team === "demon"; });
+  if (demonInPlay && !demonAlive) return { winner: "good", text: t("endGood") };
+  const aliveNonTravel = alive.filter(p => { const c = p.roleId && charById(p.roleId); return !c || c.team !== "traveler"; });
+  if (aliveNonTravel.length <= 2 && S.players.length >= 5) return { winner: "evil", text: t("endEvil") };
+  return null;
+}
+function announceEndIfAny() {
+  const r = checkEndGame();
+  if (r) {
+    playBell(r.winner === "good" ? 720 : 180, 1.2); buzz([40, 60, 40]);
+    logEvent(r.text, r.winner === "good" ? "🏆" : "☠");
+    setTimeout(() => toast((r.winner === "good" ? "🏆 " : "☠ ") + r.text), 200);
+  }
 }
 
 /* ---------- Cloche synthétisée (Web Audio, sans fichier) ---------- */
@@ -196,10 +424,11 @@ function playBell(freq = 440, dur = 0.6) {
     const ctx = AUDIO_CTX;
     if (ctx.state === "suspended") ctx.resume();
     const now = ctx.currentTime;
+    const vol = (S.settings && typeof S.settings.volume === "number") ? S.settings.volume : 0.6;
     [freq, freq * 2, freq * 2.8].forEach((f, i) => {
       const o = ctx.createOscillator(), g = ctx.createGain();
       o.type = "sine"; o.frequency.value = f;
-      const amp = 0.28 / (i + 1);
+      const amp = (0.28 / (i + 1)) * vol;
       g.gain.setValueAtTime(0, now);
       g.gain.linearRampToValueAtTime(amp, now + 0.01);
       g.gain.exponentialRampToValueAtTime(0.0001, now + dur);
@@ -231,6 +460,8 @@ function updatePhaseBadge() {
   const b = $("#phase-badge");
   const sc = currentScript();
   $("#script-name").textContent = sc ? loc(sc.meta.name) : "";
+  document.body.classList.toggle("is-night", S.phase === "night");
+  document.body.classList.toggle("is-day", S.phase === "day");
   if (S.phase === "night") {
     b.textContent = `🌙 ${t("nightNum")} ${S.night.number}`;
     b.className = "phase-badge night";
@@ -238,6 +469,13 @@ function updatePhaseBadge() {
     b.textContent = `☀️ ${t("dayNum")} ${S.day.number}`;
     b.className = "phase-badge day";
   }
+}
+function flashPhase(kind) {
+  const el = document.createElement("div");
+  el.className = "phase-flash " + kind;
+  document.body.appendChild(el);
+  requestAnimationFrame(() => el.classList.add("show"));
+  setTimeout(() => { el.classList.remove("show"); setTimeout(() => el.remove(), 500); }, 550);
 }
 
 /* ---------- Render dispatcher ---------- */
@@ -260,6 +498,7 @@ function renderGrimoire() {
       <button class="btn small" id="g-add">＋ ${t("addPlayer")}</button>
       <button class="btn small ghost" id="g-shuffle">🎲 ${t("shuffle")}</button>
       <button class="btn small ghost" id="g-clear">✧ ${t("clearRoles")}</button>
+      <button class="btn small ghost" id="g-undo">↶ ${t("undo")}</button>
       <span class="spacer"></span>
       <span class="badge">${n} ${t("players")}</span>
       <button class="btn small primary" id="g-new">${t("newGame")}</button>
@@ -268,7 +507,8 @@ function renderGrimoire() {
   `;
   $("#g-add").onclick = addPlayerPrompt;
   $("#g-shuffle").onclick = shuffleRoles;
-  $("#g-clear").onclick = () => { if (confirm(t("confirmClear"))) { S.players.forEach(p => p.roleId = null); save(); renderGrimoire(); } };
+  $("#g-clear").onclick = () => { if (confirmAction(t("confirmClear"))) { pushHistory(); S.players.forEach(p => p.roleId = null); save(); renderGrimoire(); } };
+  $("#g-undo").onclick = undo;
   $("#g-new").onclick = newGame;
 
   const circle = $("#circle");
@@ -278,8 +518,17 @@ function renderGrimoire() {
     center.innerHTML = `<div>${t("centerHint")}</div>`;
   } else {
     const living = S.players.filter(p => p.alive).length;
-    center.innerHTML = `<div><span class="big">${living}</span>${t("livingC").toLowerCase()}<br>
-      <span style="opacity:.7">${S.phase === "night" ? "🌙 " + t("nightNum") + " " + S.night.number : "☀️ " + t("dayNum") + " " + S.day.number}</span></div>`;
+    const isNight = S.phase === "night";
+    const num = isNight ? S.night.number : (S.day.number || 1);
+    const handAngle = ((num - 1) % 12) * 30 + (isNight ? 180 : 0);
+    center.innerHTML = `
+      <svg class="mini-clock" viewBox="0 0 100 100" aria-hidden="true">
+        <circle cx="50" cy="50" r="46" class="mc-ring"/>
+        <line x1="50" y1="50" x2="50" y2="16" class="mc-hand" style="transform:rotate(${handAngle}deg)"/>
+        <circle cx="50" cy="50" r="4" class="mc-hub"/>
+      </svg>
+      <div class="clock-txt"><span class="big">${living}</span>${t("livingC").toLowerCase()}<br>
+      <span style="opacity:.8">${isNight ? "🌙 " + t("nightNum") + " " + S.night.number : "☀️ " + t("dayNum") + " " + (S.day.number || 1)}</span></div>`;
   }
   circle.appendChild(center);
 
@@ -443,7 +692,15 @@ function openSeatModal(pid) {
   `);
 
   const rerender = () => { save(); openSeatModal(pid); renderGrimoire(); };
-  $("#s-alive").onclick = () => { p.alive = !p.alive; if (p.alive) p.ghostUsed = false; rerender(); };
+  $("#s-alive").onclick = () => {
+    pushHistory();
+    p.alive = !p.alive; if (p.alive) p.ghostUsed = false;
+    const rn = p.roleId ? loc(charById(p.roleId).name) : "";
+    logEvent(`${p.name}${rn ? " (" + rn + ")" : ""} ${p.alive ? t("revived") : t("killed")}`, p.alive ? "✚" : "☠");
+    buzz(p.alive ? 15 : [20, 40]);
+    save(); openSeatModal(pid); renderGrimoire();
+    if (!p.alive) announceEndIfAny();
+  };
   if ($("#s-ghost")) $("#s-ghost").onclick = () => { p.ghostUsed = !p.ghostUsed; rerender(); };
   $("#s-poison").onclick = () => { p.statuses.poisoned = !p.statuses.poisoned; rerender(); };
   $("#s-drunk").onclick = () => { p.statuses.drunk = !p.statuses.drunk; rerender(); };
@@ -491,12 +748,13 @@ function shuffleRoles() {
 function shuffleArr(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
 
 function newGame() {
-  if (!confirm(t("confirmNew"))) return;
-  const keepPlayers = S.players.map(p => ({ id: uid(), name: p.name, roleId: null, alive: true, ghostUsed: false, statuses: { poisoned: false, drunk: false, protected: false }, reminders: [] }));
+  if (!confirmAction(t("confirmNew"))) return;
+  const keepPlayers = S.players.map(p => ({ id: uid(), name: p.name, roleId: null, alive: true, ghostUsed: false, statuses: { poisoned: false, drunk: false, protected: false }, reminders: [], claim: "" }));
   S.players = keepPlayers;
   S.night = { mode: "first", number: 1, checked: {} };
   S.day = { number: 0, nominations: [] };
   S.phase = "night";
+  S.log = []; S.history = [];
   save(); renderAll(); toast(t("toastNew"));
 }
 
@@ -597,7 +855,8 @@ function startNight() {
   S.phase = "night";
   if (S.night.mode === "first" && S.night.number > 1) S.night.mode = "other";
   S.night.checked = {};
-  playBell(330, 0.7);
+  playBell(330, 0.7); flashPhase("night"); buzz(20);
+  logEvent(`${t("nightPhase")} — ${t("nightNum")} ${S.night.number}`, "🌙");
   save(); renderAll();
 }
 function endNight() {
@@ -607,7 +866,8 @@ function endNight() {
   S.night.mode = "other";
   S.night.checked = {};
   S.day.nominations = [];
-  playBell(560, 0.7);
+  playBell(560, 0.7); flashPhase("day"); buzz(20);
+  logEvent(`${t("dayPhase")} — ${t("dayNum")} ${S.day.number}`, "☀️");
   save(); switchView("day");
 }
 
@@ -702,7 +962,8 @@ function startNightFromDay() {
   S.night.mode = "other";
   S.night.checked = {};
   stopTimer();
-  playBell(330, 0.7);
+  playBell(330, 0.7); flashPhase("night"); buzz(20);
+  logEvent(`${t("nightPhase")} — ${t("nightNum")} ${S.night.number}`, "🌙");
   save(); switchView("night");
 }
 function nominatePrompt() {
@@ -726,11 +987,16 @@ function nominatePrompt() {
 function adjVote(id, d) { const nm = S.day.nominations.find(x => x.id === id); if (nm) { nm.votes = Math.max(0, nm.votes + d); save(); renderDay(); } }
 function execNom(id) {
   const nm = S.day.nominations.find(x => x.id === id); if (!nm) return;
+  pushHistory();
   S.day.nominations.forEach(x => x.executed = false);
   nm.executed = true;
   const p = S.players.find(x => x.name === nm.nominee && x.alive) || S.players.find(x => x.name === nm.nominee);
   if (p && p.alive) { p.alive = false; p.ghostUsed = false; }
+  const rn = (p && p.roleId) ? loc(charById(p.roleId).name) : "";
+  logEvent(`${nm.nominee}${rn ? " (" + rn + ")" : ""} ${t("executedLog")}`, "⚰");
+  buzz([20, 40, 20]);
   save(); renderDay();
+  announceEndIfAny();
 }
 
 /* =========================================================================
@@ -877,6 +1143,7 @@ function openModal(html) { $("#modal").innerHTML = html; $("#modal-overlay").cla
 function closeModal() { $("#modal-overlay").classList.add("hidden"); $("#modal").innerHTML = ""; }
 window.closeModal = closeModal;
 function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+function confirmAction(msg) { return (S.settings && !S.settings.confirmActions) ? true : confirm(msg); }
 
 /* ---------- Service worker (PWA hors-ligne) ---------- */
 if ("serviceWorker" in navigator) {

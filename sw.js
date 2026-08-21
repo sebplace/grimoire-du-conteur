@@ -1,5 +1,5 @@
 /* Service worker — Grimoire du Conteur (cache pour usage hors-ligne) */
-const CACHE = "grimoire-mj-v2";
+const CACHE = "grimoire-mj-v3";
 const ASSETS = [
   "./",
   "index.html",

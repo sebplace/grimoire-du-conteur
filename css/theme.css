@@ -256,3 +256,55 @@ input:focus, select:focus { outline: 2px solid var(--gold); }
   padding: 10px 18px; border-radius: 12px; z-index: 90; box-shadow: var(--shadow);
 }
 label.field { display: block; margin: 10px 0 4px; color: var(--muted); font-size: .85rem; }
+
+/* ===== Phase 3 : réglages, transitions, horloge, jetons ===== */
+.set-row { display:flex; align-items:center; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--line); }
+.switch { position:relative; display:inline-block; width:46px; height:26px; }
+.switch input { opacity:0; width:0; height:0; }
+.slider2 { position:absolute; inset:0; background:#2a1a33; border:1px solid var(--line); border-radius:999px; transition:.2s; cursor:pointer; }
+.slider2::before { content:""; position:absolute; width:18px; height:18px; left:3px; top:3px; background:var(--muted); border-radius:50%; transition:.2s; }
+.switch input:checked + .slider2 { background:var(--gold); }
+.switch input:checked + .slider2::before { transform:translateX(20px); background:#2a1a06; }
+input[type=range] { accent-color: var(--gold); }
+.log-row { display:flex; gap:8px; align-items:center; padding:6px 0; border-bottom:1px solid var(--line); font-size:.9rem; }
+
+/* Flash de transition nuit/jour */
+.phase-flash { position:fixed; inset:0; z-index:80; pointer-events:none; opacity:0; transition:opacity .3s ease; }
+.phase-flash.show { opacity:1; }
+.phase-flash.night { background:radial-gradient(circle at 50% 40%, rgba(60,60,140,.25), rgba(8,4,16,.75)); }
+.phase-flash.day { background:radial-gradient(circle at 50% 40%, rgba(240,210,150,.30), rgba(90,60,20,.35)); }
+
+/* Teinte d'ambiance selon la phase */
+body.is-night { --amb: #0e0a1e; }
+body.is-day { --amb: #16101f; }
+body.is-day .topbar { background:linear-gradient(180deg,#33264a,#1c0f24); }
+
+/* Horloge vivante au centre */
+.mini-clock { position:absolute; width:70%; height:70%; left:15%; top:12%; opacity:.28; }
+.mc-ring { fill:none; stroke:var(--gold); stroke-width:2; }
+.mc-hand { stroke:var(--gold); stroke-width:3; stroke-linecap:round; transform-origin:50px 50px; transition:transform .8s cubic-bezier(.5,1.5,.5,1); }
+.mc-hub { fill:var(--gold); }
+.clock-txt { position:relative; z-index:1; }
+
+/* Jetons embellis par équipe */
+.token.t-townsfolk { background:radial-gradient(circle at 50% 32%, #34557a, #1a2a3d); }
+.token.t-outsider { background:radial-gradient(circle at 50% 32%, #1f6f6a, #123330); }
+.token.t-minion { background:radial-gradient(circle at 50% 32%, #7a3a1e, #3a1c10); }
+.token.t-demon { background:radial-gradient(circle at 50% 32%, #7a1a24, #3a0d13); }
+.token.t-traveler { background:radial-gradient(circle at 50% 32%, #5a3f7a, #2c1f3d); }
+.token { transition:transform .12s ease, box-shadow .2s ease; text-shadow:0 1px 2px rgba(0,0,0,.6); }
+.seat .token::before { content:""; position:absolute; inset:6px; border-radius:50%; border:1px solid rgba(255,255,255,.08); }
+
+/* Pastilles de rappel */
+.badge.custom { background:linear-gradient(180deg,#3a2030,#241018); border-color:#7a2f45; color:#f0c0cc; box-shadow:0 1px 3px rgba(0,0,0,.4); }
+
+/* Constructeur de sac */
+.bag-role { display:flex; align-items:center; gap:6px; padding:6px 10px; border:1px solid var(--line); border-radius:999px; cursor:pointer; font-size:.82rem; user-select:none; }
+.bag-role.on { background:var(--gold); color:#2a1a06; border-color:var(--gold); font-weight:700; }
+.bag-role.t-townsfolk { border-left:4px solid var(--townsfolk); }
+.bag-role.t-outsider { border-left:4px solid var(--outsider); }
+.bag-role.t-minion { border-left:4px solid var(--minion); }
+.bag-role.t-demon { border-left:4px solid var(--demon); }
+.bag-counter { font-weight:700; }
+.bag-counter.bad { color:var(--blood-bright); }
+.bag-counter.ok { color:var(--ok); }
