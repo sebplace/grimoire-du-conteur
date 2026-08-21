@@ -425,3 +425,24 @@ body.modal-open { overflow:hidden; touch-action:none; }
 /* Drapeaux de nomination sur le grimoire */
 .seat-flags { display:flex; gap:2px; justify-content:center; }
 .flag { font-size:.66rem; }
+
+/* ===== Révélation privée plein écran ===== */
+.reveal-overlay {
+  position:fixed; inset:0; z-index:100; display:flex; align-items:center; justify-content:center;
+  cursor:pointer; padding:24px; text-align:center;
+  background:radial-gradient(circle at 50% 35%, #2a1533, #0a0410);
+  animation:revealIn .25s ease both;
+}
+@keyframes revealIn { from{opacity:0;transform:scale(.96)} to{opacity:1;transform:none} }
+.reveal-overlay.t-townsfolk { background:radial-gradient(circle at 50% 35%, #22405e, #0a121c); }
+.reveal-overlay.t-outsider { background:radial-gradient(circle at 50% 35%, #14514d, #06110f); }
+.reveal-overlay.t-minion { background:radial-gradient(circle at 50% 35%, #5a2a12, #180a05); }
+.reveal-overlay.t-demon { background:radial-gradient(circle at 50% 35%, #5a121a, #170406); }
+.reveal-overlay.t-traveler, .reveal-overlay.t-fabled { background:radial-gradient(circle at 50% 35%, #3f2a5e, #100a1c); }
+.reveal-card { max-width:560px; }
+.reveal-small { color:var(--gold-soft); letter-spacing:2px; text-transform:uppercase; font-size:.9rem; opacity:.85; }
+.reveal-glyph { font-size:5rem; margin:8px 0; filter:drop-shadow(0 3px 8px rgba(0,0,0,.6)); }
+.reveal-name { font-family:var(--serif); font-size:3rem; font-weight:700; color:#fff; text-shadow:0 2px 10px rgba(0,0,0,.5); line-height:1.05; }
+.reveal-ability { font-size:1.15rem; color:#f2ecf6; margin-top:14px; line-height:1.5; }
+.reveal-align { margin-top:14px; font-size:1.1rem; color:var(--gold-soft); }
+.reveal-hint { position:absolute; bottom:28px; left:0; right:0; color:rgba(255,255,255,.6); font-size:.85rem; }

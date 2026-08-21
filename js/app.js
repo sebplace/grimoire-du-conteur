@@ -674,6 +674,8 @@ function renderGrimoire() {
   circle.appendChild(center);
 
   const R = 42; // rayon en %
+  const nomineesToday = new Set((S.phase === "day" ? S.day.nominations : []).map(nm => nm.nominee));
+  const nominatorsToday = new Set((S.phase === "day" ? S.day.nominations : []).map(nm => nm.nominator));
   S.players.forEach((p, i) => {
     const angle = (-90 + i * 360 / n) * Math.PI / 180;
     const left = 50 + R * Math.cos(angle);
@@ -697,9 +699,14 @@ function renderGrimoire() {
     else if (!p.alive) badges.push(`<span class="badge ghost">👻</span>`);
     (p.reminders || []).forEach(r => badges.push(`<span class="badge custom">${escapeHtml(r.label)}</span>`));
     const claimHtml = p.claim ? `<div class="seat-claim">💬 ${escapeHtml(p.claim)}</div>` : "";
+    const flags = [];
+    if (nomineesToday.has(p.name)) flags.push(`<span class="flag" title="${t("nominatedFlag")}">⚖️</span>`);
+    if (nominatorsToday.has(p.name)) flags.push(`<span class="flag" title="${t("nominatedByFlag")}">🔨</span>`);
+    const flagsHtml = flags.length ? `<div class="seat-flags">${flags.join("")}</div>` : "";
     seat.innerHTML = `
       <div class="token ${teamCls}${evilCls}${shrink}">${glyph ? `<span class="team-glyph">${glyph}</span>` : ""}<span class="token-label">${escapeHtml(label)}</span></div>
       <div class="seat-name">${escapeHtml(p.name)}</div>
+      ${flagsHtml}
       ${claimHtml}
       <div class="seat-badges">${badges.join("")}</div>`;
     attachSeatPointer(seat, p.id, i);
@@ -867,6 +874,35 @@ function addTravelerPrompt() {
   $("#tv-evil").onclick = () => { align = "evil"; refresh(); };
 }
 
+function revealRole(pid) {
+  const p = S.players.find(x => x.id === pid); if (!p) return;
+  const c = p.roleId && charById(p.roleId);
+  const team = c ? c.team : "empty";
+  const glyph = c ? (TEAM_GLYPH[c.team] || "🎲") : "❓";
+  const align = p.align === "evil" ? "🔴 " + t("evil") : (p.align === "good" ? "🔵 " + t("good") : "");
+  const ov = document.createElement("div");
+  ov.className = "reveal-overlay t-" + team;
+  ov.innerHTML = `<div class="reveal-card">
+    <div class="reveal-small">${escapeHtml(p.name)} · ${t("youAre")}</div>
+    <div class="reveal-glyph">${glyph}</div>
+    <div class="reveal-name">${c ? escapeHtml(loc(c.name)) : "—"}</div>
+    ${c ? `<div class="reveal-ability">${escapeHtml(loc(c.ability))}</div>` : ""}
+    ${align ? `<div class="reveal-align">${align}</div>` : ""}
+    <div class="reveal-hint">👆 ${t("revealTap")}</div>
+  </div>`;
+  ov.onclick = () => ov.remove();
+  document.body.appendChild(ov);
+  closeModal();
+  buzz(15);
+}
+function highlightNeighbours(pid) {
+  const idx = S.players.findIndex(p => p.id === pid); if (idx < 0) return;
+  const nb = aliveNeighbours(idx).map(p => p.id);
+  $$("#circle .seat").forEach(s => {
+    const i = +s.dataset.idx; const pl = S.players[i];
+    s.querySelector(".token").style.outline = pl && nb.includes(pl.id) ? "3px solid var(--gold)" : "";
+  });
+}
 function openSeatModal(pid) {
   const p = S.players.find(x => x.id === pid); if (!p) return;
   const sc = currentScript();
@@ -926,6 +962,7 @@ function openSeatModal(pid) {
     ${activeRem ? `<div class="chip-wrap">${activeRem}</div>` : ""}
 
     <div class="modal-actions">
+      <button class="btn small" id="s-reveal">👁 ${t("reveal")}</button>
       <button class="btn small ghost" id="s-rename">✎ ${t("rename")}</button>
       <button class="btn small ghost" id="s-remove" style="color:var(--blood-bright)">🗑 ${t("remove")}</button>
       <span class="spacer"></span>
@@ -979,9 +1016,11 @@ function openSeatModal(pid) {
     const nn = prompt(t("playerName"), p.name);
     if (nn && nn.trim()) { p.name = nn.trim(); rerender(); }
   };
+  $("#s-reveal").onclick = () => revealRole(pid);
   $("#s-remove").onclick = () => {
     S.players = S.players.filter(x => x.id !== pid); save(); closeModal(); renderGrimoire();
   };
+  highlightNeighbours(pid);
 }
 
 function shuffleRoles() {
@@ -1398,7 +1437,20 @@ function nominatePrompt() {
       <button class="btn ghost" onclick="closeModal()">${t("cancel")}</button>
     </div>`);
   $("#nom-ok").onclick = () => {
-    S.day.nominations.push({ id: uid(), nominee: $("#nom-nominee").value, nominator: $("#nom-nominator").value, votes: 0, executed: false });
+    const nomineeName = $("#nom-nominee").value, nominatorName = $("#nom-nominator").value;
+    S.day.nominations.push({ id: uid(), nominee: nomineeName, nominator: nominatorName, votes: 0, voters: [], executed: false });
+    logEvent(`${nominatorName} → ${nomineeName} (${t("nominatedFlag")})`, "⚖️");
+    // Détection Vierge : 1re nomination du Vierge par un Villageois
+    const nominee = S.players.find(x => x.name === nomineeName);
+    const nominator = S.players.find(x => x.name === nominatorName);
+    const nomineeRole = nominee && nominee.roleId && charById(nominee.roleId);
+    const nominatorRole = nominator && nominator.roleId && charById(nominator.roleId);
+    const virginFirst = nomineeRole && nomineeRole.id === "virgin" && S.day.nominations.filter(n => n.nominee === nomineeName).length === 1;
+    if (virginFirst && nominatorRole && nominatorRole.team === "townsfolk") {
+      save(); closeModal(); renderDay();
+      setTimeout(() => alert("⚠ " + t("virginNote")), 100);
+      return;
+    }
     save(); closeModal(); renderDay();
   };
 }
@@ -1767,7 +1819,7 @@ function openModal(html) {
   const f = m.querySelector("input:not([type=hidden]), select, textarea, .btn.gold, .btn:not(.close-x)");
   if (f) setTimeout(() => { try { f.focus({ preventScroll: true }); } catch (_) {} }, 30);
 }
-function closeModal() { $("#modal-overlay").classList.add("hidden"); $("#modal").innerHTML = ""; document.body.classList.remove("modal-open"); }
+function closeModal() { $("#modal-overlay").classList.add("hidden"); $("#modal").innerHTML = ""; document.body.classList.remove("modal-open"); $$("#circle .seat .token").forEach(el => el.style.outline = ""); }
 window.closeModal = closeModal;
 function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
 function confirmAction(msg) { return (S.settings && !S.settings.confirmActions) ? true : confirm(msg); }
