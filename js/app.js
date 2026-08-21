@@ -665,6 +665,7 @@ function applyLang() {
 }
 let currentView = "grimoire";
 let GZOOM = 1;
+let NIGHT_CHAR_ORDER = [];
 function switchView(view) {
   currentView = view;
   $$(".tab").forEach(x => x.classList.toggle("active", x.dataset.view === view));
@@ -1235,6 +1236,17 @@ function bluffsBlock() {
     <button class="btn small gold" data-bluff-lock="1" style="margin-top:6px">🔒 ${t("lockBluffs")}</button>
   </div>`;
 }
+function moveNightStep(charId, dir) {
+  const mode = S.night.mode;
+  const cur = NIGHT_CHAR_ORDER.slice();
+  const i = cur.indexOf(charId), j = i + dir;
+  if (i < 0 || j < 0 || j >= cur.length) return;
+  [cur[i], cur[j]] = [cur[j], cur[i]];
+  S.nightOrder = S.nightOrder || {};
+  S.nightOrder[S.scriptId] = S.nightOrder[S.scriptId] || {};
+  S.nightOrder[S.scriptId][mode] = cur;
+  save(); renderNight(); buzz(8);
+}
 function lockBluffs() {
   const sc = currentScript();
   const inPlay = inPlayRoleIds();
@@ -1327,7 +1339,19 @@ function renderNight() {
     const hasEvil = [...inPlay].some(id => { const c = charById(id); return c && (c.team === "minion" || c.team === "demon"); });
     if (!hasEvil) steps = steps.filter(s => s.key !== "meta:minioninfo" && s.key !== "meta:demoninfo");
   }
+  // Réordonnancement manuel des personnages (override par script + mode), info/aube restent fixes
+  const ov = (S.nightOrder && S.nightOrder[S.scriptId] && S.nightOrder[S.scriptId][mode]) || null;
+  if (ov && ov.length) {
+    const metaEarly = steps.filter(s => s.type === "info" && s.order < 900);
+    const dawn = steps.filter(s => s.type === "info" && s.order >= 900);
+    const chars = steps.filter(s => s.type === "char");
+    const rank = id => { const i = ov.indexOf(id); return i < 0 ? 900 : i; };
+    chars.sort((a, b) => rank(a.charId) - rank(b.charId));
+    steps = [...metaEarly, ...chars, ...dawn];
+  }
+  NIGHT_CHAR_ORDER = steps.filter(s => s.type === "char").map(s => s.charId);
 
+  const charCount = NIGHT_CHAR_ORDER.length;
   let stepHtml = steps.map((s, idx) => {
     const checked = !!S.night.checked[s.key];
     const dotColor = s.type === "char" ? `var(--${s.team})` : "#6a6ad0";
@@ -1340,6 +1364,8 @@ function renderNight() {
         `<span class="ntarget ${p.alive ? "" : "dead"}" data-tgt="${p.id}" data-char="${s.charId}">${escapeHtml(p.name)}</span>`).join("");
       extra += `<div class="night-targets"><span style="color:var(--muted);font-size:.72rem;width:100%">👉 ${t("chooseTarget")} → « ${escapeHtml(rem0)} »</span>${targets}</div>`;
     }
+    const ci = s.type === "char" ? NIGHT_CHAR_ORDER.indexOf(s.charId) : -1;
+    const reorder = s.type === "char" ? `<div class="nreorder"><button class="btn small ghost" data-nup="${s.charId}" ${ci <= 0 ? "disabled" : ""}>▲</button><button class="btn small ghost" data-ndown="${s.charId}" ${ci >= charCount - 1 ? "disabled" : ""}>▼</button></div>` : "";
     return `
       <div class="night-step ${s.type} ${checked ? "checked" : ""}" data-key="${s.key}">
         <div class="nnum">${idx + 1}</div>
@@ -1350,6 +1376,7 @@ function renderNight() {
           ${s.who ? `<div class="nwho">👤 ${escapeHtml(s.who)}</div>` : ""}
           ${extra}
         </div>
+        ${reorder}
         <input type="checkbox" class="night-check" ${checked ? "checked" : ""} data-check="${s.key}">
       </div>`;
   }).join("");
@@ -1377,6 +1404,8 @@ function renderNight() {
     e.target.closest(".night-step").classList.toggle("checked", e.target.checked);
   });
   $$("[data-tgt]").forEach(el => el.onclick = () => applyNightAction(el.dataset.char, el.dataset.tgt));
+  $$("[data-nup]").forEach(el => el.onclick = () => moveNightStep(el.dataset.nup, -1));
+  $$("[data-ndown]").forEach(el => el.onclick = () => moveNightStep(el.dataset.ndown, 1));
   $$("[data-bluff-lock]").forEach(el => el.onclick = lockBluffs);
   if ($("#n-end")) $("#n-end").onclick = endNight;
   if ($("#n-start")) $("#n-start").onclick = startNight;

@@ -526,3 +526,7 @@ body.is-day .particle { background:radial-gradient(circle, #f0d79a, transparent 
 .badge.custom { cursor:grab; touch-action:none; }
 .badge.custom.dragging { opacity:.5; }
 .seat.drop-target .token { outline:3px dashed var(--gold); }
+
+/* Réordonnancement de l'ordre de nuit */
+.nreorder { display:flex; flex-direction:column; gap:2px; margin-right:4px; }
+.nreorder button { padding:0 6px; line-height:1.2; font-size:.7rem; min-width:24px; }
