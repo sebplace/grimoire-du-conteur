@@ -1,0 +1,230 @@
+{
+  "meta": {
+    "id": "trouble-brewing",
+    "name": "Trouble Brewing",
+    "author": "The Pandemonium Institute",
+    "complexity": { "fr": "Débutant", "en": "Beginner" },
+    "note": {
+      "fr": "Script officiel d'initiation. Descriptions rédigées par le Grimoire du Conteur (non officielles).",
+      "en": "Official beginner script. Ability descriptions written by Grimoire du Conteur (unofficial)."
+    }
+  },
+  "characters": [
+    {
+      "id": "washerwoman", "team": "townsfolk", "firstNight": 33, "otherNight": 0, "setup": false,
+      "name": { "fr": "Lavandière", "en": "Washerwoman" },
+      "ability": { "fr": "Au début, vous savez que l'un de deux joueurs est un Villageois précis.", "en": "At the start, you know that one of two players is a specific Townsfolk." },
+      "firstNightReminder": { "fr": "Montrez le jeton d'un Villageois en jeu, puis désignez deux joueurs dont l'un possède ce personnage.", "en": "Show a Townsfolk token in play, then point to two players, one of whom is that character." },
+      "otherNightReminder": { "fr": "", "en": "" },
+      "reminders": [ { "fr": "Villageois", "en": "Townsfolk" }, { "fr": "Erroné", "en": "Wrong" } ]
+    },
+    {
+      "id": "librarian", "team": "townsfolk", "firstNight": 34, "otherNight": 0, "setup": false,
+      "name": { "fr": "Bibliothécaire", "en": "Librarian" },
+      "ability": { "fr": "Au début, vous savez que l'un de deux joueurs est un Étranger précis (ou qu'il n'y a aucun Étranger en jeu).", "en": "At the start, you know that one of two players is a specific Outsider (or that there are no Outsiders in play)." },
+      "firstNightReminder": { "fr": "Montrez le jeton d'un Étranger en jeu, puis désignez deux joueurs dont l'un possède ce personnage. (Ou signalez qu'il n'y en a aucun.)", "en": "Show an Outsider token in play, then point to two players, one of whom is that character. (Or signal that there are none.)" },
+      "otherNightReminder": { "fr": "", "en": "" },
+      "reminders": [ { "fr": "Étranger", "en": "Outsider" }, { "fr": "Erroné", "en": "Wrong" } ]
+    },
+    {
+      "id": "investigator", "team": "townsfolk", "firstNight": 35, "otherNight": 0, "setup": false,
+      "name": { "fr": "Enquêteur", "en": "Investigator" },
+      "ability": { "fr": "Au début, vous savez que l'un de deux joueurs est un Sbire précis.", "en": "At the start, you know that one of two players is a specific Minion." },
+      "firstNightReminder": { "fr": "Montrez le jeton d'un Sbire en jeu, puis désignez deux joueurs dont l'un possède ce personnage.", "en": "Show a Minion token in play, then point to two players, one of whom is that character." },
+      "otherNightReminder": { "fr": "", "en": "" },
+      "reminders": [ { "fr": "Sbire", "en": "Minion" }, { "fr": "Erroné", "en": "Wrong" } ]
+    },
+    {
+      "id": "chef", "team": "townsfolk", "firstNight": 36, "otherNight": 0, "setup": false,
+      "name": { "fr": "Chef", "en": "Chef" },
+      "ability": { "fr": "Au début, vous savez combien de paires de joueurs maléfiques sont assis côte à côte.", "en": "At the start, you know how many pairs of evil players sit next to each other." },
+      "firstNightReminder": { "fr": "Indiquez avec les doigts (0, 1, 2…) le nombre de paires de joueurs maléfiques voisins.", "en": "Show with fingers (0, 1, 2…) the number of pairs of neighbouring evil players." },
+      "otherNightReminder": { "fr": "", "en": "" },
+      "reminders": []
+    },
+    {
+      "id": "empath", "team": "townsfolk", "firstNight": 37, "otherNight": 53, "setup": false,
+      "name": { "fr": "Empathe", "en": "Empath" },
+      "ability": { "fr": "Chaque nuit, vous apprenez combien de vos deux voisins vivants sont maléfiques.", "en": "Each night, you learn how many of your two living neighbours are evil." },
+      "firstNightReminder": { "fr": "Indiquez avec les doigts (0, 1, 2) le nombre de voisins vivants maléfiques.", "en": "Show with fingers (0, 1, 2) the number of living evil neighbours." },
+      "otherNightReminder": { "fr": "Indiquez avec les doigts (0, 1, 2) le nombre de voisins vivants maléfiques.", "en": "Show with fingers (0, 1, 2) the number of living evil neighbours." },
+      "reminders": []
+    },
+    {
+      "id": "fortuneteller", "team": "townsfolk", "firstNight": 38, "otherNight": 54, "setup": false,
+      "name": { "fr": "Diseuse de bonne aventure", "en": "Fortune Teller" },
+      "ability": { "fr": "Chaque nuit, désignez deux joueurs : vous apprenez si l'un d'eux est le Démon. Un joueur bienveillant vous apparaît comme un Démon (leurre).", "en": "Each night, choose two players: you learn if either is the Demon. One good player registers as a Demon to you (red herring)." },
+      "firstNightReminder": { "fr": "Le personnage désigne deux joueurs. Répondez oui (hochement) ou non (négation) selon qu'au moins l'un d'eux est le Démon.", "en": "The player points to two others. Nod yes or shake no for whether one of them is the Demon." },
+      "otherNightReminder": { "fr": "Le personnage désigne deux joueurs. Répondez oui (hochement) ou non (négation) selon qu'au moins l'un d'eux est le Démon.", "en": "The player points to two others. Nod yes or shake no for whether one of them is the Demon." },
+      "reminders": [ { "fr": "Leurre", "en": "Red herring" } ]
+    },
+    {
+      "id": "undertaker", "team": "townsfolk", "firstNight": 0, "otherNight": 55, "setup": false,
+      "name": { "fr": "Croque-mort", "en": "Undertaker" },
+      "ability": { "fr": "Chaque nuit* (sauf la première), vous apprenez quel personnage a été exécuté aujourd'hui.", "en": "Each night* (except the first), you learn which character was executed today." },
+      "firstNightReminder": { "fr": "", "en": "" },
+      "otherNightReminder": { "fr": "Si un joueur a été exécuté aujourd'hui, montrez le jeton de son personnage.", "en": "If a player was executed today, show that player's character token." },
+      "reminders": [ { "fr": "Exécuté", "en": "Executed" } ]
+    },
+    {
+      "id": "monk", "team": "townsfolk", "firstNight": 0, "otherNight": 12, "setup": false,
+      "name": { "fr": "Moine", "en": "Monk" },
+      "ability": { "fr": "Chaque nuit* (sauf la première), désignez un autre joueur : il est protégé du Démon cette nuit.", "en": "Each night* (except the first), choose another player: they are safe from the Demon tonight." },
+      "firstNightReminder": { "fr": "", "en": "" },
+      "otherNightReminder": { "fr": "Retirez la protection précédente. Le personnage désigne un autre joueur : marquez-le « Protégé ».", "en": "Remove the previous protection. The player points to another: mark them 'Protected'." },
+      "reminders": [ { "fr": "Protégé", "en": "Protected" } ]
+    },
+    {
+      "id": "ravenkeeper", "team": "townsfolk", "firstNight": 0, "otherNight": 52, "setup": false,
+      "name": { "fr": "Gardien des corbeaux", "en": "Ravenkeeper" },
+      "ability": { "fr": "Si vous mourez pendant la nuit, vous êtes réveillé pour désigner un joueur : vous apprenez son personnage.", "en": "If you die at night, you wake to choose a player: you learn their character." },
+      "firstNightReminder": { "fr": "", "en": "" },
+      "otherNightReminder": { "fr": "Si ce personnage est mort cette nuit : il désigne un joueur, montrez le jeton du personnage désigné.", "en": "If this player died tonight: they point to a player, show that player's character token." },
+      "reminders": []
+    },
+    {
+      "id": "virgin", "team": "townsfolk", "firstNight": 0, "otherNight": 0, "setup": false,
+      "name": { "fr": "Vierge", "en": "Virgin" },
+      "ability": { "fr": "La première fois que vous êtes nominé, si celui qui vous nomine est un Villageois, il est exécuté immédiatement.", "en": "The first time you are nominated, if the nominator is a Townsfolk, they are executed immediately." },
+      "firstNightReminder": { "fr": "", "en": "" },
+      "otherNightReminder": { "fr": "", "en": "" },
+      "reminders": [ { "fr": "Sans capacité", "en": "No ability" } ]
+    },
+    {
+      "id": "slayer", "team": "townsfolk", "firstNight": 0, "otherNight": 0, "setup": false,
+      "name": { "fr": "Tueur", "en": "Slayer" },
+      "ability": { "fr": "Une fois par partie, de jour et publiquement, désignez un joueur : si c'est le Démon, il meurt.", "en": "Once per game, publicly during the day, choose a player: if they are the Demon, they die." },
+      "firstNightReminder": { "fr": "", "en": "" },
+      "otherNightReminder": { "fr": "", "en": "" },
+      "reminders": [ { "fr": "Sans capacité", "en": "No ability" } ]
+    },
+    {
+      "id": "soldier", "team": "townsfolk", "firstNight": 0, "otherNight": 0, "setup": false,
+      "name": { "fr": "Soldat", "en": "Soldier" },
+      "ability": { "fr": "Vous êtes insensible aux attaques du Démon.", "en": "You are safe from the Demon." },
+      "firstNightReminder": { "fr": "", "en": "" },
+      "otherNightReminder": { "fr": "", "en": "" },
+      "reminders": []
+    },
+    {
+      "id": "mayor", "team": "townsfolk", "firstNight": 0, "otherNight": 0, "setup": false,
+      "name": { "fr": "Maire", "en": "Mayor" },
+      "ability": { "fr": "S'il ne reste que 3 joueurs vivants et qu'aucune exécution n'a lieu, votre équipe gagne. Si vous mourez la nuit, un autre joueur peut mourir à votre place.", "en": "If only 3 players live and no execution occurs, your team wins. If you die at night, another player might die instead." },
+      "firstNightReminder": { "fr": "", "en": "" },
+      "otherNightReminder": { "fr": "", "en": "" },
+      "reminders": []
+    },
+    {
+      "id": "butler", "team": "outsider", "firstNight": 39, "otherNight": 67, "setup": false,
+      "name": { "fr": "Majordome", "en": "Butler" },
+      "ability": { "fr": "Chaque nuit, désignez un joueur (pas vous) : demain, vous ne pouvez voter que s'il vote aussi.", "en": "Each night, choose a player (not yourself): tomorrow you may only vote if they are voting too." },
+      "firstNightReminder": { "fr": "Le personnage désigne un joueur : marquez-le « Maître ».", "en": "The player points to another: mark them 'Master'." },
+      "otherNightReminder": { "fr": "Le personnage désigne un joueur : marquez-le « Maître ».", "en": "The player points to another: mark them 'Master'." },
+      "reminders": [ { "fr": "Maître", "en": "Master" } ]
+    },
+    {
+      "id": "drunk", "team": "outsider", "firstNight": 0, "otherNight": 0, "setup": true,
+      "name": { "fr": "Ivrogne", "en": "Drunk" },
+      "ability": { "fr": "Vous ignorez que vous êtes l'Ivrogne. Vous vous croyez un Villageois, mais votre capacité ne fonctionne pas.", "en": "You don't know you are the Drunk. You think you are a Townsfolk, but your ability does nothing." },
+      "firstNightReminder": { "fr": "", "en": "" },
+      "otherNightReminder": { "fr": "", "en": "" },
+      "reminders": [ { "fr": "Ivre", "en": "Is the Drunk" } ]
+    },
+    {
+      "id": "recluse", "team": "outsider", "firstNight": 0, "otherNight": 0, "setup": false,
+      "name": { "fr": "Ermite", "en": "Recluse" },
+      "ability": { "fr": "Vous pouvez apparaître comme maléfique, et comme un Sbire ou un Démon, même mort.", "en": "You might register as evil, and as a Minion or Demon, even when dead." },
+      "firstNightReminder": { "fr": "", "en": "" },
+      "otherNightReminder": { "fr": "", "en": "" },
+      "reminders": []
+    },
+    {
+      "id": "saint", "team": "outsider", "firstNight": 0, "otherNight": 0, "setup": false,
+      "name": { "fr": "Saint", "en": "Saint" },
+      "ability": { "fr": "Si vous êtes exécuté, votre équipe perd.", "en": "If you are executed, your team loses." },
+      "firstNightReminder": { "fr": "", "en": "" },
+      "otherNightReminder": { "fr": "", "en": "" },
+      "reminders": []
+    },
+    {
+      "id": "poisoner", "team": "minion", "firstNight": 17, "otherNight": 7, "setup": false,
+      "name": { "fr": "Empoisonneur", "en": "Poisoner" },
+      "ability": { "fr": "Chaque nuit, désignez un joueur : il est empoisonné cette nuit et le lendemain (sa capacité est faussée ou inactive).", "en": "Each night, choose a player: they are poisoned tonight and tomorrow (their ability malfunctions)." },
+      "firstNightReminder": { "fr": "Le personnage désigne un joueur : marquez-le « Empoisonné ».", "en": "The player points to another: mark them 'Poisoned'." },
+      "otherNightReminder": { "fr": "Retirez l'empoisonnement précédent. Le personnage désigne un joueur : marquez-le « Empoisonné ».", "en": "Remove the previous poison. The player points to another: mark them 'Poisoned'." },
+      "reminders": [ { "fr": "Empoisonné", "en": "Poisoned" } ]
+    },
+    {
+      "id": "spy", "team": "minion", "firstNight": 49, "otherNight": 68, "setup": false,
+      "name": { "fr": "Espion", "en": "Spy" },
+      "ability": { "fr": "Chaque nuit, vous voyez le Grimoire. Vous pouvez apparaître comme bienveillant, et comme un Villageois ou un Étranger, même mort.", "en": "Each night, you see the Grimoire. You might register as good, and as a Townsfolk or Outsider, even when dead." },
+      "firstNightReminder": { "fr": "Montrez le Grimoire au personnage aussi longtemps qu'il le souhaite.", "en": "Show the Grimoire to the player for as long as they wish." },
+      "otherNightReminder": { "fr": "Montrez le Grimoire au personnage aussi longtemps qu'il le souhaite.", "en": "Show the Grimoire to the player for as long as they wish." },
+      "reminders": []
+    },
+    {
+      "id": "scarletwoman", "team": "minion", "firstNight": 0, "otherNight": 19, "setup": false,
+      "name": { "fr": "Femme écarlate", "en": "Scarlet Woman" },
+      "ability": { "fr": "S'il reste 5 joueurs vivants ou plus et que le Démon meurt, vous devenez le Démon. (Les Voyageurs ne comptent pas.)", "en": "If 5 or more players are alive and the Demon dies, you become the Demon. (Travellers don't count.)" },
+      "firstNightReminder": { "fr": "", "en": "" },
+      "otherNightReminder": { "fr": "Si ce personnage est devenu le Démon aujourd'hui : montrez la carte « Vous êtes », puis le jeton du Démon.", "en": "If this player became the Demon today: show the 'You are' card, then the Demon token." },
+      "reminders": [ { "fr": "Démon", "en": "Demon" } ]
+    },
+    {
+      "id": "baron", "team": "minion", "firstNight": 0, "otherNight": 0, "setup": true,
+      "name": { "fr": "Baron", "en": "Baron" },
+      "ability": { "fr": "Il y a des Étrangers supplémentaires en jeu. [+2 Étrangers]", "en": "There are extra Outsiders in play. [+2 Outsiders]" },
+      "firstNightReminder": { "fr": "", "en": "" },
+      "otherNightReminder": { "fr": "", "en": "" },
+      "reminders": []
+    },
+    {
+      "id": "imp", "team": "demon", "firstNight": 0, "otherNight": 24, "setup": false,
+      "name": { "fr": "Imp", "en": "Imp" },
+      "ability": { "fr": "Chaque nuit* (sauf la première), désignez un joueur : il meurt. Si vous vous désignez vous-même, un Sbire vivant devient le nouvel Imp.", "en": "Each night* (except the first), choose a player: they die. If you kill yourself this way, a living Minion becomes the Imp." },
+      "firstNightReminder": { "fr": "", "en": "" },
+      "otherNightReminder": { "fr": "Le personnage désigne un joueur : ce joueur meurt. S'il s'est désigné lui-même : remplacez un Sbire vivant par l'Imp (carte « Vous êtes » puis jeton Imp).", "en": "The player points to another: that player dies. If they chose themselves: replace a living Minion with the Imp ('You are' card, then Imp token)." },
+      "reminders": [ { "fr": "Mort", "en": "Dead" } ]
+    },
+    {
+      "id": "bureaucrat", "team": "traveler", "firstNight": 1, "otherNight": 1, "setup": false,
+      "name": { "fr": "Bureaucrate", "en": "Bureaucrat" },
+      "ability": { "fr": "Chaque nuit, désignez un joueur (pas vous) : demain, son vote compte pour 3 voix.", "en": "Each night, choose a player (not yourself): tomorrow their vote counts as 3." },
+      "firstNightReminder": { "fr": "Le personnage désigne un joueur : placez le jeton « 3 voix » sur ce joueur.", "en": "The player points to another: place the '3 votes' reminder on them." },
+      "otherNightReminder": { "fr": "Le personnage désigne un joueur : placez le jeton « 3 voix » sur ce joueur.", "en": "The player points to another: place the '3 votes' reminder on them." },
+      "reminders": [ { "fr": "3 voix", "en": "3 votes" } ]
+    },
+    {
+      "id": "thief", "team": "traveler", "firstNight": 1, "otherNight": 1, "setup": false,
+      "name": { "fr": "Voleur", "en": "Thief" },
+      "ability": { "fr": "Chaque nuit, désignez un joueur (pas vous) : demain, son vote compte négativement (-1).", "en": "Each night, choose a player (not yourself): tomorrow their vote counts negatively." },
+      "firstNightReminder": { "fr": "Le personnage désigne un joueur : placez le jeton « Vote négatif » sur ce joueur.", "en": "The player points to another: place the 'Negative vote' reminder on them." },
+      "otherNightReminder": { "fr": "Le personnage désigne un joueur : placez le jeton « Vote négatif » sur ce joueur.", "en": "The player points to another: place the 'Negative vote' reminder on them." },
+      "reminders": [ { "fr": "Vote négatif", "en": "Negative vote" } ]
+    },
+    {
+      "id": "gunslinger", "team": "traveler", "firstNight": 0, "otherNight": 0, "setup": false,
+      "name": { "fr": "Pistolero", "en": "Gunslinger" },
+      "ability": { "fr": "Chaque jour, après le décompte du premier vote, vous pouvez désigner un joueur qui a voté : il meurt.", "en": "Each day, after the first vote is tallied, you may choose a player who voted: they die." },
+      "firstNightReminder": { "fr": "", "en": "" },
+      "otherNightReminder": { "fr": "", "en": "" },
+      "reminders": []
+    },
+    {
+      "id": "scapegoat", "team": "traveler", "firstNight": 0, "otherNight": 0, "setup": false,
+      "name": { "fr": "Bouc émissaire", "en": "Scapegoat" },
+      "ability": { "fr": "Si un joueur de votre alignement est exécuté, vous pouvez être exécuté à sa place.", "en": "If a player of your alignment is executed, you might be executed instead." },
+      "firstNightReminder": { "fr": "", "en": "" },
+      "otherNightReminder": { "fr": "", "en": "" },
+      "reminders": []
+    },
+    {
+      "id": "beggar", "team": "traveler", "firstNight": 0, "otherNight": 0, "setup": false,
+      "name": { "fr": "Mendiant", "en": "Beggar" },
+      "ability": { "fr": "Vous devez utiliser un jeton de vote pour voter. Un joueur mort peut vous donner le sien ; vous apprenez alors son alignement. Vous êtes sobre et sain.", "en": "You must use a vote token to vote. A dead player may give you theirs; you then learn their alignment. You are sober and healthy." },
+      "firstNightReminder": { "fr": "", "en": "" },
+      "otherNightReminder": { "fr": "", "en": "" },
+      "reminders": []
+    }
+  ]
+}

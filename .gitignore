@@ -1,0 +1,14 @@
+# OS / éditeurs
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+.idea/
+.vscode/
+
+# Artefacts de test
+_test-*.png
+_botc_ref/
+
+# Dépendances éventuelles (non utilisées pour l'instant)
+node_modules/
