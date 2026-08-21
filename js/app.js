@@ -176,7 +176,7 @@ function defaultState() {
     phase: "night",
     sound: true,
     timer: { total: 300, remaining: 300, running: false },
-    settings: { keepAwake: true, volume: 0.6, accent: "purple", haptics: true, confirmActions: true },
+    settings: { keepAwake: true, volume: 0.6, accent: "purple", haptics: true, confirmActions: true, dockOpen: false },
     log: [],
     history: [],
     bag: []
@@ -294,6 +294,7 @@ function wireChrome() {
   const pov = $("#privacy-overlay");
   pov.innerHTML = `<div class="privacy-inner"><div class="privacy-glyph">🕶️</div><div>${t("hidden")}</div><div class="privacy-hint">👆 ${t("tapReveal")}</div></div>`;
   pov.onclick = () => pov.classList.add("hidden");
+  buildDock();
   $("#btn-settings").onclick = openSettings;
   const pb = $("#phase-badge");
   pb.style.cursor = "pointer"; pb.title = t("advancePhase");
@@ -330,6 +331,24 @@ function handleShortcuts(e) {
   else if (e.key === "j" || e.key === "d") switchView("day");
 }
 function applyTheme() { document.body.classList.toggle("bright", !!(S.settings && S.settings.bright)); }
+const DOCK_TOOLS = [
+  { icon: "💾", key: "savedGames", fn: () => openSavedGames() },
+  { icon: "📜", key: "gameLog", fn: () => openGameLog() },
+  { icon: "📸", key: "snapshots", fn: () => openSnapshots() },
+  { icon: "📝", key: "notes", fn: () => openNotes() },
+  { icon: "📖", key: "glossary", fn: () => openGlossary() },
+  { icon: "❓", key: "userGuide", fn: () => openGuide() },
+  { icon: "🖨", key: "print", fn: () => printSheet() }
+];
+function buildDock() {
+  const d = $("#dock"); if (!d) return;
+  const open = !!(S.settings && S.settings.dockOpen);
+  d.classList.toggle("open", open);
+  const items = DOCK_TOOLS.map(it => `<button class="dock-btn" data-tool="${it.key}" title="${t(it.key)}"><span class="di">${it.icon}</span><span class="dl">${t(it.key)}</span></button>`).join("");
+  d.innerHTML = `<button class="dock-toggle" id="dock-toggle" title="${t("tools")}" aria-label="${t("tools")}">${open ? "›" : "‹"}</button><div class="dock-items">${items}</div>`;
+  $("#dock-toggle").onclick = () => { S.settings.dockOpen = !S.settings.dockOpen; save(); buildDock(); buzz(8); };
+  $$("#dock .dock-btn").forEach(b => b.onclick = () => { const it = DOCK_TOOLS.find(x => x.key === b.dataset.tool); if (it) it.fn(); });
+}
 function initParticles() {
   const p = document.getElementById("particles"); if (!p) return;
   if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -661,7 +680,7 @@ function setLang(lang) {
   $("#lang-fr").classList.toggle("active", lang === "fr");
   $("#lang-en").classList.toggle("active", lang === "en");
   document.documentElement.lang = lang;
-  applyLang(); renderAll();
+  applyLang(); buildDock(); renderAll();
 }
 function applyLang() {
   $$("[data-i18n]").forEach(el => el.textContent = t(el.dataset.i18n));

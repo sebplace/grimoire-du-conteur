@@ -533,3 +533,40 @@ body.is-day .particle { background:radial-gradient(circle, #f0d79a, transparent 
 
 /* Robustesse : si un bouton combine ghost + gold, le doré l'emporte (lisibilité) */
 .btn.ghost.gold { background:linear-gradient(180deg,var(--gold-soft),var(--gold)); color:#2a1a06; border-color:var(--gold); font-weight:700; }
+
+/* ===== Barre d'outils rétractable (droite) ===== */
+.dock {
+  position:fixed; right:0; top:50%; z-index:40;
+  transform:translateY(-50%) translateX(calc(100% - 36px));
+  transition:transform .28s cubic-bezier(.4,1,.4,1);
+  display:flex; align-items:stretch;
+  background:linear-gradient(180deg,var(--panel2),var(--panel));
+  border:1px solid var(--line); border-right:none; border-radius:14px 0 0 14px;
+  box-shadow:-6px 4px 24px rgba(0,0,0,.4); max-height:86vh;
+}
+.dock.open { transform:translateY(-50%) translateX(0); }
+.dock-toggle {
+  width:36px; flex:0 0 auto; background:transparent; border:none; border-right:1px solid var(--line);
+  color:var(--gold-soft); font-size:1.4rem; cursor:pointer; border-radius:14px 0 0 14px;
+}
+.dock-toggle:hover { background:rgba(217,179,107,.08); }
+.dock-items { display:flex; flex-direction:column; gap:3px; padding:8px 8px; overflow-y:auto; }
+.dock-btn {
+  display:flex; align-items:center; gap:9px; background:transparent; border:1px solid transparent;
+  border-radius:9px; padding:7px 12px; color:var(--ink); cursor:pointer; white-space:nowrap; font-size:.9rem;
+}
+.dock-btn:hover { border-color:var(--line); background:var(--panel2); }
+.dock-btn .di { font-size:1.15rem; width:1.4em; text-align:center; }
+body.bright .dock { background:#f0eaf6; }
+body.bright .dock-btn { color:#241a2e; }
+body.bright .dock-toggle { color:#5a2a6a; }
+
+/* Mobile : icônes seules (barre étroite) */
+@media (max-width: 560px) {
+  .dock { transform:translateY(-50%) translateX(calc(100% - 32px)); }
+  .dock.open { transform:translateY(-50%) translateX(0); }
+  .dock-toggle { width:32px; }
+  .dock-btn .dl { display:none; }
+  .dock-btn { padding:9px 11px; }
+}
+@media print { .dock { display:none; } }
