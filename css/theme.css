@@ -472,3 +472,30 @@ body.modal-open { overflow:hidden; touch-action:none; }
 .confetti { position:absolute; top:-10px; width:9px; height:14px; opacity:.9; border-radius:2px; animation:fall 2.4s linear forwards; }
 @keyframes fall { to { transform:translateY(105vh) rotate(720deg); opacity:0; } }
 @media (prefers-reduced-motion: reduce) { .confetti { display:none; } }
+
+/* ===== Phase 6 Lot1 : confidentialite, mini-barre, alertes ===== */
+.privacy-overlay {
+  position:fixed; inset:0; z-index:95; cursor:pointer;
+  background:rgba(10,6,14,.85); backdrop-filter:blur(22px);
+  display:flex; align-items:center; justify-content:center; text-align:center;
+}
+.privacy-overlay.hidden { display:none; }
+.privacy-inner { color:var(--gold-soft); }
+.privacy-glyph { font-size:4rem; margin-bottom:8px; }
+.privacy-hint { color:rgba(255,255,255,.6); font-size:.85rem; margin-top:16px; }
+
+/* Mini-barre d'etat persistante */
+.statusbar {
+  display:flex; gap:14px; justify-content:center; flex-wrap:wrap;
+  padding:6px 12px; font-size:.82rem; color:var(--muted);
+  border-bottom:1px solid var(--line); background:rgba(20,11,24,.6);
+}
+.statusbar .sb-item b { color:var(--gold-soft); }
+body.bright .statusbar { background:rgba(233,228,239,.7); color:#5c4a6c; border-color:#c3b6d3; }
+
+/* Alertes de setup */
+.setup-warns { margin:8px 0; display:flex; flex-direction:column; gap:6px; }
+.warn-row { padding:7px 11px; border-radius:8px; font-size:.85rem; border:1px solid var(--line); }
+.warn-row.bad { background:rgba(160,30,44,.12); border-color:var(--blood); color:#f0b0ba; }
+.warn-row.info { background:rgba(217,179,107,.10); border-color:#6a5a1e; color:var(--gold-soft); }
+.warn-row.ok { background:rgba(60,150,90,.10); border-color:#2f7a3f; color:#9fe0a8; }

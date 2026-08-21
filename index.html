@@ -21,6 +21,7 @@
       <span id="phase-badge" class="phase-badge"></span>
     </div>
     <div class="topbar-right">
+      <button id="btn-privacy" class="icon-btn" aria-label="Masquer" title="Masquer">🕶️</button>
       <button id="btn-fs" class="icon-btn" aria-label="Plein écran" title="Plein écran">⛶</button>
       <button id="btn-sound" class="icon-btn" aria-label="Sons" title="Sons">🔔</button>
       <button id="btn-settings" class="icon-btn" aria-label="Réglages" title="Réglages">⚙</button>
@@ -38,6 +39,8 @@
     <button class="tab" data-view="scripts" data-i18n="tab.scripts">Scripts</button>
   </nav>
 
+  <div id="statusbar" class="statusbar"></div>
+
   <main id="app">
     <section id="view-grimoire" class="view active"></section>
     <section id="view-night" class="view"></section>
@@ -46,6 +49,9 @@
     <section id="view-reference" class="view"></section>
     <section id="view-scripts" class="view"></section>
   </main>
+
+  <!-- Écran de confidentialité (boss key) -->
+  <div id="privacy-overlay" class="privacy-overlay hidden"></div>
 
   <!-- Modale générique -->
   <div id="modal-overlay" class="modal-overlay hidden">

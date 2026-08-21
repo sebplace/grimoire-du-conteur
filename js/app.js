@@ -79,7 +79,10 @@ const I18N = {
     add: "Ajouter", reveal: "Révéler au joueur", revealTap: "Touchez pour masquer",
     youAre: "Tu es", notes: "Bloc-notes", demoGame: "Charger une partie démo", shuffleSeats: "Mélanger les sièges",
     advancePhase: "Avancer la phase", nominatedFlag: "nominé", nominatedByFlag: "a nominé",
-    virginNote: "Vierge : si le nominateur est un Villageois, il est exécuté !", general: "Général", tools: "Outils & données"
+    virginNote: "Vierge : si le nominateur est un Villageois, il est exécuté !", general: "Général", tools: "Outils & données",
+    privacy: "Masquer le grimoire", hidden: "Grimoire masqué", tapReveal: "Touchez pour afficher",
+    redo: "Rétablir", warnNoDemon: "Aucun Démon dans le sac", warnCounts: "Comptes du sac incorrects",
+    warnJinx: "Jinx en jeu", warnOk: "Sac cohérent", dropHint: "Glissez un jeton sur un autre joueur"
   },
   en: {
     appName: "Storyteller's Grimoire",
@@ -147,7 +150,10 @@ const I18N = {
     add: "Add", reveal: "Reveal to player", revealTap: "Tap to hide",
     youAre: "You are", notes: "Notes", demoGame: "Load a demo game", shuffleSeats: "Shuffle seats",
     advancePhase: "Advance phase", nominatedFlag: "nominated", nominatedByFlag: "has nominated",
-    virginNote: "Virgin: if the nominator is a Townsfolk, they are executed!", general: "General", tools: "Tools & data"
+    virginNote: "Virgin: if the nominator is a Townsfolk, they are executed!", general: "General", tools: "Tools & data",
+    privacy: "Hide grimoire", hidden: "Grimoire hidden", tapReveal: "Tap to reveal",
+    redo: "Redo", warnNoDemon: "No Demon in the bag", warnCounts: "Bag counts incorrect",
+    warnJinx: "Jinx in play", warnOk: "Bag is valid", dropHint: "Drag a token onto another player"
   }
 };
 
@@ -280,6 +286,10 @@ function wireChrome() {
   sb.textContent = S.sound ? "🔔" : "🔕";
   sb.onclick = () => { S.sound = !S.sound; sb.textContent = S.sound ? "🔔" : "🔕"; save(); if (S.sound) playBell(660, 0.25); };
   $("#btn-fs").onclick = toggleFullscreen;
+  $("#btn-privacy").onclick = () => showPrivacy();
+  const pov = $("#privacy-overlay");
+  pov.innerHTML = `<div class="privacy-inner"><div class="privacy-glyph">🕶️</div><div>${t("hidden")}</div><div class="privacy-hint">👆 ${t("tapReveal")}</div></div>`;
+  pov.onclick = () => pov.classList.add("hidden");
   $("#btn-settings").onclick = openSettings;
   const pb = $("#phase-badge");
   pb.style.cursor = "pointer"; pb.title = t("advancePhase");
@@ -290,16 +300,37 @@ function wireChrome() {
   initWakeLock();
   document.addEventListener("keydown", handleShortcuts);
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") requestWakeLock(); });
+  // Balayage entre onglets (mobile)
+  const app = $("#app"); let sx = 0, sy = 0, st0 = 0;
+  const TABS = ["grimoire", "night", "day", "setup", "reference", "scripts"];
+  app.addEventListener("touchstart", (e) => { if (e.touches.length !== 1) return; sx = e.touches[0].clientX; sy = e.touches[0].clientY; st0 = Date.now(); }, { passive: true });
+  app.addEventListener("touchend", (e) => {
+    if (!e.changedTouches.length) return;
+    const dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy;
+    if (Date.now() - st0 < 500 && Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 2) {
+      const i = TABS.indexOf(currentView);
+      if (dx < 0 && i < TABS.length - 1) switchView(TABS[i + 1]);
+      else if (dx > 0 && i > 0) switchView(TABS[i - 1]);
+    }
+  }, { passive: true });
 }
 function handleShortcuts(e) {
   if (e.target && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
   if (e.key === " " && currentView === "night") { e.preventDefault(); const cb = document.querySelector(".night-step:not(.checked) .night-check"); if (cb) cb.click(); }
+  else if (e.key === "z" && (e.ctrlKey || e.metaKey) && e.shiftKey) { e.preventDefault(); redo(); }
   else if (e.key === "z" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); undo(); }
+  else if (e.key === "y" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); redo(); }
+  else if (e.key === "h") showPrivacy();
   else if (e.key === "g") switchView("grimoire");
   else if (e.key === "n") switchView("night");
   else if (e.key === "j" || e.key === "d") switchView("day");
 }
 function applyTheme() { document.body.classList.toggle("bright", !!(S.settings && S.settings.bright)); }
+function showPrivacy() {
+  const pov = $("#privacy-overlay");
+  pov.innerHTML = `<div class="privacy-inner"><div class="privacy-glyph">🕶️</div><div>${t("hidden")}</div><div class="privacy-hint">👆 ${t("tapReveal")}</div></div>`;
+  pov.classList.remove("hidden"); buzz(15);
+}
 
 /* ---------- Ambiance sonore (drone discret nuit/jour) ---------- */
 let AMB = null;
@@ -427,6 +458,7 @@ function pushHistory() {
   S.history = S.history || [];
   S.history.push(snapshot());
   if (S.history.length > 50) S.history.shift();
+  S.redo = [];
 }
 function captureSnapshot() {
   S.snapshots = S.snapshots || [];
@@ -450,9 +482,17 @@ function openSnapshots() {
 }
 function undo() {
   if (!S.history || !S.history.length) { toast(t("nothingUndo")); return; }
+  S.redo = S.redo || []; S.redo.push(snapshot());
   const snap = S.history.pop();
   Object.assign(S, snap);
   save(); buzz(15); renderAll(); toast("↶ " + t("undo"));
+}
+function redo() {
+  if (!S.redo || !S.redo.length) { toast(t("nothingUndo")); return; }
+  S.history = S.history || []; S.history.push(snapshot());
+  const snap = S.redo.pop();
+  Object.assign(S, snap);
+  save(); buzz(15); renderAll(); toast("↪ " + t("redo"));
 }
 function logEvent(text, icon) {
   S.log = S.log || [];
@@ -630,6 +670,20 @@ function updatePhaseBadge() {
     b.textContent = `☀️ ${t("dayNum")} ${S.day.number}`;
     b.className = "phase-badge day";
   }
+  updateStatusBar();
+}
+function updateStatusBar() {
+  const sb = $("#statusbar"); if (!sb) return;
+  const n = S.players.length;
+  if (!n) { sb.innerHTML = ""; sb.style.display = "none"; return; }
+  sb.style.display = "";
+  const living = S.players.filter(p => p.alive).length;
+  const majority = Math.ceil(living / 2);
+  sb.innerHTML = `
+    <span class="sb-item">🌿 <b>${living}</b> ${t("livingC").toLowerCase()}</span>
+    <span class="sb-item">💀 <b>${n - living}</b> ${t("deadC").toLowerCase()}</span>
+    <span class="sb-item">⚖️ <b>${majority}</b></span>
+    <span class="sb-item">${S.phase === "night" ? "🌙 " + t("nightNum") + " " + S.night.number : "☀️ " + t("dayNum") + " " + (S.day.number || 1)}</span>`;
 }
 function flashPhase(kind) {
   if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -661,6 +715,7 @@ function renderGrimoire() {
       <button class="btn small ghost" id="g-shuffle">🎲 ${t("shuffle")}</button>
       <button class="btn small ghost" id="g-clear">✧ ${t("clearRoles")}</button>
       <button class="btn small ghost" id="g-undo">↶ ${t("undo")}</button>
+      <button class="btn small ghost" id="g-redo">↪ ${t("redo")}</button>
       <button class="btn small ghost" id="g-zoomout">➖</button>
       <button class="btn small ghost" id="g-zoomin">➕</button>
       <span class="spacer"></span>
@@ -673,6 +728,7 @@ function renderGrimoire() {
   $("#g-shuffle").onclick = shuffleRoles;
   $("#g-clear").onclick = () => { if (confirmAction(t("confirmClear"))) { pushHistory(); S.players.forEach(p => p.roleId = null); save(); renderGrimoire(); } };
   $("#g-undo").onclick = undo;
+  $("#g-redo").onclick = redo;
   $("#g-zoomin").onclick = () => { GZOOM = Math.min(1.8, GZOOM + 0.15); $("#circle").style.transform = `scale(${GZOOM})`; };
   $("#g-zoomout").onclick = () => { GZOOM = Math.max(0.6, GZOOM - 0.15); $("#circle").style.transform = `scale(${GZOOM})`; };
   $("#g-new").onclick = newGame;
@@ -1565,6 +1621,16 @@ function renderSetup() {
   const bagTotal = (S.bag || []).length;
   const targetTotal = tgt.townsfolk + tgt.outsider + tgt.minion + tgt.demon;
   const valid = teamKeys.every(tk => cur[tk] === tgt[tk]);
+  // Validation du sac
+  const bagSet = new Set(S.bag || []);
+  const warns = [];
+  if (bagTotal > 0 && !(S.bag || []).some(id => { const c = charById(id); return c && c.team === "demon"; })) warns.push({ k: "bad", txt: t("warnNoDemon") });
+  if (bagTotal > 0 && !valid) warns.push({ k: "bad", txt: t("warnCounts") + ` (${bagTotal}/${targetTotal})` });
+  const bagJinx = [];
+  if (MASTER && MASTER.jinxes) Object.keys(MASTER.jinxes).forEach(a => { if (bagSet.has(a)) MASTER.jinxes[a].forEach(j => { if (bagSet.has(j.id)) bagJinx.push(`${loc(charById(a).name)} × ${loc(charById(j.id).name)}`); }); });
+  if (bagJinx.length) warns.push({ k: "info", txt: "⚡ " + t("warnJinx") + ": " + bagJinx.join(", ") });
+  if (bagTotal > 0 && valid && !warns.some(w => w.k === "bad")) warns.push({ k: "ok", txt: "✅ " + t("warnOk") });
+  const warnHtml = warns.length ? `<div class="setup-warns">${warns.map(w => `<div class="warn-row ${w.k}">${w.k === "bad" ? "⚠ " : ""}${escapeHtml(w.txt)}</div>`).join("")}</div>` : "";
 
   v.innerHTML = `
     <h2>${t("tab.setup")}</h2>
@@ -1575,6 +1641,7 @@ function renderSetup() {
       <span class="bag-counter ${valid ? "ok" : "bad"}">${bagTotal}/${targetTotal} ${t("bagCount")}</span>
     </div>
     <div class="setup-grid">${cells}</div>
+    ${warnHtml}
     <div class="row" style="margin:6px 0 4px">
       <button class="btn small gold" id="su-auto">🎲 ${t("autoFill")}</button>
       <button class="btn small ghost" id="su-clearbag">✧ ${t("clearBag")}</button>
