@@ -1,90 +1,83 @@
 # 🕰️ Grimoire du Conteur — Blood on the Clocktower
 
-Assistant web **pour le Conteur / Maître du Jeu (MJ)** afin d'animer des parties
+🇫🇷 **Français** · [🇬🇧 English](README.en.md)
+
+Assistant web (PWA) **pour le Conteur / Maître du Jeu** afin d'animer des parties
 **en présentiel** du jeu de déduction sociale *Blood on the Clocktower*.
 
-Combine un **grimoire numérique** (cercle des joueurs, rôles, jetons de rappel, statuts)
-et un **assistant d'animation** (ordre de nuit, aide au setup, suivi des votes).
+**➡️ App en ligne : https://sebplace.github.io/grimoire-du-conteur/**
+· 📖 **[Mode d'emploi](guide.html)** (bilingue, imprimable)
 
-- 🌍 **Bilingue** français (par défaut) / anglais, bascule à chaud.
-- 📱 **PWA installable** et **fonctionne hors-ligne** (tablette, smartphone, laptop).
-- 💾 Sauvegarde automatique de la partie dans le navigateur (`localStorage`).
-- 🧩 **Import de scripts** au format JSON.
-- 🗂️ 100 % statique : hébergeable sur **GitHub Pages** ou un hébergement mutualisé (PlanetHoster…).
+> ⚠️ Projet **non officiel**. Aucun texte ni illustration officiels : les descriptions de
+> capacités sont reformulées et les emblèmes sont générés par l'app.
+> *Blood on the Clocktower* © **The Pandemonium Institute**.
 
-> ⚠️ *Blood on the Clocktower* est une création de **The Pandemonium Institute**.
-> Ce projet est un outil **non officiel**. Il n'inclut **aucun texte ni illustration officiels** :
-> les descriptions de capacités sont **rédigées par ce projet** et les icônes sont maison.
+## Ce que ça fait
+
+Combine un **grimoire numérique complet** et un **assistant d'animation** : composez le sac,
+distribuez les rôles, suivez l'ordre de nuit, gérez les votes — le tout suivi automatiquement.
+
+- 🌍 **Bilingue** FR / EN, bascule à chaud
+- 📱 **PWA installable** et **100 % hors-ligne**
+- 💾 Sauvegarde automatique + parties nommées + export/import JSON
+- 🔒 Aucune donnée en ligne (tout reste sur l'appareil)
 
 ## Fonctionnalités
 
 | Onglet | Contenu |
 |---|---|
-| **Grimoire** | Cercle des joueurs, attribution des rôles, vie/mort, vote de fantôme, statuts (empoisonné, ivre, protégé), jetons de rappel, **alignement** & **revendication** par joueur, **glisser-déposer** pour réordonner, **annuler** (undo), ajout de **Voyageur** en cours de partie. |
-| **Nuit** | Ordre de nuit (1ʳᵉ nuit / nuits suivantes), filtré sur les rôles en jeu, **nuit interactive** (touchez la cible → le jeton/statut se pose automatiquement), **bluffs suggérés** pour le Démon. |
-| **Jour** | Nominations, **historique de vote** (votants, votes de fantôme), seuil de majorité auto, exécution, **minuteur** (presets 3/5/10 min + cloche). |
-| **Setup** | **Constructeur de sac** : choix des rôles, ajustement auto des **modificateurs** (Baron, Fang Gu, Vigormortis…), remplissage aléatoire, **distribution** automatique. |
-| **Personnages** | Référence complète du script (capacités, ordre de nuit) + **interactions (jinx)**. |
-| **Scripts** | Choix du script, **import de n'importe quel script** clocktower.online (base de 143 rôles). |
+| **Grimoire** | Cercle des joueurs, rôles (emblèmes uniques), vie/mort, vote de fantôme, statuts, jetons de rappel, **glisser-déposer** (sièges & jetons), **appui long** (actions rapides), alignement, **revendications**, **drapeaux de nomination**, zoom, annuler/rétablir. |
+| **Nuit** | Ordre de nuit filtré, **cibles interactives** (pose auto des jetons), **calculateur d'infos** (conscient ivre/empoisonné), **bluffs du Démon** verrouillables, réordonnancement manuel. |
+| **Jour** | Nominations, **historique de vote** (votants + votes de fantôme), majorité auto, **minuteur**, **barre de vote**, exécution, détection de fin de partie. |
+| **Setup** | **Constructeur de sac** + modificateurs auto (Baron, Fang Gu…) + **validation** + distribution. |
+| **Personnages** | Référence complète + **interactions (jinx)** + recherche. |
+| **Scripts** | 3 scripts officiels + **import de n'importe quel script** clocktower.online (base de 143 rôles). |
 
-Confort & réglages (⚙) : **écran maintenu allumé** (Wake Lock), **plein écran**, **vibrations**, **volume**, **couleur d'accent**, **journal de partie** exportable, **sauvegardes nommées**, **export/import JSON**, **détection de fin de partie**, transitions nuit/jour, horloge vivante.
+**Outils** : 👁 révélation privée des rôles · 🕶️ écran de confidentialité · 📜 journal ·
+📸 captures par nuit · 📝 bloc-notes · 📖 glossaire/règles · 🖨 impression · ⚙ réglages
+(écran allumé, plein écran, vibrations, volume, ambiance sonore, thème clair, accent).
 
-Scripts inclus : les **3 scripts officiels** — **Trouble Brewing**, **Sects & Violets**, **Bad Moon Rising** — plus une base de **143 rôles** (FR/EN) pour les scripts personnalisés.
-Bilingue **FR/EN**, **PWA installable** et **hors-ligne**, thème gothique/horloge.
+Scripts inclus : **Trouble Brewing**, **Sects & Violets**, **Bad Moon Rising** + base de
+**143 rôles** (FR/EN) pour les scripts personnalisés. Thème gothique/horloge, police Cinzel.
 
 ## Lancer en local
 
 L'app charge ses données via `fetch()`, il faut donc un petit serveur HTTP
-(l'ouverture directe du fichier `index.html` via `file://` ne fonctionnera pas).
+(ouvrir `index.html` en `file://` ne fonctionne pas).
 
 ```bash
-# Python
-python -m http.server 8000
-# ou Node
-npx serve .
+python -m http.server 8000   # ou : npx serve .
 ```
 Puis ouvrez http://localhost:8000
 
 ## Déploiement
 
-### Option A — GitHub Pages (gratuit, déploiement auto)
-1. Poussez ce dossier sur un dépôt GitHub.
-2. *Settings → Pages → Source : Deploy from a branch → `main` / `root`*.
-3. L'app est publiée sur `https://<utilisateur>.github.io/<dépôt>/`.
+- **GitHub Pages** (gratuit, auto) : *Settings → Pages → branche `main` / racine*.
+- **Hébergement mutualisé** (PlanetHoster…) : copiez tout le dossier dans le répertoire web (HTTPS requis pour le hors-ligne).
 
-### Option B — PlanetHoster (ou tout hébergement mutualisé)
-Copiez simplement tout le contenu du dossier dans le répertoire web
-(`public_html/…`) via FTP ou Git. HTTPS requis pour le mode hors-ligne (PWA).
-
-L'application étant **entièrement statique**, on peut passer de l'un à l'autre
-sans modifier le code.
+L'app étant **100 % statique**, on passe de l'un à l'autre sans changer le code.
 
 ## Structure
 
 ```
 blood-clocktower-mj/
-├─ index.html
-├─ manifest.webmanifest      # PWA
-├─ sw.js                     # service worker (hors-ligne)
-├─ css/theme.css             # thème gothique / horloge
-├─ js/app.js                 # moteur applicatif
+├─ index.html            # l'application
+├─ guide.html            # mode d'emploi bilingue (imprimable)
+├─ manifest.webmanifest  # PWA
+├─ sw.js                 # service worker (hors-ligne)
+├─ css/theme.css
+├─ js/app.js
 ├─ data/
-│  ├─ game.json              # équipes, table de setup, étapes de nuit
-│  ├─ all-roles.json         # base complète (143 rôles FR/EN + jinxes)
-│  └─ scripts/
-│     ├─ trouble-brewing.json
-│     ├─ sects-and-violets.json
-│     └─ bad-moon-rising.json
-└─ assets/icons/             # icônes SVG maison
+│  ├─ game.json          # équipes, table de setup, étapes de nuit
+│  ├─ all-roles.json     # base de 143 rôles (FR/EN + jinxes)
+│  └─ scripts/           # trouble-brewing, sects-and-violets, bad-moon-rising
+└─ assets/               # icônes SVG + police Cinzel (OFL)
 ```
 
-## Format de script (import)
+## Crédits & licence
 
-Deux formats acceptés :
-- **Format complet du projet** : `{ "meta": {...}, "characters": [{ id, name{fr,en}, team, ability{fr,en}, firstNight, otherNight, setup, reminders[] }] }`
-- **Format officiel léger** : tableau d'IDs de rôles, ex. `[{ "id":"_meta", "name":"Mon script" }, "washerwoman", "imp", ...]` (les rôles connus reprennent leurs métadonnées).
-
-## Licence
-
-Code : à définir (MIT suggéré). Contenu de jeu : marques et univers *Blood on the
-Clocktower* © The Pandemonium Institute — outil non officiel, sans assets officiels.
+- Code : à définir (MIT suggéré).
+- Univers & marque : *Blood on the Clocktower* © The Pandemonium Institute — outil non officiel.
+- Traductions FR de référence : [bambipotato/botc-fr-bambi](https://github.com/bambipotato/botc-fr-bambi).
+- Métadonnées d'ordre de nuit : projet communautaire bra1n/townsquare.
+- Police [Cinzel](https://fonts.google.com/specimen/Cinzel) (SIL Open Font License).

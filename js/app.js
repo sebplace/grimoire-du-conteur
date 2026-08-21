@@ -82,7 +82,8 @@ const I18N = {
     virginNote: "Vierge : si le nominateur est un Villageois, il est exécuté !", general: "Général", tools: "Outils & données",
     privacy: "Masquer le grimoire", hidden: "Grimoire masqué", tapReveal: "Touchez pour afficher",
     redo: "Rétablir", warnNoDemon: "Aucun Démon dans le sac", warnCounts: "Comptes du sac incorrects",
-    warnJinx: "Jinx en jeu", warnOk: "Sac cohérent", dropHint: "Glissez un jeton sur un autre joueur"
+    warnJinx: "Jinx en jeu", warnOk: "Sac cohérent", dropHint: "Glissez un jeton sur un autre joueur",
+    userGuide: "Mode d'emploi"
   },
   en: {
     appName: "Storyteller's Grimoire",
@@ -153,7 +154,8 @@ const I18N = {
     virginNote: "Virgin: if the nominator is a Townsfolk, they are executed!", general: "General", tools: "Tools & data",
     privacy: "Hide grimoire", hidden: "Grimoire hidden", tapReveal: "Tap to reveal",
     redo: "Redo", warnNoDemon: "No Demon in the bag", warnCounts: "Bag counts incorrect",
-    warnJinx: "Jinx in play", warnOk: "Bag is valid", dropHint: "Drag a token onto another player"
+    warnJinx: "Jinx in play", warnOk: "Bag is valid", dropHint: "Drag a token onto another player",
+    userGuide: "User guide"
   }
 };
 
@@ -262,8 +264,9 @@ function showWelcome() {
         ? "Cet assistant vous aide à animer <b>Blood on the Clocktower</b> en présentiel : composez le sac dans <b>Setup</b>, distribuez les rôles, suivez l'<b>ordre de nuit</b> (touchez une cible pour poser les jetons), gérez les <b>votes</b> et le <b>minuteur</b> au <b>Jour</b>. Tout se sauvegarde automatiquement et fonctionne <b>hors-ligne</b>. Réglages via ⚙."
         : "This assistant helps you run <b>Blood on the Clocktower</b> in person: build the bag in <b>Setup</b>, deal roles, follow the <b>night order</b> (tap a target to place tokens), manage <b>votes</b> and the <b>timer</b> in <b>Day</b>. Everything saves automatically and works <b>offline</b>. Settings via ⚙."}
     </p>
-    <div class="modal-actions"><button class="btn gold" id="tuto-ok">${t("tutorialSkip")}</button></div>`);
+    <div class="modal-actions"><button class="btn gold" id="tuto-ok">${t("tutorialSkip")}</button><button class="btn ghost" id="tuto-guide">📖 ${t("userGuide")}</button></div>`);
   $("#tuto-ok").onclick = () => { S.tutoDone = true; save(); closeModal(); };
+  $("#tuto-guide").onclick = () => { S.tutoDone = true; save(); openGuide(); };
 }
 function registerScript(id, data, custom = false) {
   const charById = {};
@@ -423,6 +426,7 @@ function openSettings() {
       <button class="btn small" id="set-log">📜 ${t("gameLog")}</button>
       <button class="btn small" id="set-snaps">📸 ${t("snapshots")}</button>
       <button class="btn small" id="set-notes">📝 ${t("notes")}</button>
+      <button class="btn small" id="set-guide">📖 ${t("userGuide")}</button>
       <button class="btn small" id="set-gloss">📖 ${t("glossary")}</button>
     </div>
     <div class="row" style="margin-top:8px">
@@ -450,6 +454,7 @@ function openSettings() {
   $("#set-log").onclick = openGameLog;
   $("#set-snaps").onclick = openSnapshots;
   $("#set-notes").onclick = openNotes;
+  $("#set-guide").onclick = openGuide;
   $("#set-gloss").onclick = openGlossary;
   $("#set-print").onclick = printSheet;
   $("#set-export").onclick = exportGameJSON;
@@ -1929,6 +1934,7 @@ function scriptJinxes() {
 /* =========================================================================
    Glossaire / règles, Fabled, impression
    ========================================================================= */
+function openGuide() { window.open("guide.html?lang=" + (S.lang || "fr"), "_blank"); }
 function openNotes() {
   openModal(`
     <button class="close-x" onclick="closeModal()">×</button>

@@ -1,8 +1,9 @@
 /* Service worker — Grimoire du Conteur (cache pour usage hors-ligne) */
-const CACHE = "grimoire-mj-v11";
+const CACHE = "grimoire-mj-v12";
 const ASSETS = [
   "./",
   "index.html",
+  "guide.html",
   "css/theme.css",
   "js/app.js",
   "data/game.json",
