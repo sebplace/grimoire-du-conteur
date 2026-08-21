@@ -1093,7 +1093,7 @@ function openSeatModal(pid) {
 
     <div class="row">
       <button class="btn small ${p.alive ? "gold" : "ghost"}" id="s-alive">${p.alive ? "🌿 " + t("alive") : "💀 " + t("dead")}</button>
-      ${!p.alive ? `<button class="btn small ${p.ghostUsed ? "" : "ghost"}" id="s-ghost">👻 ${t("ghostVote")}</button>` : ""}
+      ${!p.alive ? `<button class="btn small ${p.ghostUsed ? "gold" : "ghost"}" id="s-ghost">👻 ${t("ghostVote")}${p.ghostUsed ? " ✔" : ""}</button>` : ""}
       <button class="btn small ghost ${p.statuses.poisoned ? "gold" : ""}" id="s-poison">☠ ${t("poisoned")}</button>
       <button class="btn small ghost ${p.statuses.drunk ? "gold" : ""}" id="s-drunk">🍺 ${t("drunk")}</button>
       <button class="btn small ghost ${p.statuses.protected ? "gold" : ""}" id="s-protect">🛡 ${t("protected")}</button>
