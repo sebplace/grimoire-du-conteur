@@ -1,7 +1,7 @@
 {
   "teams": {
     "townsfolk": { "fr": "Villageois", "en": "Townsfolk" },
-    "outsider": { "fr": "Étranger", "en": "Outsider" },
+    "outsider": { "fr": "Marginal", "en": "Outsider" },
     "minion": { "fr": "Sbire", "en": "Minion" },
     "demon": { "fr": "Démon", "en": "Demon" },
     "traveler": { "fr": "Voyageur", "en": "Traveller" },
@@ -21,7 +21,7 @@
     "15": [9, 2, 3, 1]
   },
   "setupNote": {
-    "fr": "Répartition de base pour 5 à 15 joueurs (Villageois / Étrangers / Sbires / Démon). Au-delà de 15, les joueurs supplémentaires sont des Voyageurs. Certains rôles modifient la répartition (ex. Baron : +2 Étrangers, -2 Villageois).",
+    "fr": "Répartition de base pour 5 à 15 joueurs (Villageois / Marginaux / Sbires / Démon). Au-delà de 15, les joueurs supplémentaires sont des Voyageurs. Certains rôles modifient la répartition (ex. Baron : +2 Marginaux, -2 Villageois).",
     "en": "Base distribution for 5–15 players (Townsfolk / Outsiders / Minions / Demon). Above 15, extra players are Travellers. Some roles change the distribution (e.g. Baron: +2 Outsiders, -2 Townsfolk)."
   },
   "firstNightMeta": [
