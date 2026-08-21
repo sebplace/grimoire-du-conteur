@@ -546,7 +546,32 @@ function announceEndIfAny() {
   if (r) {
     playBell(r.winner === "good" ? 720 : 180, 1.2); buzz([40, 60, 40]);
     logEvent(r.text, r.winner === "good" ? "🏆" : "☠");
-    setTimeout(() => toast((r.winner === "good" ? "🏆 " : "☠ ") + r.text), 200);
+    setTimeout(() => showEndOverlay(r), 250);
+  }
+}
+function showEndOverlay(r) {
+  const good = r.winner === "good";
+  const ov = document.createElement("div");
+  ov.className = "reveal-overlay end-overlay " + (good ? "end-good" : "end-evil");
+  ov.innerHTML = `<div class="reveal-card">
+    <div class="reveal-glyph">${good ? "🏆" : "☠️"}</div>
+    <div class="reveal-name">${escapeHtml(r.text)}</div>
+    <div class="reveal-hint">👆 ${t("revealTap")}</div>
+  </div>`;
+  ov.onclick = () => ov.remove();
+  document.body.appendChild(ov);
+  if (good && !(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches)) confetti(ov);
+}
+function confetti(parent) {
+  const colors = ["#d9b36b", "#d43046", "#4a90c2", "#4caf7d", "#f0d79a"];
+  for (let i = 0; i < 40; i++) {
+    const c = document.createElement("div");
+    c.className = "confetti";
+    c.style.left = Math.random() * 100 + "%";
+    c.style.background = colors[i % colors.length];
+    c.style.animationDelay = (Math.random() * 0.6) + "s";
+    c.style.transform = `rotate(${Math.random() * 360}deg)`;
+    parent.appendChild(c);
   }
 }
 
@@ -672,6 +697,14 @@ function renderGrimoire() {
       <span style="opacity:.8">${isNight ? "🌙 " + t("nightNum") + " " + S.night.number : "☀️ " + t("dayNum") + " " + (S.day.number || 1)}</span></div>`;
   }
   circle.appendChild(center);
+  if (n > 0) {
+    const bg = document.createElement("div");
+    bg.className = "grim-clock-bg";
+    let ticks = "";
+    for (let k = 0; k < 12; k++) { const a = k * 30 * Math.PI / 180; const x1 = 50 + 47 * Math.sin(a), y1 = 50 - 47 * Math.cos(a), x2 = 50 + 43 * Math.sin(a), y2 = 50 - 43 * Math.cos(a); ticks += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="currentColor" stroke-width="0.7"/>`; }
+    bg.innerHTML = `<svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="47" fill="none" stroke="currentColor" stroke-width="0.6"/><circle cx="50" cy="50" r="43" fill="none" stroke="currentColor" stroke-width="0.4"/>${ticks}</svg>`;
+    circle.insertBefore(bg, circle.firstChild);
+  }
 
   const R = 42; // rayon en %
   const nomineesToday = new Set((S.phase === "day" ? S.day.nominations : []).map(nm => nm.nominee));
@@ -704,7 +737,7 @@ function renderGrimoire() {
     if (nominatorsToday.has(p.name)) flags.push(`<span class="flag" title="${t("nominatedByFlag")}">🔨</span>`);
     const flagsHtml = flags.length ? `<div class="seat-flags">${flags.join("")}</div>` : "";
     seat.innerHTML = `
-      <div class="token ${teamCls}${evilCls}${shrink}">${glyph ? `<span class="team-glyph">${glyph}</span>` : ""}<span class="token-label">${escapeHtml(label)}</span></div>
+      <div class="token ${teamCls}${evilCls}${shrink}">${role ? roleSigil(role.id) : ""}${glyph ? `<span class="team-glyph">${glyph}</span>` : ""}<span class="token-label">${escapeHtml(label)}</span></div>
       <div class="seat-name">${escapeHtml(p.name)}</div>
       ${flagsHtml}
       ${claimHtml}
@@ -715,6 +748,20 @@ function renderGrimoire() {
   if (n > 1) { const h = document.createElement("div"); h.className = "hint"; h.style.textAlign = "center"; h.style.marginTop = "6px"; h.textContent = "↔ " + t("dragHint") + " · " + t("longPressHint"); v.appendChild(h); }
 }
 const TEAM_GLYPH = { townsfolk: "🛡️", outsider: "🎭", minion: "🗡️", demon: "👹", traveler: "🧳", fabled: "✨" };
+function hashStr(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+function roleSigil(id) {
+  const h = hashStr(id);
+  const points = 4 + (h % 5);           // 4..8 branches
+  const rot = (h >> 3) % 360;
+  const inner = 16 + ((h >> 6) % 14);
+  let pts = "";
+  for (let i = 0; i < points * 2; i++) { const r = (i % 2) ? inner : 34; const a = (i / (points * 2)) * Math.PI * 2; pts += `${(50 + r * Math.cos(a)).toFixed(1)},${(50 + r * Math.sin(a)).toFixed(1)} `; }
+  const ring = (h >> 9) % 2;
+  return `<svg class="sigil" viewBox="0 0 100 100" aria-hidden="true"><g transform="rotate(${rot} 50 50)">` +
+    `<polygon points="${pts}" fill="none" stroke="currentColor" stroke-width="2.2"/>` +
+    (ring ? `<circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" stroke-width="1.4"/>` : "") +
+    `<circle cx="50" cy="50" r="${4 + (h % 4)}" fill="currentColor"/></g></svg>`;
+}
 
 /* Interaction siège : tap = fiche ; appui long = actions rapides ; glisser = réordonner. */
 let DRAG = null;
@@ -1318,6 +1365,7 @@ function renderDay() {
           <button class="btn small ${nm.executed ? "primary" : "ghost"}" data-exec="${nm.id}">${nm.executed ? "✔ " + t("executed") : t("execute")}</button>
           <button class="btn small ghost" data-ndel="${nm.id}" style="color:var(--blood-bright)">🗑</button>
         </div>
+        <div class="vote-bar"><div class="vote-bar-fill ${pass ? "pass" : ""}" style="width:${Math.min(100, majority ? (vcount / majority * 100) : 0)}%"></div></div>
         ${nm.voters.length ? `<div style="font-size:.75rem;color:var(--muted);margin-top:6px">👥 ${nm.voters.map(id => { const p = S.players.find(x => x.id === id); return p ? escapeHtml(p.name) : ""; }).filter(Boolean).join(", ")}</div>` : ""}
       </div>`;
   }).join("") || `<p class="list-empty">${t("noNoms")}</p>`;
