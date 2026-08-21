@@ -1094,15 +1094,15 @@ function openSeatModal(pid) {
     <div class="row">
       <button class="btn small ${p.alive ? "gold" : "ghost"}" id="s-alive">${p.alive ? "🌿 " + t("alive") : "💀 " + t("dead")}</button>
       ${!p.alive ? `<button class="btn small ${p.ghostUsed ? "gold" : "ghost"}" id="s-ghost">👻 ${t("ghostVote")}${p.ghostUsed ? " ✔" : ""}</button>` : ""}
-      <button class="btn small ghost ${p.statuses.poisoned ? "gold" : ""}" id="s-poison">☠ ${t("poisoned")}</button>
-      <button class="btn small ghost ${p.statuses.drunk ? "gold" : ""}" id="s-drunk">🍺 ${t("drunk")}</button>
-      <button class="btn small ghost ${p.statuses.protected ? "gold" : ""}" id="s-protect">🛡 ${t("protected")}</button>
+      <button class="btn small ${p.statuses.poisoned ? "gold" : "ghost"}" id="s-poison">☠ ${t("poisoned")}</button>
+      <button class="btn small ${p.statuses.drunk ? "gold" : "ghost"}" id="s-drunk">🍺 ${t("drunk")}</button>
+      <button class="btn small ${p.statuses.protected ? "gold" : "ghost"}" id="s-protect">🛡 ${t("protected")}</button>
     </div>
 
     <div class="row" style="margin-top:8px">
       <span style="color:var(--muted);font-size:.85rem">${t("alignment")} :</span>
-      <button class="btn small ghost ${p.align === "good" ? "gold" : ""}" id="s-good">🔵 ${t("good")}</button>
-      <button class="btn small ghost ${p.align === "evil" ? "gold" : ""}" id="s-evil">🔴 ${t("evil")}</button>
+      <button class="btn small ${p.align === "good" ? "gold" : "ghost"}" id="s-good">🔵 ${t("good")}</button>
+      <button class="btn small ${p.align === "evil" ? "gold" : "ghost"}" id="s-evil">🔴 ${t("evil")}</button>
     </div>
 
     <label class="field">💬 ${t("claim")} <span style="opacity:.6">(${t("claimHint")})</span></label>

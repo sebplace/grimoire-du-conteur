@@ -530,3 +530,6 @@ body.is-day .particle { background:radial-gradient(circle, #f0d79a, transparent 
 /* Réordonnancement de l'ordre de nuit */
 .nreorder { display:flex; flex-direction:column; gap:2px; margin-right:4px; }
 .nreorder button { padding:0 6px; line-height:1.2; font-size:.7rem; min-width:24px; }
+
+/* Robustesse : si un bouton combine ghost + gold, le doré l'emporte (lisibilité) */
+.btn.ghost.gold { background:linear-gradient(180deg,var(--gold-soft),var(--gold)); color:#2a1a06; border-color:var(--gold); font-weight:700; }
