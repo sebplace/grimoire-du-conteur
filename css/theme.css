@@ -389,3 +389,39 @@ body.modal-open { overflow:hidden; touch-action:none; }
   .mc-hand { transition:none !important; }
   .view.active { animation:none; }
 }
+
+/* ===== Phase 5 : nav bas mobile, icones onglets, toasts, sections ===== */
+.tab[data-view=grimoire]::before { content:"🔮 "; }
+.tab[data-view=night]::before { content:"🌙 "; }
+.tab[data-view=day]::before { content:"☀️ "; }
+.tab[data-view=setup]::before { content:"🎒 "; }
+.tab[data-view=reference]::before { content:"📖 "; }
+.tab[data-view=scripts]::before { content:"📜 "; }
+
+/* Navigation en bas sur mobile (au pouce) */
+@media (max-width: 700px) {
+  .tabs {
+    position:fixed; bottom:0; left:0; right:0; top:auto;
+    justify-content:space-around; padding:4px 4px calc(4px + env(safe-area-inset-bottom));
+    border-top:1px solid var(--line); border-bottom:none;
+    background:rgba(20,11,24,.96); overflow-x:auto;
+  }
+  .tab { flex:1 1 0; text-align:center; font-size:.72rem; padding:8px 4px; border-radius:8px; }
+  .tab[data-view]::before { display:block; font-size:1.1rem; margin-bottom:1px; }
+  main { padding-bottom:70px; }
+}
+
+/* Toast avec action Annuler */
+.toast { display:flex; align-items:center; gap:12px; }
+.toast-action { background:var(--gold); color:#2a1a06; border:none; border-radius:8px; padding:5px 12px; font-weight:700; cursor:pointer; }
+
+/* Sections repliables des réglages */
+.modal details { border:1px solid var(--line); border-radius:10px; padding:6px 12px; margin:8px 0; }
+.modal details > summary { cursor:pointer; font-weight:700; color:var(--gold-soft); padding:6px 0; list-style:none; }
+.modal details > summary::-webkit-details-marker { display:none; }
+.modal details > summary::before { content:"▸ "; }
+.modal details[open] > summary::before { content:"▾ "; }
+
+/* Drapeaux de nomination sur le grimoire */
+.seat-flags { display:flex; gap:2px; justify-content:center; }
+.flag { font-size:.66rem; }

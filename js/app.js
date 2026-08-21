@@ -75,7 +75,11 @@ const I18N = {
     searchRole: "Rechercher un rôle…", brightTheme: "Salle éclairée",
     ambient: "Ambiance sonore", snapshots: "Captures par nuit", noSnapshots: "Aucune capture.",
     print: "Imprimer", share: "Partager (QR)", whatsNew: "Nouveautés", resetData: "Effacer toutes les données",
-    resetQ: "Effacer TOUTES les données (parties, sauvegardes, réglages) ? Irréversible.", longPressHint: "Appui long : actions rapides"
+    resetQ: "Effacer TOUTES les données (parties, sauvegardes, réglages) ? Irréversible.", longPressHint: "Appui long : actions rapides",
+    add: "Ajouter", reveal: "Révéler au joueur", revealTap: "Touchez pour masquer",
+    youAre: "Tu es", notes: "Bloc-notes", demoGame: "Charger une partie démo", shuffleSeats: "Mélanger les sièges",
+    advancePhase: "Avancer la phase", nominatedFlag: "nominé", nominatedByFlag: "a nominé",
+    virginNote: "Vierge : si le nominateur est un Villageois, il est exécuté !", general: "Général", tools: "Outils & données"
   },
   en: {
     appName: "Storyteller's Grimoire",
@@ -139,7 +143,11 @@ const I18N = {
     searchRole: "Search a role…", brightTheme: "Bright room",
     ambient: "Ambient sound", snapshots: "Night snapshots", noSnapshots: "No snapshots.",
     print: "Print", share: "Share (QR)", whatsNew: "What's new", resetData: "Erase all data",
-    resetQ: "Erase ALL data (games, saves, settings)? Irreversible.", longPressHint: "Long-press: quick actions"
+    resetQ: "Erase ALL data (games, saves, settings)? Irreversible.", longPressHint: "Long-press: quick actions",
+    add: "Add", reveal: "Reveal to player", revealTap: "Tap to hide",
+    youAre: "You are", notes: "Notes", demoGame: "Load a demo game", shuffleSeats: "Shuffle seats",
+    advancePhase: "Advance phase", nominatedFlag: "nominated", nominatedByFlag: "has nominated",
+    virginNote: "Virgin: if the nominator is a Townsfolk, they are executed!", general: "General", tools: "Tools & data"
   }
 };
 
@@ -196,12 +204,19 @@ function currentScript() { return SCRIPTS[S.scriptId] || CUSTOM[S.scriptId]; }
 function charById(id) { const sc = currentScript(); return sc && sc.charById[id]; }
 function teamName(team) { return loc(GAME.teams[team]) || team; }
 
-function toast(msg) {
+function toast(msg, action) {
   const el = document.createElement("div");
   el.className = "toast"; el.textContent = msg;
+  if (action) {
+    const b = document.createElement("button");
+    b.className = "toast-action"; b.textContent = action.label;
+    b.onclick = () => { action.fn(); el.remove(); };
+    el.appendChild(b);
+  }
   document.body.appendChild(el);
-  setTimeout(() => el.remove(), 1600);
+  setTimeout(() => el.remove(), action ? 3200 : 1600);
 }
+function toastUndo(msg) { toast(msg, { label: "↶ " + t("undo"), fn: undo }); }
 
 /* ---------- Chargement des données ---------- */
 async function fetchJSON(url) {
@@ -266,6 +281,9 @@ function wireChrome() {
   sb.onclick = () => { S.sound = !S.sound; sb.textContent = S.sound ? "🔔" : "🔕"; save(); if (S.sound) playBell(660, 0.25); };
   $("#btn-fs").onclick = toggleFullscreen;
   $("#btn-settings").onclick = openSettings;
+  const pb = $("#phase-badge");
+  pb.style.cursor = "pointer"; pb.title = t("advancePhase");
+  pb.onclick = advancePhase;
   applyAccent();
   applyTheme();
   if (S.settings.ambient) setTimeout(startAmbient, 500);
@@ -341,6 +359,7 @@ function openSettings() {
   openModal(`
     <button class="close-x" onclick="closeModal()">×</button>
     <h3>⚙ ${t("settings")}</h3>
+    <details open><summary>${t("general")}</summary>
     <div class="set-row"><span>🔆 ${t("keepAwake")}</span><label class="switch"><input type="checkbox" id="set-awake" ${st.keepAwake ? "checked" : ""}><span class="slider2"></span></label></div>
     <div class="set-row"><span>📳 ${t("haptics")}</span><label class="switch"><input type="checkbox" id="set-haptics" ${st.haptics ? "checked" : ""}><span class="slider2"></span></label></div>
     <div class="set-row"><span>❓ ${t("confirmActions")}</span><label class="switch"><input type="checkbox" id="set-confirm" ${st.confirmActions ? "checked" : ""}><span class="slider2"></span></label></div>
@@ -352,11 +371,13 @@ function openSettings() {
     <div class="chip-wrap">${accentChips}</div>
     <label class="field">⏱️ ${t("timer")} (${t("minutes")})</label>
     <input type="number" id="set-timer" min="1" max="20" value="${Math.round(S.timer.total / 60)}" style="width:90px">
-    <hr style="border-color:var(--line);margin:16px 0">
-    <div class="row">
+    </details>
+    <details><summary>${t("tools")}</summary>
+    <div class="row" style="margin-top:8px">
       <button class="btn small" id="set-saves">💾 ${t("savedGames")}</button>
       <button class="btn small" id="set-log">📜 ${t("gameLog")}</button>
       <button class="btn small" id="set-snaps">📸 ${t("snapshots")}</button>
+      <button class="btn small" id="set-notes">📝 ${t("notes")}</button>
       <button class="btn small" id="set-gloss">📖 ${t("glossary")}</button>
     </div>
     <div class="row" style="margin-top:8px">
@@ -368,6 +389,7 @@ function openSettings() {
     <div class="row" style="margin-top:8px">
       <button class="btn small ghost" id="set-reset" style="color:var(--blood-bright)">🧹 ${t("resetData")}</button>
     </div>
+    </details>
     <div class="modal-actions"><button class="btn gold" onclick="closeModal()">${t("close")}</button></div>
   `);
   $("#set-awake").onchange = (e) => { st.keepAwake = e.target.checked; save(); e.target.checked ? requestWakeLock() : releaseWakeLock(); };
@@ -382,6 +404,7 @@ function openSettings() {
   $("#set-saves").onclick = openSavedGames;
   $("#set-log").onclick = openGameLog;
   $("#set-snaps").onclick = openSnapshots;
+  $("#set-notes").onclick = openNotes;
   $("#set-gloss").onclick = openGlossary;
   $("#set-print").onclick = printSheet;
   $("#set-export").onclick = exportGameJSON;
@@ -609,9 +632,7 @@ function renderGrimoire() {
   const n = S.players.length;
   v.innerHTML = `
     <div class="grimoire-toolbar">
-      <button class="btn small" id="g-add">＋ ${t("addPlayer")}</button>
-      <button class="btn small ghost" id="g-traveler">🧳 ${t("addTraveler")}</button>
-      <button class="btn small ghost" id="g-fabled">✨ ${t("addFabled")}</button>
+      <button class="btn small" id="g-addmenu">＋ ${t("add")} ▾</button>
       <button class="btn small ghost" id="g-shuffle">🎲 ${t("shuffle")}</button>
       <button class="btn small ghost" id="g-clear">✧ ${t("clearRoles")}</button>
       <button class="btn small ghost" id="g-undo">↶ ${t("undo")}</button>
@@ -623,9 +644,7 @@ function renderGrimoire() {
     </div>
     <div class="circle-wrap" id="circle" style="transform:scale(${GZOOM});transform-origin:top center"></div>
   `;
-  $("#g-add").onclick = addPlayerPrompt;
-  $("#g-traveler").onclick = addTravelerPrompt;
-  $("#g-fabled").onclick = addFabledPrompt;
+  $("#g-addmenu").onclick = openAddMenu;
   $("#g-shuffle").onclick = shuffleRoles;
   $("#g-clear").onclick = () => { if (confirmAction(t("confirmClear"))) { pushHistory(); S.players.forEach(p => p.roleId = null); save(); renderGrimoire(); } };
   $("#g-undo").onclick = undo;
@@ -786,6 +805,35 @@ function addPlayerPrompt() {
   inp.focus();
 }
 
+function openAddMenu() {
+  openModal(`
+    <h3>＋ ${t("add")}</h3>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+      <button class="btn gold" id="am-player">👤 ${t("addPlayer")}</button>
+      <button class="btn ghost" id="am-trav">🧳 ${t("addTraveler")}</button>
+      <button class="btn ghost" id="am-fabled">✨ ${t("addFabled")}</button>
+      <hr style="border-color:var(--line);margin:6px 0">
+      <button class="btn ghost" id="am-shuffle">🔀 ${t("shuffleSeats")}</button>
+      <button class="btn ghost" id="am-demo">🎲 ${t("demoGame")}</button>
+    </div>
+    <div class="modal-actions"><button class="btn ghost" onclick="closeModal()">${t("cancel")}</button></div>`);
+  $("#am-player").onclick = () => { closeModal(); addPlayerPrompt(); };
+  $("#am-trav").onclick = () => { closeModal(); addTravelerPrompt(); };
+  $("#am-fabled").onclick = () => { closeModal(); addFabledPrompt(); };
+  $("#am-shuffle").onclick = () => { closeModal(); shuffleSeats(); };
+  $("#am-demo").onclick = () => { closeModal(); loadDemoGame(); };
+}
+function shuffleSeats() { if (!S.players.length) return; pushHistory(); S.players = shuffleArr(S.players); save(); renderGrimoire(); toast("🔀"); }
+function loadDemoGame() {
+  if (!confirmAction(t("confirmNew"))) return;
+  const demo = ["washerwoman", "chef", "empath", "fortuneteller", "monk", "poisoner", "imp"];
+  S.scriptId = "trouble-brewing";
+  S.players = demo.map((r, i) => ({ id: uid(), name: (S.lang === "fr" ? "Joueur " : "Player ") + (i + 1), roleId: r, alive: true, ghostUsed: false, align: (r === "poisoner" || r === "imp") ? "evil" : "good", statuses: { poisoned: false, drunk: false, protected: false }, reminders: [], claim: "" }));
+  S.night = { mode: "first", number: 1, checked: {} }; S.day = { number: 0, nominations: [] };
+  S.phase = "night"; S.log = []; S.history = []; S.bag = []; S.bluffs = [];
+  save(); renderAll(); toast("🎲");
+}
+
 function addTravelerPrompt() {
   const sc = currentScript();
   const travs = sc.characters.filter(c => c.team === "traveler");
@@ -893,7 +941,7 @@ function openSeatModal(pid) {
     logEvent(`${p.name}${rn ? " (" + rn + ")" : ""} ${p.alive ? t("revived") : t("killed")}`, p.alive ? "✚" : "☠");
     buzz(p.alive ? 15 : [20, 40]);
     save(); openSeatModal(pid); renderGrimoire();
-    if (!p.alive) announceEndIfAny();
+    if (!p.alive) { announceEndIfAny(); toastUndo(`☠ ${p.name}`); }
   };
   if ($("#s-ghost")) $("#s-ghost").onclick = () => { p.ghostUsed = !p.ghostUsed; rerender(); };
   $("#s-poison").onclick = () => { p.statuses.poisoned = !p.statuses.poisoned; rerender(); };
@@ -1324,6 +1372,9 @@ function stopTimer() { pauseTimer(); }
 function resetTimer() { S.timer.remaining = S.timer.total; pauseTimer(); }
 function setTimer(sec) { S.timer.total = sec; S.timer.remaining = sec; S.timer.running = false; if (TIMER_HANDLE) { clearInterval(TIMER_HANDLE); TIMER_HANDLE = null; } save(); renderDay(); }
 
+function advancePhase() {
+  if (S.phase === "night") endNight(); else startNightFromDay();
+}
 function startNightFromDay() {
   S.phase = "night";
   S.night.mode = "other";
@@ -1363,6 +1414,7 @@ function execNom(id) {
   logEvent(`${nm.nominee}${rn ? " (" + rn + ")" : ""} ${t("executedLog")}`, "⚰");
   buzz([20, 40, 20]);
   save(); renderDay();
+  toastUndo(`⚰ ${nm.nominee}`);
   announceEndIfAny();
 }
 
@@ -1633,6 +1685,14 @@ function scriptJinxes() {
 /* =========================================================================
    Glossaire / règles, Fabled, impression
    ========================================================================= */
+function openNotes() {
+  openModal(`
+    <button class="close-x" onclick="closeModal()">×</button>
+    <h3>📝 ${t("notes")}</h3>
+    <textarea id="st-notes" style="width:100%;min-height:220px;resize:vertical;background:#170c1d;color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px;font-family:var(--font)" placeholder="${t("notes")}…">${escapeHtml(S.notes || "")}</textarea>
+    <div class="modal-actions"><button class="btn gold" id="notes-ok">${t("save")}</button></div>`);
+  $("#notes-ok").onclick = () => { S.notes = $("#st-notes").value; save(); closeModal(); toast("✔"); };
+}
 function openGlossary() {
   const fabled = MASTER ? Object.values(MASTER.rolesById).filter(r => r.team === "fabled") : [];
   const fabledRows = fabled.map(r => `<div class="char-card" style="border-left-color:var(--traveler)"><div class="cn"><span>${escapeHtml(loc(r.name))}</span></div><div class="ca">${escapeHtml(loc(r.ability) || r.ability.en)}</div></div>`).join("");
