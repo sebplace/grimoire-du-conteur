@@ -352,3 +352,40 @@ body.bright .btn { color:#241a2e; }
 body.bright .btn.ghost { background:transparent; }
 body.bright .seat-claim { color:#6a3a7a; }
 body.bright .circle-center { border-color:#b7a8c8; }
+
+/* ===== Audit UX : responsive, motion, tactile, fondu ===== */
+html, body { max-width:100%; overflow-x:hidden; }
+
+/* Barre du haut : évite le débordement sur petit écran */
+.brand { min-width:0; overflow:hidden; text-overflow:ellipsis; }
+.icon-btn, .lang-btn { flex:0 0 auto; }
+@media (max-width: 560px) {
+  .topbar { gap:6px; padding-left:8px; padding-right:8px; }
+  .brand-name { display:none; }           /* garde l'icône 🕰️ seule */
+  .script-name { display:none; }           /* le badge de phase suffit */
+  .icon-btn, .lang-btn { padding:6px 8px; }
+  .phase-badge { font-size:.72rem; padding:2px 7px; }
+}
+@media (max-width: 380px) {
+  #btn-fs { display:none; }                /* le plein écran via geste OS */
+}
+
+/* Verrou de défilement de l'arrière-plan quand une modale est ouverte */
+body.modal-open { overflow:hidden; touch-action:none; }
+
+/* Cibles tactiles plus grandes */
+.night-check { width:28px; height:28px; }
+.night-step { padding:14px 12px; }
+.close-x { padding:4px 10px; margin:-4px -6px 0 0; line-height:1; }
+.night-targets .ntarget { padding:8px 12px; }
+
+/* Fondu doux au changement de vue */
+@keyframes viewIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:none; } }
+.view.active { animation: viewIn .18s ease both; }
+
+/* Respect de prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration:.001s !important; transition-duration:.001s !important; }
+  .mc-hand { transition:none !important; }
+  .view.active { animation:none; }
+}

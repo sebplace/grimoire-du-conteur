@@ -397,7 +397,7 @@ const SAVES_KEY = "botc-mj-saves-v1";
 function snapshot() {
   return JSON.parse(JSON.stringify({
     players: S.players, night: S.night, day: S.day, phase: S.phase,
-    scriptId: S.scriptId, log: S.log
+    scriptId: S.scriptId
   }));
 }
 function pushHistory() {
@@ -434,6 +434,7 @@ function undo() {
 function logEvent(text, icon) {
   S.log = S.log || [];
   S.log.push({ ph: S.phase, num: S.phase === "night" ? S.night.number : (S.day.number || 1), text, icon: icon || "•", ts: Date.now() });
+  if (S.log.length > 500) S.log.shift();
 }
 function openGameLog() {
   const rows = (S.log || []).slice().reverse().map(e => {
@@ -583,6 +584,7 @@ function updatePhaseBadge() {
   }
 }
 function flashPhase(kind) {
+  if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   const el = document.createElement("div");
   el.className = "phase-flash " + kind;
   document.body.appendChild(el);
@@ -1305,10 +1307,10 @@ function timerTick() {
   if (!S.timer.running) return;
   S.timer.remaining -= 1;
   if (S.timer.remaining <= 0) {
-    S.timer.remaining = 0; pauseTimer(); playBell(700, 1.0); toast("⏰ " + t("timeUp"));
+    S.timer.remaining = 0; pauseTimer(); playBell(700, 1.0); toast("⏰ " + t("timeUp")); return;
   }
   const d = $("#timer-display"); if (d) d.textContent = fmtTime(S.timer.remaining);
-  save();
+  if (S.timer.remaining % 10 === 0) save(); // throttle : évite d'écrire tout l'état chaque seconde
 }
 function startTimer() {
   if (S.timer.remaining <= 0) S.timer.remaining = S.timer.total;
@@ -1349,7 +1351,7 @@ function nominatePrompt() {
     save(); closeModal(); renderDay();
   };
 }
-function adjVote(id, d) { const nm = S.day.nominations.find(x => x.id === id); if (nm) { nm.votes = Math.max(0, nm.votes + d); save(); renderDay(); } }
+function adjVote(id, d) { const nm = S.day.nominations.find(x => x.id === id); if (nm) { nm.voters = []; nm.votes = Math.max(0, (nm.votes || 0) + d); save(); renderDay(); } }
 function execNom(id) {
   const nm = S.day.nominations.find(x => x.id === id); if (!nm) return;
   pushHistory();
@@ -1701,10 +1703,11 @@ function addFabledPrompt() {
 function openModal(html) {
   const m = $("#modal"); m.innerHTML = html;
   $("#modal-overlay").classList.remove("hidden");
-  const f = m.querySelector("input, select, textarea, button.gold, button");
-  if (f) setTimeout(() => { try { f.focus(); } catch (_) {} }, 30);
+  document.body.classList.add("modal-open");
+  const f = m.querySelector("input:not([type=hidden]), select, textarea, .btn.gold, .btn:not(.close-x)");
+  if (f) setTimeout(() => { try { f.focus({ preventScroll: true }); } catch (_) {} }, 30);
 }
-function closeModal() { $("#modal-overlay").classList.add("hidden"); $("#modal").innerHTML = ""; }
+function closeModal() { $("#modal-overlay").classList.add("hidden"); $("#modal").innerHTML = ""; document.body.classList.remove("modal-open"); }
 window.closeModal = closeModal;
 function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
 function confirmAction(msg) { return (S.settings && !S.settings.confirmActions) ? true : confirm(msg); }
