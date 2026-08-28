@@ -83,7 +83,13 @@ const I18N = {
     privacy: "Masquer le grimoire", hidden: "Grimoire masqué", tapReveal: "Touchez pour afficher",
     redo: "Rétablir", warnNoDemon: "Aucun Démon dans le sac", warnCounts: "Comptes du sac incorrects",
     warnJinx: "Jinx en jeu", warnOk: "Sac cohérent", dropHint: "Glissez un jeton sur un autre joueur",
-    userGuide: "Mode d'emploi"
+    userGuide: "Mode d'emploi",
+    randomTool: "Tirage aléatoire", coinFlip: "Pile ou face", rollDie: "Dé (D6)", randPlayer: "Joueur au hasard",
+    randPlayerAlive: "Le joueur est tiré parmi les vivants.", heads: "Pile", tails: "Face", roll: "Lancer",
+    recap: "Récapitulatif", recapOngoing: "Partie en cours", viewRecap: "Voir le récap",
+    exile: "Exil (Voyageur)", doExile: "Exiler", exiled: "Exilé", noTravelers: "Aucun Voyageur en jeu.",
+    exileHint: "N'importe qui peut réclamer l'exil d'un Voyageur. Vote à la majorité des vivants, puis c'est vous qui décidez.",
+    exileQ: "Exiler ce Voyageur ?", impairedBanner: "Fausses infos à donner :"
   },
   en: {
     appName: "Storyteller's Grimoire",
@@ -155,7 +161,13 @@ const I18N = {
     privacy: "Hide grimoire", hidden: "Grimoire hidden", tapReveal: "Tap to reveal",
     redo: "Redo", warnNoDemon: "No Demon in the bag", warnCounts: "Bag counts incorrect",
     warnJinx: "Jinx in play", warnOk: "Bag is valid", dropHint: "Drag a token onto another player",
-    userGuide: "User guide"
+    userGuide: "User guide",
+    randomTool: "Random tool", coinFlip: "Coin flip", rollDie: "Die (D6)", randPlayer: "Random player",
+    randPlayerAlive: "The player is drawn among the living.", heads: "Heads", tails: "Tails", roll: "Roll",
+    recap: "Recap", recapOngoing: "Game in progress", viewRecap: "View recap",
+    exile: "Exile (Traveller)", doExile: "Exile", exiled: "Exiled", noTravelers: "No Traveller in play.",
+    exileHint: "Anyone may call to exile a Traveller. Vote by majority of the living, then you decide.",
+    exileQ: "Exile this Traveller?", impairedBanner: "False info to give:"
   }
 };
 
@@ -332,6 +344,8 @@ function handleShortcuts(e) {
 }
 function applyTheme() { document.body.classList.toggle("bright", !!(S.settings && S.settings.bright)); }
 const DOCK_TOOLS = [
+  { icon: "🎲", key: "randomTool", fn: () => openRandomTool() },
+  { icon: "🏁", key: "recap", fn: () => openRecap() },
   { icon: "💾", key: "savedGames", fn: () => openSavedGames() },
   { icon: "📜", key: "gameLog", fn: () => openGameLog() },
   { icon: "📸", key: "snapshots", fn: () => openSnapshots() },
@@ -563,6 +577,110 @@ function openGameLog() {
   $("#log-clear").onclick = () => { S.log = []; save(); openGameLog(); };
 }
 
+/* ---------- Tirage aléatoire (pièce, dé, joueur) ---------- */
+function openRandomTool() {
+  openModal(`
+    <button class="close-x" onclick="closeModal()">×</button>
+    <h3>🎲 ${t("randomTool")}</h3>
+    <div id="rand-result" class="rand-result">—</div>
+    <div class="row" style="justify-content:center;flex-wrap:wrap;gap:8px">
+      <button class="btn gold" id="r-coin">🪙 ${t("coinFlip")}</button>
+      <button class="btn gold" id="r-die">🎲 ${t("rollDie")}</button>
+      <button class="btn gold" id="r-player">👤 ${t("randPlayer")}</button>
+    </div>
+    <p class="hint" style="text-align:center">${t("randPlayerAlive")}</p>
+    <div class="modal-actions"><button class="btn ghost" onclick="closeModal()">${t("close")}</button></div>`);
+  const res = $("#rand-result");
+  const show = (txt) => { res.textContent = txt; res.classList.remove("pop"); void res.offsetWidth; res.classList.add("pop"); buzz(12); try { playBell(520, .22); } catch (_) {} };
+  $("#r-coin").onclick = () => show(Math.random() < .5 ? "🪙 " + t("heads") : "🪙 " + t("tails"));
+  $("#r-die").onclick = () => show("🎲 " + (1 + Math.floor(Math.random() * 6)));
+  $("#r-player").onclick = () => {
+    const alive = S.players.filter(p => p.alive);
+    if (!alive.length) { show("—"); return; }
+    show("👤 " + alive[Math.floor(Math.random() * alive.length)].name);
+  };
+}
+
+/* ---------- Récapitulatif de fin de partie ---------- */
+function openRecap() {
+  const end = checkEndGame();
+  const order = ["townsfolk", "outsider", "minion", "demon", "traveler", "fabled"];
+  const rows = S.players.map(p => {
+    const c = p.roleId && charById(p.roleId);
+    const team = c ? c.team : "";
+    const glyph = TEAM_GLYPH[team] || "•";
+    const roleName = c ? loc(c.name) : "?";
+    const status = p.alive ? "🟢" : "💀";
+    const align = p.align ? " <span style=\"color:var(--muted)\">(" + t(p.align) + ")</span>" : "";
+    return { team, html: `<div class="log-row"><span>${status} ${glyph} <strong>${escapeHtml(p.name)}</strong></span> <span style="color:var(--muted)">${escapeHtml(roleName)}${align}</span></div>` };
+  });
+  rows.sort((a, b) => order.indexOf(a.team) - order.indexOf(b.team));
+  const living = S.players.filter(p => p.alive).length;
+  const banner = end
+    ? `<div class="recap-winner ${end.winner === "good" ? "win-good" : "win-evil"}">${end.winner === "good" ? "🏆" : "☠️"} ${escapeHtml(end.text)}</div>`
+    : `<div class="hint">${t("recapOngoing")}</div>`;
+  openModal(`
+    <button class="close-x" onclick="closeModal()">×</button>
+    <h3>🏁 ${t("recap")}</h3>
+    ${banner}
+    <div style="color:var(--muted);font-size:.8rem;margin:6px 0 8px">🌙 ${S.night.number || 0} · ☀️ ${S.day.number || 0} · ${living}/${S.players.length} ${t("livingC")}</div>
+    <div style="max-height:44vh;overflow-y:auto">${rows.map(r => r.html).join("") || `<p class="list-empty">${t("noPlayers") || "—"}</p>`}</div>
+    <div class="modal-actions">
+      <button class="btn small ghost" id="recap-export">⬇ ${t("exportLog")}</button>
+      <span class="spacer"></span>
+      <button class="btn gold" onclick="closeModal()">${t("close")}</button>
+    </div>`);
+  $("#recap-export").onclick = () => {
+    const lines = [];
+    if (end) lines.push(end.text);
+    lines.push(`${t("nightNum")}: ${S.night.number || 0} / ${t("dayNum")}: ${S.day.number || 0} · ${living}/${S.players.length} ${t("livingC")}`);
+    lines.push("");
+    S.players.slice().sort((a, b) => {
+      const ca = a.roleId && charById(a.roleId), cb = b.roleId && charById(b.roleId);
+      return order.indexOf(ca ? ca.team : "") - order.indexOf(cb ? cb.team : "");
+    }).forEach(p => {
+      const c = p.roleId && charById(p.roleId);
+      lines.push(`${p.alive ? "[" + t("livingC") + "]" : "[" + t("deadC") + "]"} ${p.name} — ${c ? loc(c.name) : "?"}${p.align ? " (" + t(p.align) + ")" : ""}`);
+    });
+    downloadFile("recap-partie.txt", lines.join("\n"), "text/plain");
+  };
+}
+
+/* ---------- Vote d'exil (Voyageurs) ---------- */
+function openExile() {
+  const travs = S.players.filter(p => { const c = p.roleId && charById(p.roleId); return c && c.team === "traveler"; });
+  if (!travs.length) { toast(t("noTravelers")); return; }
+  const living = S.players.filter(p => p.alive).length;
+  const majority = Math.ceil(living / 2);
+  const rows = travs.map(p => {
+    const c = charById(p.roleId);
+    return `<div class="nom-card">
+      <div class="row">
+        <strong>🧳 ${escapeHtml(p.name)}</strong>
+        <span style="color:var(--muted);font-size:.8rem">${escapeHtml(loc(c.name))}</span>
+        <span class="spacer"></span>
+        <button class="btn small ${p.alive ? "gold" : "ghost"}" data-exile="${p.id}" ${p.alive ? "" : "disabled"}>${p.alive ? "🧳 " + t("doExile") : "✔ " + t("exiled")}</button>
+      </div></div>`;
+  }).join("");
+  openModal(`
+    <button class="close-x" onclick="closeModal()">×</button>
+    <h3>🧳 ${t("exile")}</h3>
+    <p class="hint">${t("exileHint")}</p>
+    <div style="color:var(--muted);font-size:.8rem;margin-bottom:8px">${t("majority")}: ${majority} / ${living}</div>
+    ${rows}
+    <div class="modal-actions"><button class="btn gold" onclick="closeModal()">${t("close")}</button></div>`);
+  $$("[data-exile]").forEach(b => b.onclick = () => {
+    const p = S.players.find(x => x.id === b.dataset.exile); if (!p || !p.alive) return;
+    if (!confirmAction(t("exileQ") + " " + p.name)) return;
+    pushHistory();
+    p.alive = false;
+    logEvent(`${p.name} — ${t("exiled")}`, "🧳");
+    buzz([30, 40, 30]); try { playBell(200, .7); } catch (_) {}
+    save(); renderAll(); openExile(); announceEndIfAny();
+    toastUndo(t("exiled") + ": " + p.name);
+  });
+}
+
 function downloadFile(name, content, mime) {
   const blob = new Blob([content], { type: mime || "application/json" });
   const url = URL.createObjectURL(blob);
@@ -638,9 +756,12 @@ function showEndOverlay(r) {
   ov.innerHTML = `<div class="reveal-card">
     <div class="reveal-glyph">${good ? "🏆" : "☠️"}</div>
     <div class="reveal-name">${escapeHtml(r.text)}</div>
+    <button class="btn gold" id="end-recap" style="margin-top:14px">🏁 ${t("viewRecap")}</button>
     <div class="reveal-hint">👆 ${t("revealTap")}</div>
   </div>`;
   ov.onclick = () => ov.remove();
+  const rc = ov.querySelector("#end-recap");
+  if (rc) rc.onclick = (e) => { e.stopPropagation(); ov.remove(); openRecap(); };
   document.body.appendChild(ov);
   if (good && !(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches)) confetti(ov);
 }
@@ -1410,6 +1531,11 @@ function renderNight() {
   }).join("");
   if (!steps.length) stepHtml = `<p class="list-empty">${t("noInPlay")}</p>`;
 
+  const impairedPlayers = S.players.filter(p => p.alive && p.statuses && (p.statuses.poisoned || p.statuses.drunk));
+  const impairedBanner = impairedPlayers.length
+    ? `<div class="impaired-banner">⚠ ${t("impairedBanner")} ${impairedPlayers.map(p => escapeHtml(p.name) + (p.statuses.poisoned ? " 🧪" : " 🍺")).join(", ")}</div>`
+    : "";
+
   v.innerHTML = `
     <h2>${S.phase === "night" ? "🌙 " : "☀️ "}${t("nightNum")} ${S.night.number}</h2>
     <div class="row" style="margin-bottom:12px">
@@ -1422,6 +1548,7 @@ function renderNight() {
         ? `<button class="btn gold" id="n-end">${t("endNight")}</button>`
         : `<button class="btn primary" id="n-start">🌙 ${t("startNight")}</button>`}
     </div>
+    ${impairedBanner}
     <p class="hint">${t("nightGuide")} ${mode === "first" ? "· " + t("bluffHint") : ""}</p>
     ${stepHtml}
   `;
@@ -1544,6 +1671,7 @@ function renderDay() {
     </div>
     <div class="row" style="margin-bottom:12px">
       <button class="btn gold" id="d-nom">＋ ${t("nominate")}</button>
+      ${S.players.some(p => { const c = p.roleId && charById(p.roleId); return c && c.team === "traveler"; }) ? `<button class="btn ghost" id="d-exile">🧳 ${t("exile")}</button>` : ""}
       <span class="spacer"></span>
       <button class="btn primary" id="d-night">🌙 ${t("startNight")}</button>
     </div>
@@ -1562,6 +1690,7 @@ function renderDay() {
     ${noms}
   `;
   $("#d-nom").onclick = nominatePrompt;
+  if ($("#d-exile")) $("#d-exile").onclick = openExile;
   $("#d-night").onclick = startNightFromDay;
   $("#tm-start").onclick = () => { S.timer.running ? pauseTimer() : startTimer(); };
   $("#tm-reset").onclick = () => { resetTimer(); };
