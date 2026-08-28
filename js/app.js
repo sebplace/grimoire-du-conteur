@@ -89,7 +89,13 @@ const I18N = {
     recap: "Récapitulatif", recapOngoing: "Partie en cours", viewRecap: "Voir le récap",
     exile: "Exil (Voyageur)", doExile: "Exiler", exiled: "Exilé", noTravelers: "Aucun Voyageur en jeu.",
     exileHint: "N'importe qui peut réclamer l'exil d'un Voyageur. Vote à la majorité des vivants, puis c'est vous qui décidez.",
-    exileQ: "Exiler ce Voyageur ?", impairedBanner: "Fausses infos à donner :"
+    exileQ: "Exiler ce Voyageur ?", impairedBanner: "Fausses infos à donner :",
+    lock: "Verrou d'écran", locked: "Écran verrouillé", unlockHold: "Maintenez pour déverrouiller",
+    unlocking: "Déverrouillage…", lockHint: "L'écran ignore les touchers accidentels quand la tablette circule.",
+    dawnReport: "Rapport d'aube", dawnReadAloud: "À annoncer à la table :", dawnNoDeath: "La nuit fut calme, personne n'est mort.",
+    dawnDied: "cette nuit sont morts :", dawnDiedOne: "cette nuit est mort :", copyText: "Copier le texte", copied: "Copié",
+    suggestTimer: "Durée suggérée", timerSetTo: "Minuteur réglé sur", basedOnAlive: "selon le nombre de vivants",
+    contrast: "Contraste élevé / daltonien"
   },
   en: {
     appName: "Storyteller's Grimoire",
@@ -167,7 +173,13 @@ const I18N = {
     recap: "Recap", recapOngoing: "Game in progress", viewRecap: "View recap",
     exile: "Exile (Traveller)", doExile: "Exile", exiled: "Exiled", noTravelers: "No Traveller in play.",
     exileHint: "Anyone may call to exile a Traveller. Vote by majority of the living, then you decide.",
-    exileQ: "Exile this Traveller?", impairedBanner: "False info to give:"
+    exileQ: "Exile this Traveller?", impairedBanner: "False info to give:",
+    lock: "Screen lock", locked: "Screen locked", unlockHold: "Hold to unlock",
+    unlocking: "Unlocking…", lockHint: "The screen ignores accidental taps while the tablet is passed around.",
+    dawnReport: "Dawn report", dawnReadAloud: "Announce to the table:", dawnNoDeath: "The night was calm, nobody died.",
+    dawnDied: "died this night:", dawnDiedOne: "died this night:", copyText: "Copy text", copied: "Copied",
+    suggestTimer: "Suggested duration", timerSetTo: "Timer set to", basedOnAlive: "based on living count",
+    contrast: "High contrast / colourblind"
   }
 };
 
@@ -338,12 +350,14 @@ function handleShortcuts(e) {
   else if (e.key === "z" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); undo(); }
   else if (e.key === "y" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); redo(); }
   else if (e.key === "h") showPrivacy();
+  else if (e.key === "l") lockScreen();
   else if (e.key === "g") switchView("grimoire");
   else if (e.key === "n") switchView("night");
   else if (e.key === "j" || e.key === "d") switchView("day");
 }
-function applyTheme() { document.body.classList.toggle("bright", !!(S.settings && S.settings.bright)); }
+function applyTheme() { document.body.classList.toggle("bright", !!(S.settings && S.settings.bright)); document.body.classList.toggle("hc", !!(S.settings && S.settings.contrast)); }
 const DOCK_TOOLS = [
+  { icon: "🔒", key: "lock", fn: () => lockScreen() },
   { icon: "🎲", key: "randomTool", fn: () => openRandomTool() },
   { icon: "🏁", key: "recap", fn: () => openRecap() },
   { icon: "💾", key: "savedGames", fn: () => openSavedGames() },
@@ -380,6 +394,44 @@ function showPrivacy() {
   const pov = $("#privacy-overlay");
   pov.innerHTML = `<div class="privacy-inner"><div class="privacy-glyph">🕶️</div><div>${t("hidden")}</div><div class="privacy-hint">👆 ${t("tapReveal")}</div></div>`;
   pov.classList.remove("hidden"); buzz(15);
+}
+
+/* ---------- Verrou d'écran (anti-touchers accidentels) ---------- */
+let LOCK_HOLD = null;
+function lockScreen() {
+  const ov = $("#lock-overlay"); if (!ov) return;
+  ov.innerHTML = `
+    <div class="lock-inner">
+      <div class="lock-glyph">🔒</div>
+      <div class="lock-title">${t("locked")}</div>
+      <button class="lock-unlock" id="lock-unlock">
+        <span class="lock-fill" id="lock-fill"></span>
+        <span class="lock-label">🔓 ${t("unlockHold")}</span>
+      </button>
+      <div class="lock-hint">${t("lockHint")}</div>
+    </div>`;
+  ov.classList.remove("hidden"); buzz(20);
+  const btn = $("#lock-unlock"), fill = $("#lock-fill");
+  const start = (e) => {
+    e.preventDefault();
+    fill.style.transition = "width 700ms linear"; fill.style.width = "100%";
+    LOCK_HOLD = setTimeout(unlockScreen, 700);
+    btn.querySelector(".lock-label").textContent = "🔓 " + t("unlocking");
+  };
+  const stop = () => {
+    if (LOCK_HOLD) { clearTimeout(LOCK_HOLD); LOCK_HOLD = null; }
+    fill.style.transition = "width 150ms ease"; fill.style.width = "0%";
+    btn.querySelector(".lock-label").textContent = "🔓 " + t("unlockHold");
+  };
+  btn.addEventListener("pointerdown", start);
+  btn.addEventListener("pointerup", stop);
+  btn.addEventListener("pointerleave", stop);
+  btn.addEventListener("pointercancel", stop);
+}
+function unlockScreen() {
+  if (LOCK_HOLD) { clearTimeout(LOCK_HOLD); LOCK_HOLD = null; }
+  const ov = $("#lock-overlay"); if (ov) ov.classList.add("hidden");
+  buzz([12, 30]); try { playBell(600, 0.2); } catch (_) {}
 }
 
 /* ---------- Ambiance sonore (drone discret nuit/jour) ---------- */
@@ -445,6 +497,7 @@ function openSettings() {
     <div class="set-row"><span>📳 ${t("haptics")}</span><label class="switch"><input type="checkbox" id="set-haptics" ${st.haptics ? "checked" : ""}><span class="slider2"></span></label></div>
     <div class="set-row"><span>❓ ${t("confirmActions")}</span><label class="switch"><input type="checkbox" id="set-confirm" ${st.confirmActions ? "checked" : ""}><span class="slider2"></span></label></div>
     <div class="set-row"><span>💡 ${t("brightTheme")}</span><label class="switch"><input type="checkbox" id="set-bright" ${st.bright ? "checked" : ""}><span class="slider2"></span></label></div>
+    <div class="set-row"><span>♿ ${t("contrast")}</span><label class="switch"><input type="checkbox" id="set-contrast" ${st.contrast ? "checked" : ""}><span class="slider2"></span></label></div>
     <div class="set-row"><span>🎵 ${t("ambient")}</span><label class="switch"><input type="checkbox" id="set-ambient" ${st.ambient ? "checked" : ""}><span class="slider2"></span></label></div>
     <label class="field">🔊 ${t("volume")}</label>
     <input type="range" id="set-volume" min="0" max="1" step="0.05" value="${st.volume}" style="width:100%">
@@ -478,6 +531,7 @@ function openSettings() {
   $("#set-haptics").onchange = (e) => { st.haptics = e.target.checked; save(); buzz(15); };
   $("#set-confirm").onchange = (e) => { st.confirmActions = e.target.checked; save(); };
   $("#set-bright").onchange = (e) => { st.bright = e.target.checked; save(); applyTheme(); };
+  $("#set-contrast").onchange = (e) => { st.contrast = e.target.checked; save(); applyTheme(); buzz(10); };
   $("#set-ambient").onchange = (e) => { st.ambient = e.target.checked; save(); if (st.ambient) startAmbient(); else stopAmbient(); };
   $("#set-volume").oninput = (e) => { st.volume = +e.target.value; save(); setAmbientVolume(); };
   $("#set-volume").onchange = () => playBell(660, 0.25);
@@ -1608,6 +1662,7 @@ function startNight() {
   S.phase = "night";
   if (S.night.mode === "first" && S.night.number > 1) S.night.mode = "other";
   S.night.checked = {};
+  S.night.aliveAtDusk = S.players.filter(p => p.alive).map(p => p.id);
   expireNightTokens(["Poisoned"]); // le poison expire au crépuscule suivant
   playBell(330, 0.7); flashPhase("night"); buzz(20); updateAmbientPhase();
   logEvent(`${t("nightPhase")} — ${t("nightNum")} ${S.night.number}`, "🌙");
@@ -1628,6 +1683,41 @@ function endNight() {
   logEvent(`${t("dayPhase")} — ${t("dayNum")} ${S.day.number}`, "☀️");
   save(); switchView("day");
   toastUndo(`☀️ ${t("dayNum")} ${S.day.number}`);
+  setTimeout(openDawnReport, 420);
+}
+
+/* ---------- Rapport d'aube (morts de la nuit consolidées) ---------- */
+function nightDeaths() {
+  const dusk = (S.night && S.night.aliveAtDusk) || null;
+  if (!dusk) return [];
+  return S.players.filter(p => dusk.includes(p.id) && !p.alive);
+}
+function openDawnReport() {
+  const dead = nightDeaths();
+  const names = dead.map(p => p.name);
+  let announce, body;
+  if (!names.length) {
+    announce = t("dawnNoDeath");
+    body = `<div class="dawn-peace">🌅 ${escapeHtml(announce)}</div>`;
+  } else {
+    const verb = names.length === 1 ? t("dawnDiedOne") : t("dawnDied");
+    announce = `${names.join(", ")} ${verb.replace(/ :$/, "")}.`;
+    const chips = dead.map(p => `<span class="dawn-victim">💀 ${escapeHtml(p.name)}</span>`).join("");
+    body = `<div class="dawn-victims">${chips}</div>`;
+  }
+  openModal(`
+    <button class="close-x" onclick="closeModal()">×</button>
+    <h3>🌅 ${t("dawnReport")} — ☀️ ${t("dayNum")} ${S.day.number}</h3>
+    ${body}
+    <div class="dawn-announce"><div class="dawn-announce-label">🗣️ ${t("dawnReadAloud")}</div><div class="dawn-announce-text" id="dawn-text">${escapeHtml(announce)}</div></div>
+    <div class="modal-actions">
+      <button class="btn small ghost" id="dawn-copy">📋 ${t("copyText")}</button>
+      <span class="spacer"></span>
+      <button class="btn gold" onclick="closeModal()">${t("close")}</button>
+    </div>`);
+  $("#dawn-copy").onclick = () => {
+    try { navigator.clipboard.writeText(announce); toast("📋 " + t("copied")); } catch (_) { toast(announce); }
+  };
 }
 
 /* =========================================================================
@@ -1682,6 +1772,7 @@ function renderDay() {
         <button class="btn small ${S.timer.running ? "" : "gold"}" id="tm-start">${S.timer.running ? "⏸ " + t("pause") : "▶ " + t("start")}</button>
         <button class="btn small ghost" id="tm-reset">↺ ${t("reset")}</button>
         <span class="spacer"></span>
+        <button class="btn small gold" id="tm-suggest" title="${t("suggestTimer")}">✨ ${t("suggestTimer")}</button>
         <button class="btn small ghost" data-tset="180">3 ${t("minutes")}</button>
         <button class="btn small ghost" data-tset="300">5 ${t("minutes")}</button>
         <button class="btn small ghost" data-tset="600">10 ${t("minutes")}</button>
@@ -1694,6 +1785,7 @@ function renderDay() {
   $("#d-night").onclick = startNightFromDay;
   $("#tm-start").onclick = () => { S.timer.running ? pauseTimer() : startTimer(); };
   $("#tm-reset").onclick = () => { resetTimer(); };
+  $("#tm-suggest").onclick = suggestTimer;
   $$("[data-tset]").forEach(b => b.onclick = () => { setTimer(+b.dataset.tset); });
   $$("[data-vplus]").forEach(b => b.onclick = () => adjVote(b.dataset.vplus, 1));
   $$("[data-vminus]").forEach(b => b.onclick = () => adjVote(b.dataset.vminus, -1));
@@ -1752,6 +1844,18 @@ function pauseTimer() { S.timer.running = false; if (TIMER_HANDLE) { clearInterv
 function stopTimer() { pauseTimer(); }
 function resetTimer() { S.timer.remaining = S.timer.total; pauseTimer(); }
 function setTimer(sec) { S.timer.total = sec; S.timer.remaining = sec; S.timer.running = false; if (TIMER_HANDLE) { clearInterval(TIMER_HANDLE); TIMER_HANDLE = null; } save(); renderDay(); }
+function suggestTimer() {
+  const alive = S.players.filter(p => p.alive).length;
+  // Heuristique : jour plus long quand il reste beaucoup de vivants
+  let sec;
+  if (alive >= 13) sec = 600;
+  else if (alive >= 9) sec = 420;
+  else if (alive >= 6) sec = 300;
+  else sec = 180;
+  setTimer(sec);
+  toast(`⏱️ ${t("timerSetTo")} ${Math.round(sec / 60)} ${t("minutes")} (${alive} ${t("livingC").toLowerCase()}, ${t("basedOnAlive")})`);
+  buzz(12);
+}
 
 function advancePhase() {
   if (S.phase === "night") endNight(); else startNightFromDay();
@@ -1761,6 +1865,7 @@ function startNightFromDay() {
   S.phase = "night";
   S.night.mode = "other";
   S.night.checked = {};
+  S.night.aliveAtDusk = S.players.filter(p => p.alive).map(p => p.id);
   stopTimer();
   playBell(330, 0.7); flashPhase("night"); buzz(20); updateAmbientPhase();
   logEvent(`${t("nightPhase")} — ${t("nightNum")} ${S.night.number}`, "🌙");

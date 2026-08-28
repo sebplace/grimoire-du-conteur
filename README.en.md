@@ -28,14 +28,14 @@ roles, follow the night order, manage votes — all tracked automatically.
 |---|---|
 | **Grimoire** | Player circle, roles (unique emblems), alive/dead, ghost vote, statuses, reminder tokens, **drag & drop** (seats & tokens), **long-press** (quick actions), alignment, **claims**, **nomination flags**, zoom, undo/redo. |
 | **Night** | Filtered night order, **interactive targets** (auto-place tokens), **info calculator** (drunk/poison aware), **false-info banner**, lockable **Demon bluffs**, manual reordering. |
-| **Day** | Nominations, **vote history** (voters + ghost votes), auto majority, **timer**, **vote bar**, execution, **Traveller exile**, end-game detection. |
+| **Day** | Nominations, **vote history** (voters + ghost votes), auto majority, **timer** (+ **suggested duration** from living count), **vote bar**, execution, **Traveller exile**, **dawn report** (night deaths to read aloud), end-game detection. |
 | **Setup** | **Bag builder** + auto modifiers (Baron, Fang Gu…) + **validation** + deal. |
 | **Characters** | Full reference + **jinxes** + search. |
 | **Scripts** | 3 official scripts + **import any** clocktower.online script (base of 143 roles). |
 
-**Tools**: 🎲 random picker · 🏁 game recap · 👁 private role reveal · 🕶️ privacy screen · 📜 log · 📸 night snapshots ·
+**Tools**: 🔒 screen lock · 🎲 random picker · 🏁 game recap · 👁 private role reveal · 🕶️ privacy screen · 📜 log · 📸 night snapshots ·
 📝 notes · 📖 glossary/rules · 🖨 print · ⚙ settings (keep awake, fullscreen, vibration,
-volume, ambient sound, bright theme, accent).
+volume, ambient sound, bright theme, ♿ high contrast/colourblind, accent).
 
 Included scripts: **Trouble Brewing**, **Sects & Violets**, **Bad Moon Rising** + a base of
 **143 roles** (FR/EN) for custom scripts. Gothic/clock theme, Cinzel font.

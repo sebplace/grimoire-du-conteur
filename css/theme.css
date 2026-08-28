@@ -484,6 +484,43 @@ body.modal-open { overflow:hidden; touch-action:none; }
 .privacy-glyph { font-size:4rem; margin-bottom:8px; }
 .privacy-hint { color:rgba(255,255,255,.6); font-size:.85rem; margin-top:16px; }
 
+/* Verrou d'ecran */
+.lock-overlay {
+  position:fixed; inset:0; z-index:120;
+  background:rgba(8,5,12,.94); backdrop-filter:blur(26px);
+  display:flex; align-items:center; justify-content:center; text-align:center;
+}
+.lock-overlay.hidden { display:none; }
+.lock-inner { color:var(--gold-soft); max-width:340px; padding:20px; }
+.lock-glyph { font-size:4.6rem; margin-bottom:6px; filter:drop-shadow(0 0 14px rgba(212,175,90,.35)); }
+.lock-title { font-family:var(--serif); font-size:1.5rem; margin-bottom:22px; }
+.lock-unlock {
+  position:relative; overflow:hidden; width:100%; padding:18px 16px;
+  border:1px solid var(--gold); border-radius:16px; background:var(--panel);
+  color:var(--gold-soft); font-size:1rem; font-weight:700; cursor:pointer;
+  touch-action:none; user-select:none; -webkit-user-select:none;
+}
+.lock-fill { position:absolute; left:0; top:0; bottom:0; width:0; background:linear-gradient(90deg,rgba(212,175,90,.30),rgba(212,175,90,.55)); z-index:0; }
+.lock-label { position:relative; z-index:1; }
+.lock-hint { color:rgba(255,255,255,.55); font-size:.8rem; margin-top:18px; line-height:1.5; }
+
+/* Rapport d'aube */
+.dawn-victims { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin:6px 0 12px; }
+.dawn-victim { background:rgba(160,30,44,.16); border:1px solid var(--blood-bright); color:#f0d79a; border-radius:12px; padding:8px 14px; font-weight:700; font-family:var(--serif); }
+.dawn-peace { text-align:center; font-family:var(--serif); font-size:1.15rem; color:var(--outsider); padding:14px; }
+.dawn-announce { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:12px 14px; margin:4px 0 6px; }
+.dawn-announce-label { color:var(--gold-soft); font-size:.78rem; font-weight:700; margin-bottom:6px; }
+.dawn-announce-text { font-family:var(--serif); font-size:1.05rem; line-height:1.5; }
+
+/* Mode contraste eleve / daltonien */
+body.hc { --muted:#d8d2c4; --line:#8a8272; }
+body.hc .badge, body.hc .chip, body.hc .seat, body.hc .nom-card, body.hc .btn { border-width:2px; }
+body.hc .btn.gold, body.hc .btn.primary { outline:2px solid rgba(255,255,255,.35); outline-offset:1px; }
+body.hc .vote-count.pass, body.hc .vote-bar-fill.pass { box-shadow:0 0 0 2px #fff inset; }
+body.hc .seat.dead, body.hc .badge.ghost { text-decoration:line-through; opacity:1; }
+body.hc [style*="--demon"], body.hc [style*="--minion"] { box-shadow:0 0 0 2px var(--blood-bright) inset; }
+body.hc .impaired-banner, body.hc .dawn-victim { color:#ffe9b0; }
+
 /* Mini-barre d'etat persistante */
 .statusbar {
   display:flex; gap:14px; justify-content:center; flex-wrap:wrap;
