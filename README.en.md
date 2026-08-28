@@ -33,7 +33,7 @@ roles, follow the night order, manage votes — all tracked automatically.
 | **Characters** | Full reference + **jinxes** + search. |
 | **Scripts** | 3 official scripts + **import any** clocktower.online script (base of 143 roles). |
 
-**Tools**: 🔒 screen lock · 🎲 random picker · 🏁 game recap · 👁 private role reveal · 🕶️ privacy screen · 📜 log · 📸 night snapshots ·
+**Tools**: 🔒 screen lock · 🎲 random picker · 🏁 game recap · 🎯 command palette (Ctrl+K) · 📊 table mode · ✅ composition validator · 🔍 player search · 👁 private role reveal · 🕶️ privacy screen · 📜 log · 📸 night snapshots ·
 📝 notes · 📖 glossary/rules · 🖨 print · ⚙ settings (keep awake, fullscreen, vibration,
 volume, ambient sound, bright theme, ♿ high contrast/colourblind, accent).
 

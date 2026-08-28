@@ -95,7 +95,13 @@ const I18N = {
     dawnReport: "Rapport d'aube", dawnReadAloud: "À annoncer à la table :", dawnNoDeath: "La nuit fut calme, personne n'est mort.",
     dawnDied: "cette nuit sont morts :", dawnDiedOne: "cette nuit est mort :", copyText: "Copier le texte", copied: "Copié",
     suggestTimer: "Durée suggérée", timerSetTo: "Minuteur réglé sur", basedOnAlive: "selon le nombre de vivants",
-    contrast: "Contraste élevé / daltonien"
+    contrast: "Contraste élevé / daltonien",
+    palette: "Palette de commandes", paletteHint: "Cherchez une vue, un outil ou un joueur…", noMatch: "Aucun résultat",
+    catView: "Vue", catTool: "Outil", catPlayer: "Joueur", shortcutsTitle: "Raccourcis clavier",
+    tableMode: "Mode Table", tableHint: "Affichage public : tournez la tablette vers la table. Aucune info secrète n'est montrée.",
+    validator: "Validateur de composition", compTarget: "Cible officielle", compAssigned: "Attribué", compOk: "Composition conforme",
+    compWarnDemon: "Aucun Démon attribué", compWarnMinionsHigh: "Beaucoup de Sbires pour ce nombre de joueurs",
+    compModifierNote: "Modificateur de setup en jeu : comptes ajustés.", searchPlayer: "Chercher un joueur…"
   },
   en: {
     appName: "Storyteller's Grimoire",
@@ -179,7 +185,13 @@ const I18N = {
     dawnReport: "Dawn report", dawnReadAloud: "Announce to the table:", dawnNoDeath: "The night was calm, nobody died.",
     dawnDied: "died this night:", dawnDiedOne: "died this night:", copyText: "Copy text", copied: "Copied",
     suggestTimer: "Suggested duration", timerSetTo: "Timer set to", basedOnAlive: "based on living count",
-    contrast: "High contrast / colourblind"
+    contrast: "High contrast / colourblind",
+    palette: "Command palette", paletteHint: "Search a view, tool or player…", noMatch: "No result",
+    catView: "View", catTool: "Tool", catPlayer: "Player", shortcutsTitle: "Keyboard shortcuts",
+    tableMode: "Table mode", tableHint: "Public display: turn the tablet toward the table. No secret info is shown.",
+    validator: "Composition validator", compTarget: "Official target", compAssigned: "Assigned", compOk: "Composition valid",
+    compWarnDemon: "No Demon assigned", compWarnMinionsHigh: "Many Minions for this player count",
+    compModifierNote: "Setup modifier in play: counts adjusted.", searchPlayer: "Search a player…"
   }
 };
 
@@ -349,6 +361,8 @@ function handleShortcuts(e) {
   else if (e.key === "z" && (e.ctrlKey || e.metaKey) && e.shiftKey) { e.preventDefault(); redo(); }
   else if (e.key === "z" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); undo(); }
   else if (e.key === "y" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); redo(); }
+  else if (e.key === "k" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); openCommandPalette(); }
+  else if (e.key === "?") { e.preventDefault(); openCommandPalette(); }
   else if (e.key === "h") showPrivacy();
   else if (e.key === "l") lockScreen();
   else if (e.key === "g") switchView("grimoire");
@@ -360,6 +374,9 @@ const DOCK_TOOLS = [
   { icon: "🔒", key: "lock", fn: () => lockScreen() },
   { icon: "🎲", key: "randomTool", fn: () => openRandomTool() },
   { icon: "🏁", key: "recap", fn: () => openRecap() },
+  { icon: "🎯", key: "palette", fn: () => openCommandPalette() },
+  { icon: "📊", key: "tableMode", fn: () => openTableMode() },
+  { icon: "✅", key: "validator", fn: () => openValidator() },
   { icon: "💾", key: "savedGames", fn: () => openSavedGames() },
   { icon: "📜", key: "gameLog", fn: () => openGameLog() },
   { icon: "📸", key: "snapshots", fn: () => openSnapshots() },
@@ -936,6 +953,7 @@ function renderGrimoire() {
       <button class="btn small ghost" id="g-redo">↪ ${t("redo")}</button>
       <button class="btn small ghost" id="g-zoomout">➖</button>
       <button class="btn small ghost" id="g-zoomin">➕</button>
+      <input type="text" id="g-search" class="g-search" placeholder="🔍 ${t("searchPlayer")}" autocomplete="off">
       <span class="spacer"></span>
       <span class="badge">${n} ${t("players")}</span>
       <button class="btn small primary" id="g-new">${t("newGame")}</button>
@@ -949,6 +967,17 @@ function renderGrimoire() {
   $("#g-redo").onclick = redo;
   $("#g-zoomin").onclick = () => { GZOOM = Math.min(1.8, GZOOM + 0.15); $("#circle").style.transform = `scale(${GZOOM})`; };
   $("#g-zoomout").onclick = () => { GZOOM = Math.max(0.6, GZOOM - 0.15); $("#circle").style.transform = `scale(${GZOOM})`; };
+  const gsearch = $("#g-search");
+  if (gsearch) gsearch.oninput = () => {
+    const q = gsearch.value.trim().toLowerCase();
+    $$("#circle .seat").forEach(s => {
+      const p = S.players[+s.dataset.idx]; if (!p) return;
+      const hay = ((p.name || "") + " " + (p.roleId ? loc((charById(p.roleId) || { name: p.roleId }).name) : "")).toLowerCase();
+      const hit = !!q && hay.includes(q);
+      s.classList.toggle("seat-dim", !!q && !hit);
+      s.classList.toggle("seat-match", hit);
+    });
+  };
   $("#g-new").onclick = newGame;
 
   const circle = $("#circle");
@@ -2284,6 +2313,150 @@ function closeModal() { $("#modal-overlay").classList.add("hidden"); $("#modal")
 window.closeModal = closeModal;
 function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
 function confirmAction(msg) { return (S.settings && !S.settings.confirmActions) ? true : confirm(msg); }
+
+/* =========================================================================
+   Round 3 : palette de commandes, mode table, validateur, recherche joueur
+   ========================================================================= */
+const PALETTE_VIEWS = [
+  { view: "grimoire", icon: "🕸️", key: "tab.grimoire" },
+  { view: "night", icon: "🌙", key: "tab.night" },
+  { view: "day", icon: "☀️", key: "tab.day" },
+  { view: "setup", icon: "⚙", key: "tab.setup" },
+  { view: "reference", icon: "📇", key: "tab.reference" },
+  { view: "scripts", icon: "📜", key: "tab.scripts" }
+];
+const PALETTE_SHORTCUTS = [
+  { k: "Ctrl+K  ·  ?", d: { fr: "Palette de commandes", en: "Command palette" } },
+  { k: "Espace", d: { fr: "Cocher l'étape de nuit courante", en: "Check current night step" } },
+  { k: "Ctrl+Z", d: { fr: "Annuler", en: "Undo" } },
+  { k: "Ctrl+Y", d: { fr: "Rétablir", en: "Redo" } },
+  { k: "H", d: { fr: "Masquer le grimoire", en: "Hide grimoire" } },
+  { k: "L", d: { fr: "Verrouiller l'écran", en: "Lock screen" } },
+  { k: "G", d: { fr: "Aller au Grimoire", en: "Go to Grimoire" } },
+  { k: "N", d: { fr: "Aller à la Nuit", en: "Go to Night" } },
+  { k: "J / D", d: { fr: "Aller au Jour", en: "Go to Day" } }
+];
+function paletteEntries() {
+  const out = [];
+  PALETTE_VIEWS.forEach(v => out.push({ icon: v.icon, label: t(v.key), cat: t("catView"), run: () => switchView(v.view) }));
+  DOCK_TOOLS.forEach(it => { if (it.key !== "palette") out.push({ icon: it.icon, label: t(it.key), cat: t("catTool"), run: it.fn }); });
+  (S.players || []).forEach(p => {
+    if (!p.name) return;
+    const rn = p.roleId ? loc((charById(p.roleId) || { name: p.roleId }).name) : "";
+    out.push({ icon: p.alive ? "🟢" : "✝", label: p.name + (rn ? " · " + rn : ""), cat: t("catPlayer"), run: () => highlightPlayer(p.id) });
+  });
+  return out;
+}
+function openCommandPalette() {
+  const all = paletteEntries();
+  let sel = 0, filtered = all;
+  openModal(`
+    <button class="close-x" onclick="closeModal()">×</button>
+    <h3>🎯 ${t("palette")}</h3>
+    <input type="text" id="pal-input" class="pal-input" placeholder="${t("paletteHint")}" autocomplete="off">
+    <div id="pal-list" class="pal-list"></div>
+    <details class="pal-sc"><summary>⌨️ ${t("shortcutsTitle")}</summary>
+      <div class="pal-sc-grid">${PALETTE_SHORTCUTS.map(s => `<kbd>${escapeHtml(s.k)}</kbd><span>${escapeHtml(loc(s.d))}</span>`).join("")}</div>
+    </details>`);
+  const input = $("#pal-input"), list = $("#pal-list");
+  const scrollSel = () => { const el = $("#pal-list .pal-item.sel"); if (el) el.scrollIntoView({ block: "nearest" }); };
+  const render = () => {
+    const q = input.value.trim().toLowerCase();
+    filtered = q ? all.filter(e => (e.label + " " + e.cat).toLowerCase().includes(q)) : all;
+    if (sel >= filtered.length) sel = 0;
+    list.innerHTML = filtered.length
+      ? filtered.map((e, i) => `<button class="pal-item${i === sel ? " sel" : ""}" data-i="${i}"><span class="pi-ic">${e.icon}</span><span class="pi-lb">${escapeHtml(e.label)}</span><span class="pi-cat">${e.cat}</span></button>`).join("")
+      : `<div class="list-empty">${t("noMatch")}</div>`;
+    $$("#pal-list .pal-item").forEach(b => b.onclick = () => { const e = filtered[+b.dataset.i]; closeModal(); e.run(); });
+  };
+  input.oninput = () => { sel = 0; render(); };
+  input.onkeydown = (e) => {
+    if (e.key === "ArrowDown") { e.preventDefault(); sel = Math.min(filtered.length - 1, sel + 1); render(); scrollSel(); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); sel = Math.max(0, sel - 1); render(); scrollSel(); }
+    else if (e.key === "Enter") { e.preventDefault(); const e2 = filtered[sel]; if (e2) { closeModal(); e2.run(); } }
+  };
+  render();
+}
+function highlightPlayer(id) {
+  const go = () => {
+    const idx = S.players.findIndex(x => x.id === id); if (idx < 0) return;
+    const seat = $(`#circle .seat[data-idx="${idx}"]`);
+    if (seat) { seat.classList.add("seat-flash"); try { seat.scrollIntoView({ block: "center", behavior: "smooth" }); } catch (_) {} setTimeout(() => seat.classList.remove("seat-flash"), 2400); buzz(12); }
+  };
+  if (currentView !== "grimoire") { switchView("grimoire"); setTimeout(go, 80); } else go();
+}
+
+/* ---------- Mode Table (affichage public grand format) ---------- */
+function openTableMode() {
+  const ov = $("#table-overlay"); if (!ov) return;
+  const paint = () => {
+    const living = S.players.filter(p => p.alive).length;
+    const dead = S.players.length - living;
+    const isNight = S.phase === "night";
+    const num = isNight ? S.night.number : (S.day.number || 1);
+    ov.innerHTML = `
+      <div class="tbl-inner ${isNight ? "night" : "day"}">
+        <button class="tbl-close" id="tbl-close" aria-label="${t("close")}">×</button>
+        <div class="tbl-phase">${isNight ? "🌙" : "☀️"} ${isNight ? t("nightNum") : t("dayNum")} ${num}</div>
+        <div class="tbl-counts">
+          <div class="tbl-c living"><span class="tbl-n">${living}</span><span class="tbl-l">${t("livingC")}</span></div>
+          <div class="tbl-c dead"><span class="tbl-n">${dead}</span><span class="tbl-l">${t("deadC")}</span></div>
+          <div class="tbl-c maj"><span class="tbl-n">${Math.ceil(living / 2)}</span><span class="tbl-l">⚖️ ${t("majority")}</span></div>
+        </div>
+        <div class="tbl-timer" id="tbl-timer">${fmtTime(S.timer.remaining)}</div>
+        <div class="tbl-hint">${t("tableHint")}</div>
+      </div>`;
+    $("#tbl-close").onclick = closeTableMode;
+  };
+  paint();
+  ov.classList.remove("hidden");
+  buzz(10);
+  if (S._tblT) clearInterval(S._tblT);
+  S._tblT = setInterval(() => { const el = $("#tbl-timer"); if (el) el.textContent = fmtTime(S.timer.remaining); }, 500);
+  ov._repaint = paint;
+}
+function closeTableMode() {
+  const ov = $("#table-overlay"); if (ov) ov.classList.add("hidden");
+  if (S._tblT) { clearInterval(S._tblT); S._tblT = null; }
+}
+
+/* ---------- Validateur de composition (rôles attribués vs table officielle) ---------- */
+function assignedTeamCounts() {
+  const c = { townsfolk: 0, outsider: 0, minion: 0, demon: 0, traveler: 0, fabled: 0 };
+  S.players.forEach(p => { const ch = p.roleId ? charById(p.roleId) : null; if (ch && c[ch.team] != null) c[ch.team]++; });
+  return c;
+}
+function openValidator() {
+  const cur = assignedTeamCounts();
+  const nonTravelers = S.players.filter(p => { const ch = p.roleId ? charById(p.roleId) : null; return !ch || (ch.team !== "traveler" && ch.team !== "fabled"); });
+  const n = Math.max(5, Math.min(15, nonTravelers.length || 7));
+  const base = GAME.setupTable[String(n)] || [0, 0, 0, 0];
+  let [town, out, min, dem] = base;
+  let modActive = false;
+  S.players.forEach(p => { const m = SETUP_MODIFIERS[p.roleId]; if (m && m.outsider) { out += m.outsider; town -= m.outsider; modActive = true; } });
+  const tgt = { townsfolk: town, outsider: out, minion: min, demon: dem };
+  const teamKeys = ["townsfolk", "outsider", "minion", "demon"];
+  const rows = teamKeys.map(tk => {
+    const ok = cur[tk] === tgt[tk];
+    const ic = ok ? "✓" : (cur[tk] > tgt[tk] ? "▲" : "▼");
+    return `<div class="val-row ${ok ? "ok" : "bad"}"><span class="val-team">${TEAM_GLYPH[tk] || ""} ${teamName(tk)}</span><span class="val-nums"><b>${cur[tk]}</b> <span class="val-sep">/</span> ${tgt[tk]}</span><span class="val-ic">${ic}</span></div>`;
+  }).join("");
+  const warns = [];
+  if (cur.demon < 1) warns.push("👹 " + t("compWarnDemon"));
+  if (cur.minion > (tgt.minion || 0)) warns.push("🗡️ " + t("compWarnMinionsHigh"));
+  if (modActive) warns.push("⚙ " + t("compModifierNote"));
+  const allOk = teamKeys.every(tk => cur[tk] === tgt[tk]) && cur.demon >= 1;
+  const trav = cur.traveler ? `<div class="val-extra">🧳 ${teamName("traveler")}: <b>${cur.traveler}</b></div>` : "";
+  openModal(`
+    <button class="close-x" onclick="closeModal()">×</button>
+    <h3>✅ ${t("validator")}</h3>
+    <div class="val-head"><span>${t("compAssigned")}</span><span class="val-sep">/</span><span>${t("compTarget")} (${n} ${t("players")})</span></div>
+    <div class="val-grid">${rows}</div>
+    ${trav}
+    <div class="val-verdict ${allOk ? "ok" : "bad"}">${allOk ? "✓ " + t("compOk") : (warns[0] || "▲ " + t("warnCounts"))}</div>
+    ${warns.length ? `<ul class="val-warns">${warns.map(w => `<li>${w}</li>`).join("")}</ul>` : ""}
+    <div class="modal-actions"><button class="btn gold" onclick="closeModal()">${t("close")}</button></div>`);
+}
 
 /* ---------- Service worker (PWA hors-ligne) ---------- */
 if ("serviceWorker" in navigator) {

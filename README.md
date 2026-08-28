@@ -33,7 +33,7 @@ distribuez les rôles, suivez l'ordre de nuit, gérez les votes — le tout suiv
 | **Personnages** | Référence complète + **interactions (jinx)** + recherche. |
 | **Scripts** | 3 scripts officiels + **import de n'importe quel script** clocktower.online (base de 143 rôles). |
 
-**Outils** : 🔒 verrou d'écran · 🎲 tirage aléatoire · 🏁 récapitulatif de partie · 👁 révélation privée des rôles · 🕶️ écran de confidentialité · 📜 journal ·
+**Outils** : 🔒 verrou d'écran · 🎲 tirage aléatoire · 🏁 récapitulatif de partie · 🎯 palette de commandes (Ctrl+K) · 📊 mode table · ✅ validateur de composition · 🔍 recherche de joueur · 👁 révélation privée des rôles · 🕶️ écran de confidentialité · 📜 journal ·
 📸 captures par nuit · 📝 bloc-notes · 📖 glossaire/règles · 🖨 impression · ⚙ réglages
 (écran allumé, plein écran, vibrations, volume, ambiance sonore, thème clair, ♿ contraste élevé/daltonien, accent).
 
