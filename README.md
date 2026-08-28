@@ -27,13 +27,13 @@ distribuez les rôles, suivez l'ordre de nuit, gérez les votes — le tout suiv
 | Onglet | Contenu |
 |---|---|
 | **Grimoire** | Cercle des joueurs, rôles (emblèmes uniques), vie/mort, vote de fantôme, statuts, jetons de rappel, **glisser-déposer** (sièges & jetons), **appui long** (actions rapides), alignement, **revendications**, **drapeaux de nomination**, zoom, annuler/rétablir. |
-| **Nuit** | Ordre de nuit filtré, **cibles interactives** (pose auto des jetons), **calculateur d'infos** (conscient ivre/empoisonné), **bluffs du Démon** verrouillables, réordonnancement manuel. |
-| **Jour** | Nominations, **historique de vote** (votants + votes de fantôme), majorité auto, **minuteur**, **barre de vote**, exécution, détection de fin de partie. |
+| **Nuit** | Ordre de nuit filtré, **cibles interactives** (pose auto des jetons), **calculateur d'infos** (conscient ivre/empoisonné), **bandeau fausses infos**, **bluffs du Démon** verrouillables, réordonnancement manuel. |
+| **Jour** | Nominations, **historique de vote** (votants + votes de fantôme), majorité auto, **minuteur**, **barre de vote**, exécution, **exil des Voyageurs**, détection de fin de partie. |
 | **Setup** | **Constructeur de sac** + modificateurs auto (Baron, Fang Gu…) + **validation** + distribution. |
 | **Personnages** | Référence complète + **interactions (jinx)** + recherche. |
 | **Scripts** | 3 scripts officiels + **import de n'importe quel script** clocktower.online (base de 143 rôles). |
 
-**Outils** : 👁 révélation privée des rôles · 🕶️ écran de confidentialité · 📜 journal ·
+**Outils** : 🎲 tirage aléatoire · 🏁 récapitulatif de partie · 👁 révélation privée des rôles · 🕶️ écran de confidentialité · 📜 journal ·
 📸 captures par nuit · 📝 bloc-notes · 📖 glossaire/règles · 🖨 impression · ⚙ réglages
 (écran allumé, plein écran, vibrations, volume, ambiance sonore, thème clair, accent).
 

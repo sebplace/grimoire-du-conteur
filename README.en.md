@@ -27,13 +27,13 @@ roles, follow the night order, manage votes — all tracked automatically.
 | Tab | Contents |
 |---|---|
 | **Grimoire** | Player circle, roles (unique emblems), alive/dead, ghost vote, statuses, reminder tokens, **drag & drop** (seats & tokens), **long-press** (quick actions), alignment, **claims**, **nomination flags**, zoom, undo/redo. |
-| **Night** | Filtered night order, **interactive targets** (auto-place tokens), **info calculator** (drunk/poison aware), lockable **Demon bluffs**, manual reordering. |
-| **Day** | Nominations, **vote history** (voters + ghost votes), auto majority, **timer**, **vote bar**, execution, end-game detection. |
+| **Night** | Filtered night order, **interactive targets** (auto-place tokens), **info calculator** (drunk/poison aware), **false-info banner**, lockable **Demon bluffs**, manual reordering. |
+| **Day** | Nominations, **vote history** (voters + ghost votes), auto majority, **timer**, **vote bar**, execution, **Traveller exile**, end-game detection. |
 | **Setup** | **Bag builder** + auto modifiers (Baron, Fang Gu…) + **validation** + deal. |
 | **Characters** | Full reference + **jinxes** + search. |
 | **Scripts** | 3 official scripts + **import any** clocktower.online script (base of 143 roles). |
 
-**Tools**: 👁 private role reveal · 🕶️ privacy screen · 📜 log · 📸 night snapshots ·
+**Tools**: 🎲 random picker · 🏁 game recap · 👁 private role reveal · 🕶️ privacy screen · 📜 log · 📸 night snapshots ·
 📝 notes · 📖 glossary/rules · 🖨 print · ⚙ settings (keep awake, fullscreen, vibration,
 volume, ambient sound, bright theme, accent).
 
