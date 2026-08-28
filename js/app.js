@@ -489,7 +489,7 @@ const SAVES_KEY = "botc-mj-saves-v1";
 function snapshot() {
   return JSON.parse(JSON.stringify({
     players: S.players, night: S.night, day: S.day, phase: S.phase,
-    scriptId: S.scriptId
+    scriptId: S.scriptId, _view: currentView
   }));
 }
 function pushHistory() {
@@ -518,19 +518,23 @@ function openSnapshots() {
     <div style="max-height:60vh;overflow-y:auto">${rows}</div>
     <div class="modal-actions"><button class="btn gold" onclick="closeModal()">${t("close")}</button></div>`);
 }
+function applySnapshot(snap) {
+  const view = snap._view; delete snap._view;
+  Object.assign(S, snap);
+  save(); buzz(15);
+  if (view && view !== currentView) switchView(view); else renderAll();
+}
 function undo() {
   if (!S.history || !S.history.length) { toast(t("nothingUndo")); return; }
   S.redo = S.redo || []; S.redo.push(snapshot());
-  const snap = S.history.pop();
-  Object.assign(S, snap);
-  save(); buzz(15); renderAll(); toast("↶ " + t("undo"));
+  applySnapshot(S.history.pop());
+  toast("↶ " + t("undo"));
 }
 function redo() {
   if (!S.redo || !S.redo.length) { toast(t("nothingUndo")); return; }
   S.history = S.history || []; S.history.push(snapshot());
-  const snap = S.redo.pop();
-  Object.assign(S, snap);
-  save(); buzz(15); renderAll(); toast("↪ " + t("redo"));
+  applySnapshot(S.redo.pop());
+  toast("↪ " + t("redo"));
 }
 function logEvent(text, icon) {
   S.log = S.log || [];
@@ -1473,6 +1477,7 @@ function expireNightTokens(keys) {
   return n;
 }
 function startNight() {
+  pushHistory();
   S.phase = "night";
   if (S.night.mode === "first" && S.night.number > 1) S.night.mode = "other";
   S.night.checked = {};
@@ -1480,8 +1485,10 @@ function startNight() {
   playBell(330, 0.7); flashPhase("night"); buzz(20); updateAmbientPhase();
   logEvent(`${t("nightPhase")} — ${t("nightNum")} ${S.night.number}`, "🌙");
   save(); renderAll();
+  toastUndo(`🌙 ${t("nightNum")} ${S.night.number}`);
 }
 function endNight() {
+  pushHistory();
   S.phase = "day";
   S.day.number = S.night.number;      // jour N suit la nuit N
   S.night.number += 1;
@@ -1493,6 +1500,7 @@ function endNight() {
   playBell(560, 0.7); flashPhase("day"); buzz(20); updateAmbientPhase();
   logEvent(`${t("dayPhase")} — ${t("dayNum")} ${S.day.number}`, "☀️");
   save(); switchView("day");
+  toastUndo(`☀️ ${t("dayNum")} ${S.day.number}`);
 }
 
 /* =========================================================================
@@ -1620,6 +1628,7 @@ function advancePhase() {
   if (S.phase === "night") endNight(); else startNightFromDay();
 }
 function startNightFromDay() {
+  pushHistory();
   S.phase = "night";
   S.night.mode = "other";
   S.night.checked = {};
@@ -1627,6 +1636,7 @@ function startNightFromDay() {
   playBell(330, 0.7); flashPhase("night"); buzz(20); updateAmbientPhase();
   logEvent(`${t("nightPhase")} — ${t("nightNum")} ${S.night.number}`, "🌙");
   save(); switchView("night");
+  toastUndo(`🌙 ${t("nightNum")} ${S.night.number}`);
 }
 function nominatePrompt() {
   const alive = S.players.filter(p => p.alive);
