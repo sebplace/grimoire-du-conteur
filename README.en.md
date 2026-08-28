@@ -76,8 +76,9 @@ blood-clocktower-mj/
 
 ## Credits & licence
 
-- Code: TBD (MIT suggested).
-- Universe & brand: *Blood on the Clocktower* © The Pandemonium Institute — unofficial tool.
+- Design & development: **Sébastien Place** ([@sebplace](https://github.com/sebplace)), with GitHub Copilot assistance.
+- Original code & content: © 2026 Sébastien Place — licensed under [**Creative Commons BY-NC-SA 4.0**](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.en) (non-commercial share and adapt, with attribution and share-alike). See [`LICENSE`](LICENSE).
+- Universe & brand: *Blood on the Clocktower* © The Pandemonium Institute — unofficial tool, no official text or artwork.
 - Reference FR translations: [bambipotato/botc-fr-bambi](https://github.com/bambipotato/botc-fr-bambi).
 - Night-order metadata: community project bra1n/townsquare.
 - [Cinzel](https://fonts.google.com/specimen/Cinzel) font (SIL Open Font License).

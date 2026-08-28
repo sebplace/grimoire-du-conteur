@@ -684,3 +684,13 @@ body.bright .impaired-banner { background:rgba(212,48,70,.10); }
 .val-verdict.bad { background:rgba(212,48,70,.14); color:#f0a9b4; border:1px solid var(--blood-bright); }
 .val-warns { margin:8px 0 0; padding-left:20px; font-size:.88rem; opacity:.9; }
 .val-warns li { margin:3px 0; }
+
+/* À propos / About */
+.about-box { line-height:1.5; }
+.about-box p { margin:10px 0; }
+.about-box a { color:var(--accent, #c9a24b); }
+.about-app { font-size:1.15rem; }
+.about-lic { background:rgba(255,255,255,.04); border:1px solid var(--line); border-radius:12px; padding:10px 12px; }
+.about-cc { text-align:center; font-weight:700; letter-spacing:.04em; opacity:.85; font-size:.9rem; }
+.about-warn { font-size:.9rem; opacity:.9; border-left:3px solid var(--blood-bright); padding-left:10px; }
+.about-box .muted { color:var(--muted); font-size:.9rem; }
