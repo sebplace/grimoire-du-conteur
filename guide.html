@@ -80,6 +80,7 @@
   <a href="#scripts"><span class="fr">11. Scripts & rôles</span><span class="en">11. Scripts & roles</span></a><br>
   <a href="#shortcuts"><span class="fr">12. Raccourcis</span><span class="en">12. Shortcuts</span></a><br>
   <a href="#tips"><span class="fr">13. Astuces & FAQ</span><span class="en">13. Tips & FAQ</span></a><br>
+  <a href="#testgame"><span class="fr">14. Partie de test à blanc</span><span class="en">14. Dry-run test game</span></a><br>
 </div>
 
 <h2 id="intro"><span class="fr">1. À quoi ça sert</span><span class="en">1. What it's for</span></h2>
@@ -204,6 +205,64 @@
 <p><b><span class="fr">Mes données sont-elles en ligne ?</span><span class="en">Is my data online?</span></b> <span class="fr">Non, tout reste sur votre appareil.</span><span class="en">No, everything stays on your device.</span></p>
 <p><b><span class="fr">J'ai fait une erreur.</span><span class="en">I made a mistake.</span></b> <span class="fr">Utilisez <b>↶ Annuler</b> / <b>↪ Rétablir</b>, ou les <b>captures par nuit</b>.</span><span class="en">Use <b>↶ Undo</b> / <b>↪ Redo</b>, or the <b>night snapshots</b>.</span></p>
 <p><b><span class="fr">Changer d'appareil en cours de partie ?</span><span class="en">Switch device mid-game?</span></b> <span class="fr">Réglages → <b>Exporter (JSON)</b>, puis <b>Importer (JSON)</b> sur l'autre appareil.</span><span class="en">Settings → <b>Export (JSON)</b>, then <b>Import (JSON)</b> on the other device.</span></p>
+
+<h2 id="testgame"><span class="fr">14. Partie de test à blanc</span><span class="en">14. Dry-run test game</span></h2>
+<p><span class="fr">Avant votre première vraie table, jouez seul cette partie de test (environ 15 minutes) pour valider chaque fonction. Elle utilise la <b>partie démo</b> (Trouble Brewing, 7 joueurs). Cochez chaque bloc : si tout se passe sans surprise, vous êtes prêt.</span><span class="en">Before your first real table, play this dry-run alone (about 15 minutes) to validate every feature. It uses the <b>demo game</b> (Trouble Brewing, 7 players). Tick each block: if everything goes smoothly, you are ready.</span></p>
+
+<h3><span class="fr">Préparation</span><span class="en">Preparation</span></h3>
+<ol>
+  <li><span class="fr">Onglet <b>Grimoire</b> → <b>＋ Ajouter → 🎲 Charger une partie démo</b>.</span><span class="en"><b>Grimoire</b> tab → <b>＋ Add → 🎲 Load a demo game</b>.</span></li>
+  <li><span class="fr">Vous obtenez 7 joueurs : Lavandière, Cuisinier, Empathe, Voyante, Moine, Empoisonneur, Imp.</span><span class="en">You get 7 players: Washerwoman, Chef, Empath, Fortune Teller, Monk, Poisoner, Imp.</span></li>
+</ol>
+
+<h3><span class="fr">A. Révéler un rôle</span><span class="en">A. Reveal a role</span></h3>
+<ol>
+  <li><span class="fr">Touchez le siège du <b>Cuisinier</b> → <b>👁 Révéler au joueur</b>. La carte plein écran s'affiche ; touchez l'écran pour masquer.</span><span class="en">Tap the <b>Chef</b> seat → <b>👁 Reveal to player</b>. The full-screen card appears; tap to hide.</span></li>
+</ol>
+<div class="card tip"><span class="fr">✅ Vous validez : distribution discrète des rôles.</span><span class="en">✅ You validate: private role hand-out.</span></div>
+
+<h3><span class="fr">B. L'Ivrogne</span><span class="en">B. The Drunk</span></h3>
+<ol>
+  <li><span class="fr">Décidez que le <b>Cuisinier est en réalité l'Ivrogne</b>. Touchez son siège → bouton <b>🍺 En réalité l'Ivrogne</b>.</span><span class="en">Decide the <b>Chef is actually the Drunk</b>. Tap the seat → <b>🍺 Actually the Drunk</b> button.</span></li>
+  <li><span class="fr">Fermez la fiche : un jeton <b>IVRE</b> apparaît sur son siège (il y restera toute la partie).</span><span class="en">Close the card: a <b>DRUNK</b> token appears on the seat (it stays all game).</span></li>
+</ol>
+<div class="card tip"><span class="fr">✅ Vous validez : marquage permanent de l'Ivrogne.</span><span class="en">✅ You validate: permanent Drunk marking.</span></div>
+
+<h3><span class="fr">C. Première nuit : bluffs et jetons</span><span class="en">C. First night: bluffs and tokens</span></h3>
+<ol>
+  <li><span class="fr">Onglet <b>Nuit</b>, mode <b>1ʳᵉ nuit</b>. Le <b>bandeau rouge</b> en haut doit lister le Cuisinier (ivre) comme fausse info à donner.</span><span class="en"><b>Night</b> tab, <b>first night</b> mode. The <b>red banner</b> on top must list the Chef (drunk) as false info to give.</span></li>
+  <li><span class="fr">Étape <b>Information du Démon</b> : touchez <b>3 personnages</b> dans la liste verte. L'encadré <b>« À montrer / lire au Démon »</b> affiche le message. Testez aussi <b>🎲 Tirer 3 au hasard</b> et <b>✖ Effacer</b>.</span><span class="en"><b>Demon information</b> step: tap <b>3 characters</b> in the green list. The <b>"Show / read to the Demon"</b> box shows the message. Also test <b>🎲 Draw 3 at random</b> and <b>✖ Clear</b>.</span></li>
+  <li><span class="fr">Étape <b>Empoisonneur</b> : sur la ligne « Empoisonné », touchez un joueur → le jeton se pose sur son siège.</span><span class="en"><b>Poisoner</b> step: on the "Poisoned" row, tap a player → the token lands on their seat.</span></li>
+  <li><span class="fr">Étape <b>Lavandière</b> : deux lignes, « Villageois » et « Erroné ». Posez chacune sur un joueur différent.</span><span class="en"><b>Washerwoman</b> step: two rows, "Townsfolk" and "Wrong". Place each on a different player.</span></li>
+  <li><span class="fr">Étape <b>Cuisinier (ivre)</b> : la note rouge <b>« Donne une FAUSSE info »</b> doit apparaître sous son étape.</span><span class="en"><b>Chef (drunk)</b> step: the red <b>"Give FALSE info"</b> note must appear under the step.</span></li>
+  <li><span class="fr">Cochez chaque étape, puis <b>Terminer la nuit → Jour</b>.</span><span class="en">Tick each step, then <b>End night → Day</b>.</span></li>
+</ol>
+<div class="card tip"><span class="fr">✅ Vous validez : bluffs manuels + message, jetons multiples, rappel fausse info pour l'ivrogne.</span><span class="en">✅ You validate: manual bluffs + message, multiple tokens, false-info reminder for the drunk.</span></div>
+
+<h3><span class="fr">D. Le jour : nomination et vote</span><span class="en">D. Day: nomination and vote</span></h3>
+<ol>
+  <li><span class="fr">Le <b>🌅 Rapport d'aube</b> s'ouvre : lisez les morts (ou « nuit calme »), bouton <b>Copier le texte</b>.</span><span class="en">The <b>🌅 Dawn report</b> opens: read the deaths (or "calm night"), <b>Copy text</b> button.</span></li>
+  <li><span class="fr"><b>＋ Nouvelle nomination</b> : choisissez nominé et nominateur. Les drapeaux ⚖️ et 🔨 apparaissent au Grimoire.</span><span class="en"><b>＋ New nomination</b>: pick nominee and nominator. Flags ⚖️ and 🔨 appear on the grimoire.</span></li>
+  <li><span class="fr">Ajustez les votes avec <b>− / ＋</b> ou <b>👥 Votants</b>. La barre passe au rouge à la majorité.</span><span class="en">Adjust votes with <b>− / ＋</b> or <b>👥 Voters</b>. The bar turns red at majority.</span></li>
+  <li><span class="fr"><b>Exécuter</b> : le joueur meurt. Testez le toast <b>↶ Annuler</b>.</span><span class="en"><b>Execute</b>: the player dies. Test the <b>↶ Undo</b> toast.</span></li>
+</ol>
+<div class="card tip"><span class="fr">✅ Vous validez : nomination, votes, majorité, exécution, annulation.</span><span class="en">✅ You validate: nomination, votes, majority, execution, undo.</span></div>
+
+<h3><span class="fr">E. Boucle et fin</span><span class="en">E. Loop and end</span></h3>
+<ol>
+  <li><span class="fr"><b>🌙 Commencer la nuit</b> (ou le badge de phase). Passez en mode <b>nuits suivantes</b> : l'ordre de nuit change.</span><span class="en"><b>🌙 Start night</b> (or the phase badge). Switch to <b>other nights</b> mode: the order changes.</span></li>
+  <li><span class="fr">Marquez l'<b>Imp</b> mort (fiche → 💀) : l'app détecte la victoire du Bien et affiche l'écran de célébration.</span><span class="en">Mark the <b>Imp</b> dead (card → 💀): the app detects Good's win and shows the celebration screen.</span></li>
+  <li><span class="fr">Testez l'<b>annulation d'une phase</b> avec ↶ si vous avez avancé par erreur.</span><span class="en">Test <b>phase undo</b> with ↶ if you advanced by mistake.</span></li>
+</ol>
+<div class="card tip"><span class="fr">✅ Vous validez : cycle nuit/jour, détection de fin, annulations.</span><span class="en">✅ You validate: night/day loop, end detection, undos.</span></div>
+
+<h3><span class="fr">F. Confort et mobile</span><span class="en">F. Comfort and mobile</span></h3>
+<ol>
+  <li><span class="fr">Ouvrez la <b>barre d'outils droite</b> : essayez 📊 Mode Table, ✅ Validateur, 🎲 Tirage, 📸 Captures. Sur téléphone, elle se referme seule après chaque choix.</span><span class="en">Open the <b>right toolbar</b>: try 📊 Table mode, ✅ Validator, 🎲 Random, 📸 Snapshots. On phones it auto-closes after each choice.</span></li>
+  <li><span class="fr"><b>⚙ Réglages → 📲 Installer l'application</b> : lancez l'installation (ou lisez l'instruction iOS).</span><span class="en"><b>⚙ Settings → 📲 Install the app</b>: run the install (or read the iOS instruction).</span></li>
+  <li><span class="fr">Changez de script dans l'onglet <b>Scripts</b> (Bad Moon Rising ou Sects & Violets) : l'ordre de nuit se recharge.</span><span class="en">Switch script in the <b>Scripts</b> tab (Bad Moon Rising or Sects & Violets): the night order reloads.</span></li>
+</ol>
+<div class="card tip"><span class="fr">✅ Vous validez : outils, installation PWA, changement de script. Si les 6 blocs passent sans surprise, vous êtes prêt pour une vraie table.</span><span class="en">✅ You validate: tools, PWA install, script switching. If all 6 blocks pass smoothly, you are ready for a real table.</span></div>
 
 <footer>
   <span class="fr">Grimoire du Conteur — conçu par <b>Sébastien Place</b> (@sebplace), avec l'assistance de GitHub Copilot. Code et contenu original sous licence <b>Creative Commons BY-NC-SA 4.0</b>. Outil non officiel : <i>Blood on the Clocktower</i> © The Pandemonium Institute. Traductions FR de référence : bambipotato/botc-fr-bambi.</span>
