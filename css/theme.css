@@ -598,15 +598,21 @@ body.bright .dock { background:#f0eaf6; }
 body.bright .dock-btn { color:#241a2e; }
 body.bright .dock-toggle { color:#5a2a6a; }
 
-/* Mobile : icônes seules (barre étroite) */
-@media (max-width: 560px) {
-  .dock { transform:translateY(-50%) translateX(calc(100% - 32px)); }
-  .dock.open { transform:translateY(-50%) translateX(0); }
-  .dock-toggle { width:32px; }
+/* Fond sombre quand la barre est ouverte (surtout mobile) */
+.dock-backdrop { position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:39; opacity:0; pointer-events:none; transition:opacity .25s; }
+
+/* Mobile : icônes seules (barre étroite), fermeture par fond, pas de rognage */
+@media (max-width: 700px) {
+  .dock { transform:translateY(-50%) translateX(calc(100% - 26px)); max-height:80vh; }
+  .dock.open { transform:translateY(-50%) translateX(0); z-index:41; }
+  .dock-toggle { width:26px; font-size:1.2rem; }
   .dock-btn .dl { display:none; }
-  .dock-btn { padding:9px 11px; }
+  .dock-btn { padding:10px 12px; }
+  /* le petit onglet fermé ne doit pas masquer le contenu interactif */
+  main#app { padding-right:20px; }
+  body.dock-open .dock-backdrop { opacity:1; pointer-events:auto; }
 }
-@media print { .dock { display:none; } }
+@media print { .dock, .dock-backdrop { display:none; } }
 
 /* ---------- Tirage aléatoire ---------- */
 .rand-result { text-align:center; font-family:var(--serif); font-size:2rem; color:var(--gold-soft); min-height:2.6rem; margin:6px 0 14px; padding:10px; border:1px solid var(--line); border-radius:14px; background:var(--panel); }
@@ -616,6 +622,20 @@ body.bright .dock-toggle { color:#5a2a6a; }
 /* ---------- Bandeau fausses infos (empoisonné/ivre) ---------- */
 .impaired-banner { background:rgba(160,30,44,.14); border:1px solid var(--blood-bright); color:var(--blood-bright); border-radius:10px; padding:8px 12px; margin-bottom:10px; font-size:.85rem; font-weight:600; }
 body.bright .impaired-banner { background:rgba(212,48,70,.10); }
+.impaired-note { margin-top:8px; padding:5px 9px; border:1px solid var(--blood); border-radius:8px; background:rgba(160,30,44,.10); color:var(--blood-bright); font-size:.74rem; font-weight:700; }
+
+/* ---------- Bluffs du Démon (sélection manuelle) ---------- */
+.bluff-box { margin-top:8px; padding:8px 10px; border:1px dashed #3f6a3f; border-radius:8px; background:rgba(60,120,60,.06); }
+.bluff-cands { display:flex; flex-wrap:wrap; gap:6px; }
+.bluff-cand { padding:5px 10px; border:1px solid #3f6a3f; border-radius:999px; cursor:pointer; font-size:.8rem; background:#141d14; color:#a9e0a0; user-select:none; transition:transform .1s ease; }
+.bluff-cand:hover { border-color:#7fd07f; }
+.bluff-cand:active { transform:scale(.94); }
+.bluff-cand.on { background:linear-gradient(180deg,#2b5a2b,#1c3d1c); border-color:#8fe08f; color:#eafbe6; font-weight:700; }
+.bluff-readout { margin-top:8px; padding:8px 10px; border:1px solid var(--gold); border-radius:8px; background:rgba(217,179,107,.10); }
+.bluff-read-title { font-size:.74rem; color:var(--gold-soft); font-weight:700; }
+.bluff-read-msg { margin-top:3px; font-size:.9rem; color:var(--ink); line-height:1.4; }
+body.bright .bluff-cand { background:#e2efe2; color:#204020; border-color:#79a879; }
+body.bright .bluff-read-msg { color:#241a2e; }
 
 /* ---------- Bandeau vainqueur (récap) ---------- */
 .recap-winner { text-align:center; font-family:var(--serif); font-size:1.25rem; padding:12px; border-radius:14px; margin:4px 0 6px; font-weight:700; }

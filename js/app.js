@@ -107,7 +107,18 @@ const I18N = {
     tableMode: "Mode Table", tableHint: "Affichage public : tournez la tablette vers la table. Aucune info secrète n'est montrée.",
     validator: "Validateur de composition", compTarget: "Cible officielle", compAssigned: "Attribué", compOk: "Composition conforme",
     compWarnDemon: "Aucun Démon attribué", compWarnMinionsHigh: "Beaucoup de Sbires pour ce nombre de joueurs",
-    compModifierNote: "Modificateur de setup en jeu : comptes ajustés.", searchPlayer: "Chercher un joueur…"
+    compModifierNote: "Modificateur de setup en jeu : comptes ajustés.", searchPlayer: "Chercher un joueur…",
+    installApp: "Installer l'application", installReady: "Installer maintenant",
+    installHint: "Ajoute une icône sur l'écran d'accueil : plein écran, démarrage rapide et usage 100% hors ligne.",
+    installIOS: "Sur iPhone / iPad (Safari) : touchez le bouton Partager, puis « Sur l'écran d'accueil ».",
+    installDone: "Application déjà installée ✔", installNo: "Installation non proposée par ce navigateur.",
+    bluffReadTitle: "À montrer / lire au Démon", bluffNotInPlay: "Ces personnages ne sont PAS en jeu",
+    bluffAuto: "Tirer 3 au hasard", bluffClear: "Effacer", bluffPickHint: "Touchez 3 personnages bons absents pour les attribuer au Démon (ou tirez-les au hasard).",
+    bluffPick: "Choisir les bluffs", bluffCount: "sélectionné(s)",
+    isDrunkTitle: "En réalité l'Ivrogne", isDrunkHint: "Le joueur croit être son rôle mais reçoit de fausses infos toute la partie.",
+    impairedFalseInfo: "⚠ Donne une FAUSSE info (ivre / empoisonné)",
+    placeReminder: "Poser un jeton", reminderPlaced: "Jeton posé", pickReminderFirst: "Touchez d'abord un jeton, puis un joueur.",
+    dockAutoClosed: "", drunkBadge: "IVRE"
   },
   en: {
     appName: "Storyteller's Grimoire",
@@ -203,7 +214,18 @@ const I18N = {
     tableMode: "Table mode", tableHint: "Public display: turn the tablet toward the table. No secret info is shown.",
     validator: "Composition validator", compTarget: "Official target", compAssigned: "Assigned", compOk: "Composition valid",
     compWarnDemon: "No Demon assigned", compWarnMinionsHigh: "Many Minions for this player count",
-    compModifierNote: "Setup modifier in play: counts adjusted.", searchPlayer: "Search a player…"
+    compModifierNote: "Setup modifier in play: counts adjusted.", searchPlayer: "Search a player…",
+    installApp: "Install the app", installReady: "Install now",
+    installHint: "Adds an icon to your home screen: full screen, quick start and fully offline use.",
+    installIOS: "On iPhone / iPad (Safari): tap the Share button, then 'Add to Home Screen'.",
+    installDone: "App already installed ✔", installNo: "Install not offered by this browser.",
+    bluffReadTitle: "Show / read to the Demon", bluffNotInPlay: "These characters are NOT in play",
+    bluffAuto: "Draw 3 at random", bluffClear: "Clear", bluffPickHint: "Tap 3 absent good characters to give to the Demon (or draw them at random).",
+    bluffPick: "Pick bluffs", bluffCount: "selected",
+    isDrunkTitle: "Actually the Drunk", isDrunkHint: "The player thinks they have their role but gets false info all game.",
+    impairedFalseInfo: "⚠ Give FALSE info (drunk / poisoned)",
+    placeReminder: "Place token", reminderPlaced: "Token placed", pickReminderFirst: "Tap a token first, then a player.",
+    dockAutoClosed: "", drunkBadge: "DRUNK"
   }
 };
 
@@ -401,10 +423,18 @@ function buildDock() {
   const d = $("#dock"); if (!d) return;
   const open = !!(S.settings && S.settings.dockOpen);
   d.classList.toggle("open", open);
+  document.body.classList.toggle("dock-open", open);
   const items = DOCK_TOOLS.map(it => `<button class="dock-btn" data-tool="${it.key}" title="${t(it.key)}"><span class="di">${it.icon}</span><span class="dl">${t(it.key)}</span></button>`).join("");
   d.innerHTML = `<button class="dock-toggle" id="dock-toggle" title="${t("tools")}" aria-label="${t("tools")}">${open ? "›" : "‹"}</button><div class="dock-items">${items}</div>`;
   $("#dock-toggle").onclick = () => { S.settings.dockOpen = !S.settings.dockOpen; save(); buildDock(); buzz(8); };
-  $$("#dock .dock-btn").forEach(b => b.onclick = () => { const it = DOCK_TOOLS.find(x => x.key === b.dataset.tool); if (it) it.fn(); });
+  $$("#dock .dock-btn").forEach(b => b.onclick = () => {
+    const it = DOCK_TOOLS.find(x => x.key === b.dataset.tool); if (!it) return;
+    // Sur mobile, on referme la barre pour ne pas masquer le contenu.
+    if (window.matchMedia("(max-width: 700px)").matches) { S.settings.dockOpen = false; save(); buildDock(); }
+    it.fn();
+  });
+  const bd = $("#dock-backdrop");
+  if (bd) bd.onclick = () => { S.settings.dockOpen = false; save(); buildDock(); };
 }
 function initParticles() {
   const p = document.getElementById("particles"); if (!p) return;
@@ -521,6 +551,7 @@ function openSettings() {
   openModal(`
     <button class="close-x" onclick="closeModal()">×</button>
     <h3>⚙ ${t("settings")}</h3>
+    ${isStandalone() ? "" : `<button class="btn gold" id="set-install" style="width:100%;margin-bottom:10px">📲 ${t("installApp")}</button>`}
     <details open><summary>${t("general")}</summary>
     <div class="set-row"><span>🔆 ${t("keepAwake")}</span><label class="switch"><input type="checkbox" id="set-awake" ${st.keepAwake ? "checked" : ""}><span class="slider2"></span></label></div>
     <div class="set-row"><span>📳 ${t("haptics")}</span><label class="switch"><input type="checkbox" id="set-haptics" ${st.haptics ? "checked" : ""}><span class="slider2"></span></label></div>
@@ -579,6 +610,7 @@ function openSettings() {
   $("#set-whatsnew").onclick = showWelcome;
   $("#set-about").onclick = openAbout;
   $("#set-reset").onclick = () => { if (confirm(t("resetQ"))) { localStorage.clear(); location.reload(); } };
+  if ($("#set-install")) $("#set-install").onclick = installApp;
 }
 
 function openAbout() {
@@ -1340,7 +1372,7 @@ function openSeatModal(pid) {
   // jetons de rappel
   const roleReminders = role && role.reminders ? role.reminders : [];
   let remChips = roleReminders.map(r =>
-    `<span class="chip" data-rem="${escapeHtml(loc(r))}">＋ ${escapeHtml(loc(r))}</span>`).join("");
+    `<span class="chip" data-rem="${escapeHtml(loc(r))}" data-remkey="${escapeHtml(r.en || "")}">＋ ${escapeHtml(loc(r))}</span>`).join("");
   if (!remChips) remChips = `<span style="color:var(--muted);font-size:.8rem">${t("noReminders")}</span>`;
   const activeRem = (p.reminders || []).map((r, i) =>
     `<span class="chip on" data-remdel="${i}">${escapeHtml(r.label)} ✕</span>`).join("");
@@ -1363,6 +1395,12 @@ function openSeatModal(pid) {
       <button class="btn small ${p.align === "good" ? "gold" : "ghost"}" id="s-good">🔵 ${t("good")}</button>
       <button class="btn small ${p.align === "evil" ? "gold" : "ghost"}" id="s-evil">🔴 ${t("evil")}</button>
     </div>
+
+    ${role && (role.team === "townsfolk" || role.team === "outsider") ? `
+    <div class="row" style="margin-top:8px">
+      <button class="btn small ${p.statuses.drunk ? "gold" : "ghost"}" id="s-isdrunk">🍺 ${t("isDrunkTitle")}${p.statuses.drunk ? " ✔" : ""}</button>
+      <span style="color:var(--muted);font-size:.72rem;flex:1;min-width:140px">${t("isDrunkHint")}</span>
+    </div>` : ""}
 
     <label class="field">💬 ${t("claim")} <span style="opacity:.6">(${t("claimHint")})</span></label>
     <input type="text" id="s-claim" value="${escapeHtml(p.claim || "")}" placeholder="${t("claimNone")}" />
@@ -1399,6 +1437,12 @@ function openSeatModal(pid) {
   if ($("#s-ghost")) $("#s-ghost").onclick = () => { p.ghostUsed = !p.ghostUsed; rerender(); };
   $("#s-poison").onclick = () => { p.statuses.poisoned = !p.statuses.poisoned; rerender(); };
   $("#s-drunk").onclick = () => { p.statuses.drunk = !p.statuses.drunk; rerender(); };
+  if ($("#s-isdrunk")) $("#s-isdrunk").onclick = () => {
+    p.statuses.drunk = !p.statuses.drunk;
+    p.reminders = (p.reminders || []).filter(r => r.key !== "IsTheDrunk");
+    if (p.statuses.drunk) p.reminders.push({ label: t("drunkBadge"), key: "IsTheDrunk" });
+    rerender();
+  };
   $("#s-protect").onclick = () => { p.statuses.protected = !p.statuses.protected; rerender(); };
   $("#s-good").onclick = () => { p.align = (p.align === "good") ? null : "good"; rerender(); };
   $("#s-evil").onclick = () => { p.align = (p.align === "evil") ? null : "evil"; rerender(); };
@@ -1419,14 +1463,14 @@ function openSeatModal(pid) {
     rerender();
   });
   $$("[data-rem]").forEach(ch => ch.onclick = () => {
-    p.reminders.push({ label: ch.dataset.rem }); rerender();
+    addReminderToken(p, ch.dataset.rem, ch.dataset.remkey || ""); rerender();
   });
   $$("[data-remdel]").forEach(ch => ch.onclick = () => {
     p.reminders.splice(+ch.dataset.remdel, 1); rerender();
   });
   $("[data-remcustom]").onclick = () => {
     const label = prompt(t("customReminder"));
-    if (label && label.trim()) { p.reminders.push({ label: label.trim() }); rerender(); }
+    if (label && label.trim()) { addReminderToken(p, label.trim()); rerender(); }
   };
   $("#s-rename").onclick = () => {
     const nn = prompt(t("playerName"), p.name);
@@ -1483,22 +1527,37 @@ function bluffsBlock() {
   const inPlay = inPlayRoleIds();
   const good = sc.characters.filter(c => (c.team === "townsfolk" || c.team === "outsider") && !inPlay.has(c.id));
   if (!good.length) return "";
+  const chosen = new Set(S.bluffs || []);
+  const candBadges = good.map(c => {
+    const on = chosen.has(c.id);
+    return `<span class="bluff-cand ${on ? "on" : ""}" data-bluff="${c.id}">${on ? "✓ " : ""}${escapeHtml(loc(c.name))}</span>`;
+  }).join(" ");
   const locked = (S.bluffs || []).map(id => charById(id)).filter(Boolean);
-  if (locked.length === 3) {
-    const names = locked.map(c => `<span class="badge" style="background:#2a2410;border-color:#6a5a1e;color:var(--gold-soft)">${escapeHtml(loc(c.name))}</span>`).join(" ");
-    return `<div style="margin-top:8px;padding:8px;border:1px solid #6a5a1e;border-radius:8px;background:rgba(217,179,107,.07)">
-      <div style="font-size:.78rem;color:var(--gold-soft);font-weight:700">🔒 ${t("bluffsLocked")}</div>
-      <div class="seat-badges" style="justify-content:flex-start;max-width:none;margin-top:4px">${names}</div>
-      <button class="btn small ghost" data-bluff-lock="1" style="margin-top:6px">🎲 ${t("reroll")}</button>
+  let readout = "";
+  if (locked.length) {
+    const names = locked.map(c => `<b>${escapeHtml(loc(c.name))}</b>`).join(" · ");
+    readout = `<div class="bluff-readout">
+      <div class="bluff-read-title">🎭 ${t("bluffReadTitle")}</div>
+      <div class="bluff-read-msg">« ${t("bluffNotInPlay")} : ${names} »</div>
     </div>`;
   }
-  const names = good.map(c => `<span class="badge" style="background:#1c2a1c;border-color:#3f6a3f;color:#a9e0a0">${escapeHtml(loc(c.name))}</span>`).join(" ");
-  return `<div style="margin-top:8px;padding:8px;border:1px dashed #3f6a3f;border-radius:8px;background:rgba(60,120,60,.06)">
-    <div style="font-size:.78rem;color:#9fd08f;font-weight:700">🎭 ${t("bluffsTitle")}</div>
-    <div style="font-size:.72rem;color:var(--muted);margin:2px 0 6px">${t("bluffsHint")}</div>
-    <div class="seat-badges" style="justify-content:flex-start;max-width:none">${names}</div>
-    <button class="btn small gold" data-bluff-lock="1" style="margin-top:6px">🔒 ${t("lockBluffs")}</button>
+  return `<div class="bluff-box">
+    <div style="font-size:.78rem;color:#9fd08f;font-weight:700">🎭 ${t("bluffPick")} <span style="color:var(--muted);font-weight:400">(${chosen.size}/3 ${t("bluffCount")})</span></div>
+    <div style="font-size:.72rem;color:var(--muted);margin:2px 0 6px">${t("bluffPickHint")}</div>
+    <div class="bluff-cands">${candBadges}</div>
+    <div class="row" style="margin-top:8px">
+      <button class="btn small ghost" data-bluff-lock="1">🎲 ${t("bluffAuto")}</button>
+      ${chosen.size ? `<button class="btn small ghost" data-bluff-clear="1">✖ ${t("bluffClear")}</button>` : ""}
+    </div>
+    ${readout}
   </div>`;
+}
+function toggleBluff(id) {
+  S.bluffs = S.bluffs || [];
+  const i = S.bluffs.indexOf(id);
+  if (i >= 0) S.bluffs.splice(i, 1);
+  else { if (S.bluffs.length >= 3) return toast("3 max"); S.bluffs.push(id); }
+  save(); renderNight();
 }
 function moveNightStep(charId, dir) {
   const mode = S.night.mode;
@@ -1621,12 +1680,20 @@ function renderNight() {
     const dotColor = s.type === "char" ? `var(--${s.team})` : "#6a6ad0";
     let extra = "";
     if (s.key === "meta:demoninfo") extra = bluffsBlock();
-    if (s.type === "char") extra += infoBlock(s.charId);
+    let infoHtml = "";
+    if (s.type === "char") { infoHtml = infoBlock(s.charId); extra += infoHtml; }
+    // Rappel « fausse info » si le porteur est ivre/empoisonné et qu'aucun calcul ne l'a déjà signalé
+    if (s.type === "char" && !infoHtml) {
+      const holderImpaired = S.players.some(p => p.roleId === s.charId && p.statuses && (p.statuses.poisoned || p.statuses.drunk));
+      if (holderImpaired) extra += `<div class="impaired-note">${t("impairedFalseInfo")}</div>`;
+    }
     if (s.type === "char" && s.reminders && s.reminders.length) {
-      const rem0 = loc(s.reminders[0]);
-      const targets = S.players.map(p =>
-        `<span class="ntarget ${p.alive ? "" : "dead"}" data-tgt="${p.id}" data-char="${s.charId}">${escapeHtml(p.name)}</span>`).join("");
-      extra += `<div class="night-targets"><span style="color:var(--muted);font-size:.72rem;width:100%">👉 ${t("chooseTarget")} → « ${escapeHtml(rem0)} »</span>${targets}</div>`;
+      s.reminders.forEach((rem, remIdx) => {
+        const remLabel = loc(rem);
+        const targets = S.players.map(p =>
+          `<span class="ntarget ${p.alive ? "" : "dead"}" data-tgt="${p.id}" data-char="${s.charId}" data-remidx="${remIdx}">${escapeHtml(p.name)}</span>`).join("");
+        extra += `<div class="night-targets"><span style="color:var(--muted);font-size:.72rem;width:100%">👉 ${t("chooseTarget")} → « ${escapeHtml(remLabel)} »</span>${targets}</div>`;
+      });
     }
     const ci = s.type === "char" ? NIGHT_CHAR_ORDER.indexOf(s.charId) : -1;
     const reorder = s.type === "char" ? `<div class="nreorder"><button class="btn small ghost" data-nup="${s.charId}" ${ci <= 0 ? "disabled" : ""}>▲</button><button class="btn small ghost" data-ndown="${s.charId}" ${ci >= charCount - 1 ? "disabled" : ""}>▼</button></div>` : "";
@@ -1673,21 +1740,38 @@ function renderNight() {
     S.night.checked[e.target.dataset.check] = e.target.checked; save();
     e.target.closest(".night-step").classList.toggle("checked", e.target.checked);
   });
-  $$("[data-tgt]").forEach(el => el.onclick = () => applyNightAction(el.dataset.char, el.dataset.tgt));
+  $$("[data-tgt]").forEach(el => el.onclick = () => applyNightAction(el.dataset.char, el.dataset.tgt, +el.dataset.remidx || 0));
   $$("[data-nup]").forEach(el => el.onclick = () => moveNightStep(el.dataset.nup, -1));
   $$("[data-ndown]").forEach(el => el.onclick = () => moveNightStep(el.dataset.ndown, 1));
   $$("[data-bluff-lock]").forEach(el => el.onclick = lockBluffs);
+  $$("[data-bluff]").forEach(el => el.onclick = () => toggleBluff(el.dataset.bluff));
+  $$("[data-bluff-clear]").forEach(el => el.onclick = () => { S.bluffs = []; save(); renderNight(); });
   if ($("#n-end")) $("#n-end").onclick = endNight;
   if ($("#n-start")) $("#n-start").onclick = startNight;
 }
 
 /* Applique le jeton/statut du rôle à la cible désignée pendant la nuit. */
 const STATUS_MAP = { Poisoned: "poisoned", Drunk: "drunk", Protected: "protected" };
-function applyNightAction(charId, playerId) {
+/* Déduit un statut (ivre/empoisonné/protégé) à partir d'un libellé libre saisi par le MJ. */
+function statusFromLabel(label) {
+  const s = String(label || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  if (/(ivre|ivrogne|saoul|soul|drunk)/.test(s)) return "drunk";
+  if (/(empoison|poison)/.test(s)) return "poisoned";
+  if (/(proteg|protect|monk|moine)/.test(s)) return "protected";
+  return null;
+}
+/* Ajoute un jeton de rappel à un joueur et synchronise le statut correspondant si reconnu. */
+function addReminderToken(p, label, key) {
+  p.reminders = p.reminders || [];
+  p.reminders.push(key ? { label, key } : { label });
+  const st = statusFromLabel(key || label);
+  if (st && p.statuses) p.statuses[st] = true;
+}
+function applyNightAction(charId, playerId, remIdx) {
   const c = charById(charId); const p = S.players.find(x => x.id === playerId);
   if (!c || !p) return;
   pushHistory();
-  const rem = c.reminders && c.reminders[0];
+  const rem = c.reminders && c.reminders[remIdx || 0];
   const remEn = rem ? (rem.en || "") : "";
   const remLabel = rem ? loc(rem) : "";
   // Retirer un éventuel jeton identique déjà posé par ce rôle ailleurs (source unique).
@@ -2493,6 +2577,26 @@ function openValidator() {
 /* ---------- Service worker (PWA hors-ligne) ---------- */
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+}
+
+/* ---------- Installation PWA (bouton dédié) ---------- */
+let DEFERRED_INSTALL = null;
+window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); DEFERRED_INSTALL = e; });
+window.addEventListener("appinstalled", () => { DEFERRED_INSTALL = null; toast("✔ " + t("installDone")); });
+function isStandalone() {
+  return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+}
+async function installApp() {
+  if (isStandalone()) { alert(t("installDone")); return; }
+  if (DEFERRED_INSTALL) {
+    DEFERRED_INSTALL.prompt();
+    try { await DEFERRED_INSTALL.userChoice; } catch (_) {}
+    DEFERRED_INSTALL = null;
+    return;
+  }
+  // iOS Safari / navigateurs sans prompt : instructions manuelles
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  alert((ios ? t("installIOS") : t("installNo")) + "\n\n" + t("installHint"));
 }
 
 boot();
