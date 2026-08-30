@@ -209,6 +209,9 @@
 <h2 id="testgame"><span class="fr">14. Partie de test à blanc</span><span class="en">14. Dry-run test game</span></h2>
 <p><span class="fr">Avant votre première vraie table, jouez seul cette partie de test (environ 15 minutes) pour valider chaque fonction. Elle utilise la <b>partie démo</b> (Trouble Brewing, 7 joueurs). Cochez chaque bloc : si tout se passe sans surprise, vous êtes prêt.</span><span class="en">Before your first real table, play this dry-run alone (about 15 minutes) to validate every feature. It uses the <b>demo game</b> (Trouble Brewing, 7 players). Tick each block: if everything goes smoothly, you are ready.</span></p>
 
+<p style="text-align:center;margin:16px 0 6px"><button class="btn gold" id="btn-testgame">🎲 <span class="fr">Lancer la partie de test</span><span class="en">Launch the test game</span></button></p>
+<p style="text-align:center;font-size:.85rem;color:var(--muted);margin-top:0"><span class="fr">Charge la partie démo (7 joueurs) dans l'app et ouvre le Grimoire.</span><span class="en">Loads the demo game (7 players) in the app and opens the Grimoire.</span></p>
+
 <h3><span class="fr">Préparation</span><span class="en">Preparation</span></h3>
 <ol>
   <li><span class="fr">Onglet <b>Grimoire</b> → <b>＋ Ajouter → 🎲 Charger une partie démo</b>.</span><span class="en"><b>Grimoire</b> tab → <b>＋ Add → 🎲 Load a demo game</b>.</span></li>
@@ -276,6 +279,15 @@
   document.getElementById("b-fr").onclick = ()=>setLang("fr");
   document.getElementById("b-en").onclick = ()=>setLang("en");
   document.getElementById("b-print").onclick = ()=>window.print();
+  var tg = document.getElementById("btn-testgame");
+  if (tg) tg.onclick = function(){
+    try {
+      if (window.opener && !window.opener.closed && typeof window.opener.startTestGame === "function") {
+        window.opener.startTestGame(); window.opener.focus(); return;
+      }
+    } catch(e){}
+    location.href = "index.html?test=1";
+  };
   var qs = new URLSearchParams(location.search).get("lang");
   var saved = null; try{ saved = localStorage.getItem("guide-lang"); }catch(e){}
   setLang(qs || saved || "fr");

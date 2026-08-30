@@ -324,7 +324,12 @@ async function boot() {
   initParticles();
   applyLang();
   renderAll();
-  if (!S.tutoDone) showWelcome();
+  let launched = false;
+  try {
+    const p = new URLSearchParams(location.search);
+    if (p.get("test") === "1") { history.replaceState(null, "", location.pathname); startTestGame(); launched = true; }
+  } catch (_) {}
+  if (!launched && !S.tutoDone) showWelcome();
 }
 function showWelcome() {
   openModal(`
@@ -1287,6 +1292,11 @@ function loadDemoGame() {
   S.night = { mode: "first", number: 1, checked: {} }; S.day = { number: 0, nominations: [] };
   S.phase = "night"; S.log = []; S.history = []; S.bag = []; S.bluffs = [];
   save(); renderAll(); toast("🎲");
+}
+/* Lance la partie de test (démo) puis affiche le Grimoire — appelable depuis le guide. */
+function startTestGame() {
+  loadDemoGame();
+  switchView("grimoire");
 }
 
 function addTravelerPrompt() {
