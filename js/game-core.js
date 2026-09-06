@@ -7,7 +7,7 @@
   "use strict";
 
   const STATUS_KEYS = ["poisoned", "drunk", "protected"];
-  const EXPIRIES = ["manual", "dawn", "dusk"];
+  const EXPIRIES = ["manual", "dawn", "dusk", "scheduled"];
   const LEGACY_EFFECTS = new Map([
     ["Poisoned", "poisoned"], ["Protected", "protected"], ["Drunk", "drunk"]
   ]);
@@ -37,8 +37,27 @@
       "-" + Math.random().toString(36).slice(2);
   }
 
+  function validateSchedule(token) {
+    if (!isObject(token)) return;
+    if (token.schedule === undefined) {
+      if (token.expires === "scheduled") fail("invalid-schedule");
+      return;
+    }
+    const schedule = token.schedule;
+    if (!isObject(schedule) || !["night", "day"].includes(schedule.phase) ||
+        !Number.isSafeInteger(schedule.number) || schedule.number < 1 ||
+        schedule.number > Math.floor((Number.MAX_SAFE_INTEGER - 1) / 2)) fail("invalid-schedule");
+  }
+
+  function validateSchedules(players) {
+    players.forEach(player => {
+      if (Array.isArray(player.reminders)) player.reminders.forEach(validateSchedule);
+    });
+  }
+
   function normalizeReminder(reminder, migrateLegacy = false) {
     const token = isObject(reminder) ? reminder : { label: String(reminder || "") };
+    validateSchedule(token);
     const effect = migrateLegacy && token.effect === undefined ?
       LEGACY_EFFECTS.get(token.key) : token.effect;
     return {
@@ -48,7 +67,10 @@
       sourceRoleId: isId(token.sourceRoleId) ? token.sourceRoleId : null,
       sourcePlayerId: isId(token.sourcePlayerId) ? token.sourcePlayerId : null,
       effect: STATUS_KEYS.includes(effect) ? effect : null,
-      expires: EXPIRIES.includes(token.expires) ? token.expires : "manual"
+      expires: EXPIRIES.includes(token.expires) ? token.expires : "manual",
+      ...(token.schedule === undefined ? {} : {
+        schedule: { phase: token.schedule.phase, number: token.schedule.number }
+      })
     };
   }
 
@@ -66,6 +88,7 @@
   function normalizePlayer(player) {
     if (!isObject(player)) fail("invalid-player");
     const reminders = Array.isArray(player.reminders) ? player.reminders : [];
+    reminders.forEach(validateSchedule);
     const legacyDrunk = reminders.some(token => token && token.key === "IsTheDrunk");
     const migratingStatuses = player.manualStatuses == null;
     const source = migratingStatuses ? player.statuses : player.manualStatuses;
@@ -183,6 +206,7 @@
 
   function addReminder(players, targetId, token) {
     validatePlayers(players);
+    validateSchedules(players);
     const target = playerById(players, targetId);
     const added = validatedToken(players, token);
     players.forEach(normalizePlayer);
@@ -229,6 +253,7 @@
 
   function moveReminder(players, sourceId, index, targetId) {
     validatePlayers(players);
+    validateSchedules(players);
     const source = playerById(players, sourceId);
     const target = playerById(players, targetId);
     if (!Array.isArray(source.reminders) || !Number.isInteger(index) ||
@@ -258,6 +283,7 @@
 
   function expireEffects(players, boundary) {
     validatePlayers(players);
+    validateSchedules(players);
     if (boundary !== "dawn" && boundary !== "dusk") fail("invalid-boundary");
     let removed = 0;
     players.forEach(player => {
@@ -270,6 +296,31 @@
       deriveStatuses(player);
     });
     return removed;
+  }
+
+  function scheduledDue(state, nextPhase) {
+    if (!state || !["night", "day"].includes(state.phase)) fail("invalid-phase");
+    if (nextPhase != null && !["night", "day"].includes(nextPhase)) fail("invalid-phase");
+    validatePlayers(state.players);
+    validateSchedules(state.players);
+    if (nextPhase === state.phase) return [];
+    const number = state[state.phase] && state[state.phase].number;
+    if (!Number.isSafeInteger(number) || number < (state.phase === "night" ? 1 : 0) ||
+        number > Math.floor((Number.MAX_SAFE_INTEGER - 1) / 2)) fail("invalid-phase-number");
+    const ordinal = (phase, phaseNumber) => phaseNumber * 2 + (phase === "day" ? 1 : 0);
+    const boundary = ordinal(state.phase, number);
+    const due = [];
+    state.players.forEach(player => {
+      (player.reminders || []).forEach(reminder => {
+        if (!reminder || reminder.expires !== "scheduled") return;
+        const { phase, number: endNumber } = reminder.schedule;
+        if (ordinal(phase, endNumber) <= boundary) due.push({
+          playerId: player.id, reminderId: reminder.id ?? null,
+          reminder: JSON.parse(JSON.stringify(reminder)), phase, number: endNumber
+        });
+      });
+    });
+    return due;
   }
 
   function uniqueName(players, name) {
@@ -414,7 +465,7 @@
 
   return Object.freeze({
     normalizePlayer, recomputeStatuses, shownRoleId, isImpaired, effectiveAlignment,
-    setRole, setManualStatus, addReminder, removeReminder, moveReminder, expireEffects,
+    setRole, setManualStatus, addReminder, removeReminder, moveReminder, expireEffects, scheduledDue,
     validateNomination, nominationThreshold, nominationLeader, setVoter,
     clearNominationVotes, endCandidate
   });

@@ -26,6 +26,7 @@ function app() {
   });
   const source = fs.readFileSync(path.join(root, "js", "app.js"), "utf8");
   vm.runInContext(source.slice(0, source.lastIndexOf("boot().catch")), context);
+  vm.runInContext(fs.readFileSync(path.join(root, "js", "round-ui.js"), "utf8"), context);
   vm.runInContext(`S = defaultState(); GAME = DATA.game; MASTER = {rolesById:Object.fromEntries(DATA.master.roles.map(r=>[r.id,r])),jinxes:{}};
     DATA.scripts.forEach(([id,data])=>registerScript(id,data));
     PERSISTENCE = new GamePersistence(localStorage,STORE_KEY); PERSISTENCE.read();
@@ -156,4 +157,25 @@ test("historical restore preserves captured timer duration rather than archive e
   assert.equal(run(`S.timer.remaining`), 120);
   assert.equal(run(`S.timer.running`), false);
   assert.equal(run(`S.timer.deadline`), null);
+});
+test("multi-night schedules count the current or upcoming night and reject past deadlines", () => {
+  const run = app();
+  run(`S.night.number=2; S.phase="night";`);
+  assert.equal(run(`scheduleFromInputs("nights",3).number`), 4);
+  run(`S.phase="day";S.day.number=2;S.night.number=3;`);
+  assert.equal(run(`scheduleFromInputs("nights",3).number`), 5);
+  assert.throws(() => run(`scheduleFromInputs("night",2)`), /passée/);
+  assert.throws(() => run(`scheduleFromInputs("nights",-1)`), /1 à 999/);
+});
+test("precise deadlines survive day-night expiry and keep reviews are phase-specific", () => {
+  const run = app();
+  run(`S.players=[newPlayer("A")]; S.night.number=2;
+    GameCore.addReminder(S.players,S.players[0].id,{label:"Poison",effect:"poisoned",expires:"scheduled",schedule:{phase:"night",number:2}});
+    expireNightTokens(["Poisoned","Protected"]);`);
+  assert.equal(run(`S.players[0].statuses.poisoned`), true);
+  assert.equal(run(`getScheduledEffectActions("day").length`), 1);
+  run(`const token=S.players[0].reminders[0]; S.effectReviews[token.id]={key:scheduledReviewKey(S.players[0].id,token)};`);
+  assert.equal(run(`getScheduledEffectActions("day").length`), 0);
+  run(`S.phase="day";S.day.number=2;`);
+  assert.equal(run(`getScheduledEffectActions("night").length`), 1);
 });

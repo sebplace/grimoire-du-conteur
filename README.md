@@ -29,7 +29,7 @@ les exceptions et la fin de partie. Ce n'est pas un moteur complet des règles.
 |---|---|
 | **Grimoire** | Cercle ou **Liste MJ**, tous deux privés. Rôle réel et personnage montré distincts, vie/mort, vote fantôme, alignement, revendications, rappels avec source et durée, annuler/rétablir. |
 | **Nuit** | **Tout voir** ou **Guidé** avec étape mémorisée, cibles individuelles ou par paire, suggestions d'information, trois bluffs valides en privé et actions à revoir avant la transition. |
-| **Jour** | Nominations par identité de joueur, seuil conservé, votants et votes fantômes suivis, minuteur à échéance, exécution distincte de la mort, exil des Voyageurs, rapport d'aube et suggestion de fin à arbitrer. |
+| **Jour** | Nominations par identité de joueur, seuil conservé, tour de vote guidé, votes fantômes suivis, minuteur à échéance, exécution distincte de la mort, exil des Voyageurs et suggestion de fin à arbitrer. |
 | **Setup** | Constructeur de sac, modificateurs pris en charge, contrôle de composition et **Vérifications de préparation**. Les exceptions restent à examiner. |
 | **Personnages** | Référence consultable indépendamment du script actif, capacités reformulées, recherche et jinx. |
 | **Scripts** | Trois scripts inclus, bibliothèque personnalisée et import JSON validé. Activer un script est une action séparée, avec confirmation et sauvegarde. |
@@ -43,6 +43,12 @@ La palette de commandes reste accessible avec Ctrl+K. Les réglages de confort d
 des capacités du navigateur. Les vues et fenêtres conservent leur focus et leur position
 de défilement ; les mises à jour du minuteur et des votes évitent un rechargement complet.
 
+**Outils → Favoris par phase** permet de choisir jusqu'à **quatre raccourcis pour la nuit
+et quatre pour le jour**, dans une barre libellée intégrée à la page, sans superposition.
+Les choix sont conservés dans `S.settings.favourites`. Les favoris utilisent les outils
+de l'app et leurs restrictions : nominer reste indisponible la nuit, après l'exécution
+ou sur un écran joueur.
+
 Scripts inclus : **Trouble Brewing**, **Sects & Violets**, **Bad Moon Rising** + base de
 **143 rôles** (FR/EN) pour les scripts personnalisés. Thème gothique/horloge, police Cinzel.
 
@@ -54,9 +60,23 @@ Scripts inclus : **Trouble Brewing**, **Sects & Violets**, **Bad Moon Rising** +
   L'étape de nuit du vrai Lunatique reste distincte de celle du Démon montré ;
   le Conteur gère toujours la transmission de ses choix.
 - **Effets** : chaque rappel a une source joueur/personnage, une cible et une durée
-  (manuelle, prochaine aube ou prochain crépuscule). Déplacer ou retirer un rappel
+  (manuelle, prochaine aube, prochain crépuscule ou échéance précise). Déplacer ou retirer un rappel
   recalcule les statuts sans supprimer les autres sources. Une note libre ne crée aucun
   effet par son vocabulaire. Les statuts manuels sont distincts des effets.
+- **Échéances des effets** : les durées aube/crépuscule existantes restent inchangées.
+  Une échéance précise utilise `expires: "scheduled"` et un objet `schedule` avec
+  `phase` (`"night"` ou `"day"`) et `number`. Elle vise la **fin** de la phase indiquée
+  et ne retire jamais l'effet automatiquement.
+  Une durée en nuits inclut la nuit courante, ou la prochaine s'il fait jour :
+  Nuit 2 + trois nuits donne fin de Nuit 4. Modifiez l'échéance avec l'horloge du rappel
+  dans la fiche joueur. **Outils → Échéances des effets** permet aussi de modifier
+  ou retirer explicitement l'effet. La revue propose le retrait ou le maintien pour
+  cette transition avec un motif. Un effet en retard reste actif et revient à la
+  revue de la prochaine transition. Sources et échéances sont
+  conservées lors des copies, déplacements, annulations et exports.
+- **Liens entre joueurs** : vue privée des seuls rappels enregistrés, avec liens entrants
+  et sortants, joueur/personnage source, cible et durée. Les effets manuels sont séparés.
+  Une source absente ou non renseignée reste inconnue ; aucun lien n'est déduit d'un rôle.
 - **Choix de nuit** : la fenêtre propose source, jeton, effet et durée. Vous pouvez
   **Noter le choix sans effet**. Une source ivre ou empoisonnée ne peut pas appliquer
   son effet, mais son choix peut être consigné. Les morts sont confirmées par le MJ :
@@ -70,6 +90,10 @@ Scripts inclus : **Trouble Brewing**, **Sects & Violets**, **Bad Moon Rising** +
   distincts sont valides. Masquer l'information mène à un écran neutre ; seul
   **Retour au Conteur** réaffiche l'interface privée. Le mode Table utilise aussi ce
   parcours pour ses compteurs et son minuteur publics.
+- **Cartes de communication** : demander de choisir un ou deux joueurs, ouvrir/fermer
+  les yeux, utiliser une capacité, ou montrer Oui/Non. L'écran public ne révèle ni nom
+  de destinataire, ni rôle, ni statut. Ces gestes ne sont pas automatiquement consignés
+  comme informations reçues ; le masquage passe toujours par l'écran neutre.
 - **Distribution privée des rôles** : le personnage cru est montré à chaque joueur
   après votre confirmation. Le suivi Déjà montré / À montrer est individuel et devient
   caduc si le rôle change. Après l'écran neutre et le retour MJ, sélectionnez et confirmez
@@ -93,6 +117,14 @@ Scripts inclus : **Trouble Brewing**, **Sects & Violets**, **Bad Moon Rising** +
   Retirer un votant fantôme restitue son vote si cette nomination l'avait consommé.
   Passer au comptage manuel demande confirmation, efface les votants détaillés et
   restitue leurs votes fantômes ; leur suivi devient alors manuel.
+- **Tour de vote guidé** : depuis une nomination, parcourez les sièges dans le sens
+  horaire, après le nominé et jusqu'au nominé en dernier. Choisissez Vote oui / Pas de
+  vote pour chacun ; un mort sans vote fantôme ne peut pas voter oui. Corrigez au besoin
+  avec Annuler le dernier geste. Fermer puis rouvrir reprend le même tour.
+  Recommencer exige confirmation, efface les voix et restitue les votes fantômes de
+  **cette nomination seulement**. Si les sièges, états des joueurs ou votes ont changé ailleurs, une reprise
+  à zéro est requise, sans écraser silencieusement ces changements. Aucune exécution
+  n'est automatique ; les capacités modifiant les voix restent à arbitrer.
 - **Exécution et fin** : une exécution quotidienne est suivie même si l'exécuté survit.
   Une exécution exceptionnelle demande un motif explicite. La première nomination
   de la Vierge est suivie pour la partie, pas réarmée chaque jour. Aucune suggestion
@@ -105,6 +137,20 @@ Scripts inclus : **Trouble Brewing**, **Sects & Violets**, **Bad Moon Rising** +
 - **Minuteur** : une échéance horodatée tient compte du temps passé en arrière-plan
   et après rechargement. Un ancien minuteur sans échéance est repris en pause.
   Importer une partie ou annuler une action met aussi le minuteur en pause.
+
+## Débrief progressif, avec choix du contenu public
+
+Depuis **Récapitulatif → Débrief progressif**, préparez en privé des étapes issues des
+captures et du carnet. Aucun rôle ni événement n'est coché par défaut. Sélectionnez
+précisément ce qui peut être révélé et relisez l'**Aperçu public exact**. Ajouter une entrée
+du carnet exige une confirmation explicite de publication de cette donnée privée.
+Les textes approuvés sont des copies stables conservées dans `S.debrief`, pas une
+projection qui se modifie silencieusement avec la partie.
+
+Montrez une étape à la fois : masquage, écran neutre, retour au Conteur, puis choix de la
+suivante. Précédente et Revenir au début changent seulement la présentation, pas la
+partie. Si elle est encore en cours, une alerte et une confirmation précèdent chaque
+projection susceptible de révéler des secrets.
 
 ## Sauvegardes, scripts et hors ligne
 
@@ -194,12 +240,12 @@ Puis ouvrez http://localhost:8000
 Depuis le dossier du projet, le lanceur intégré de Node exécute les tests `*.test.cjs` :
 
 ```powershell
-node --test
+node --test "tests\*.test.cjs"
 ```
 
 Les suites couvrent notamment `game-core`, `session-core`, la persistance, le hors ligne,
-l'intégration de l'app, `workflows` et l'expérience v26. Les fichiers
-`tests\browser-check.js` et `tests\browser-data-check.js` sont des scénarios pour un outil
+l'intégration de l'app, `workflows`, l'expérience v26, `voting-core`, `shortcuts` et `presentation`. Les fichiers
+`tests\browser-*.js` sont des scénarios pour un outil
 Playwright fournissant `page`, pas des commandes Node autonomes. Leurs contrôles
 ciblés ne constituent pas une validation exhaustive des règles du jeu.
 
@@ -224,6 +270,10 @@ blood-clocktower-mj/
 ├─ js/session-core.js     # minuteur, effectifs et captures
 ├─ js/experience.js       # parcours MJ et écrans privés
 ├─ js/workflows.js        # modèles, exercices et actions à revoir
+├─ js/voting-core.js      # tour de vote et provenance des gestes
+├─ js/round-ui.js         # vote guidé et échéances des effets
+├─ js/shortcuts.js        # favoris par phase et liens factuels
+├─ js/presentation.js     # cartes de communication et débrief choisi
 ├─ js/persistence.js      # sauvegardes et protection du stockage
 ├─ js/offline.js          # état du cache et mises à jour
 ├─ tests/                 # tests Node et scénarios pour outil Playwright

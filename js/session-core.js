@@ -13,7 +13,7 @@
     "statuses", "reminders", "abilityUsage"
   ];
   const REMINDER_FIELDS = [
-    "id", "sourcePlayerId", "sourceRoleId", "effect", "key", "label", "expires"
+    "id", "sourcePlayerId", "sourceRoleId", "effect", "key", "label", "expires", "schedule"
   ];
   let nextCaptureId = 0;
 

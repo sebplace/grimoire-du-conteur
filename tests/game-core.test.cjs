@@ -34,7 +34,7 @@ const throwsCode = (fn, code) => assert.throws(fn, error => error.code === code 
 test("exports exactly the agreed browser and CommonJS API", () => {
   const names = [
     "normalizePlayer", "recomputeStatuses", "shownRoleId", "isImpaired", "effectiveAlignment",
-    "setRole", "setManualStatus", "addReminder", "removeReminder", "moveReminder", "expireEffects",
+    "setRole", "setManualStatus", "addReminder", "removeReminder", "moveReminder", "expireEffects", "scheduledDue",
     "validateNomination", "nominationThreshold", "nominationLeader", "setVoter",
     "clearNominationVotes", "endCandidate"
   ];
@@ -702,4 +702,99 @@ test("end candidates are advisory: character exceptions and execution survival n
   assert.equal(Core.endCandidate(s, resolve), null);
   assert.equal(s.players[0].alive, true);
   assert.equal(s.winner, undefined);
+});
+
+test("scheduled reminders preserve cloned phase metadata through normalize, move, and removal", () => {
+  const players = [player("source"), player("a"), player("b")];
+  const input = effect("source", { expires: "scheduled", schedule: { phase: "night", number: 3 } });
+  const added = Core.addReminder(players, "a", input);
+  input.schedule.number = 8;
+  assert.deepEqual(added.schedule, { phase: "night", number: 3 });
+  Core.normalizePlayer(players[1]);
+  const moved = Core.moveReminder(players, "a", 0, "b");
+  assert.equal(moved.id, added.id);
+  assert.equal(moved.expires, "scheduled");
+  assert.deepEqual(moved.schedule, { phase: "night", number: 3 });
+  assert.equal(Core.removeReminder(players[2], 0).schedule.number, 3);
+  assert.equal(players[2].statuses.poisoned, false);
+});
+
+test("scheduled expiry remains advisory through dawn and dusk and preserves independent effects", () => {
+  const players = [player("source"), player("other"), player("a", { roleId: "drunk" })];
+  Core.setManualStatus(players[2], "protected", true);
+  Core.addReminder(players, "a", effect("source", {
+    expires: "scheduled", schedule: { phase: "night", number: 1 }
+  }));
+  Core.addReminder(players, "a", effect("other", { expires: "dawn" }));
+  assert.equal(Core.expireEffects(players, "dawn"), 1);
+  assert.equal(Core.expireEffects(players, "dusk"), 0);
+  assert.deepEqual(players[2].statuses, { poisoned: true, drunk: true, protected: true });
+  const s = state(players);
+  s.phase = "night"; s.night = { number: 1 };
+  const before = JSON.stringify(s);
+  const due = Core.scheduledDue(s, "day");
+  assert.equal(due.length, 1);
+  assert.deepEqual({ phase: due[0].phase, number: due[0].number }, { phase: "night", number: 1 });
+  due[0].reminder.schedule.number = 99;
+  assert.equal(JSON.stringify(s), before);
+});
+
+test("scheduledDue uses end-of-phase ordinals, includes overdue tokens, and never jumps to next phase", () => {
+  const p = player("a");
+  [["night", 1], ["day", 1], ["night", 2], ["day", 2], ["night", 3]].forEach(([phase, number]) => {
+    Core.addReminder([p], "a", { label: phase + number, expires: "scheduled", schedule: { phase, number } });
+  });
+  const s = state([p]); s.phase = "night"; s.night = { number: 2 };
+  assert.deepEqual(Core.scheduledDue(s).map(row => row.reminder.label), ["night1", "day1", "night2"]);
+  assert.deepEqual(Core.scheduledDue(s, null).map(row => row.reminder.label), ["night1", "day1", "night2"]);
+  assert.deepEqual(Core.scheduledDue(s, "day").map(row => row.reminder.label), ["night1", "day1", "night2"]);
+  assert.deepEqual(Core.scheduledDue(s, "night"), []);
+  s.phase = "day"; s.day.number = 2;
+  assert.deepEqual(Core.scheduledDue(s, "night").map(row => row.reminder.label), ["night1", "day1", "night2", "day2"]);
+});
+
+test("invalid schedules fail before normalization, addition, or relocation changes players", () => {
+  for (const schedule of [null, {}, { phase: "dawn", number: 1 }, { phase: "day", number: 0 },
+    { phase: "night", number: 1.5 }, { phase: "night", number: "2" },
+    { phase: "day", number: Infinity }, { phase: "night", number: Number.MAX_SAFE_INTEGER }]) {
+    const players = [player("a"), player("b")];
+    const before = JSON.stringify(players);
+    throwsCode(() => Core.addReminder(players, "a", { label: "Bad", expires: "scheduled", schedule }), "invalid-schedule");
+    assert.equal(JSON.stringify(players), before);
+    players[0].reminders = [{ label: "Bad", expires: "scheduled", schedule }];
+    const invalid = JSON.stringify(players);
+    throwsCode(() => Core.normalizePlayer(players[0]), "invalid-schedule");
+    throwsCode(() => Core.moveReminder(players, "a", 0, "b"), "invalid-schedule");
+    assert.equal(JSON.stringify(players), invalid);
+  }
+  throwsCode(() => Core.addReminder([player("a")], "a", { label: "Missing", expires: "scheduled" }), "invalid-schedule");
+  const p = player("legacy", { reminders: [{ label: "Old", key: "Poisoned" }] });
+  Core.normalizePlayer(p);
+  assert.equal(Object.hasOwn(p.reminders[0], "schedule"), false);
+  assert.equal(p.reminders[0].expires, "manual");
+});
+
+test("scheduled reminders from different source players do not replace or shorten one another", () => {
+  const players = [player("source1"), player("source2"), player("a"), player("b")];
+  Core.addReminder(players, "a", effect("source1", { expires: "scheduled", schedule: { phase: "day", number: 2 } }));
+  Core.addReminder(players, "a", effect("source2", { expires: "scheduled", schedule: { phase: "night", number: 3 } }));
+  Core.addReminder(players, "b", effect("source1", { expires: "scheduled", schedule: { phase: "night", number: 4 } }));
+  assert.equal(players[2].reminders.length, 1);
+  assert.equal(players[2].reminders[0].sourcePlayerId, "source2");
+  assert.equal(players[2].reminders[0].schedule.number, 3);
+  assert.equal(players[3].reminders[0].schedule.number, 4);
+  assert.equal(players[2].statuses.poisoned, true);
+});
+
+test("snapshot comparison detects schedule-only changes but ignores schedule object-key order", () => {
+  const SessionCore = require(path.join(__dirname, "..", "js", "session-core.js"));
+  const before = { players: [player("a", { reminders: [{
+    id: "r", label: "Poisoned", effect: "poisoned", expires: "scheduled",
+    schedule: { phase: "night", number: 2 }
+  }] })] };
+  const after = JSON.parse(JSON.stringify(before));
+  after.players[0].reminders[0].schedule = { number: 2, phase: "night" };
+  assert.deepEqual(SessionCore.compareCaptures(before, after), []);
+  after.players[0].reminders[0].schedule.number = 3;
+  assert.equal(SessionCore.compareCaptures(before, after)[0].field, "reminders");
 });

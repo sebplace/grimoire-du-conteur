@@ -29,7 +29,7 @@ exceptions and game end. This is not a complete rules engine.
 |---|---|
 | **Grimoire** | Circle or **GM list**, both private. Separate actual and shown characters, life/death, ghost votes, alignment, claims, sourced reminders with expiry, undo/redo. |
 | **Night** | **Full list** or **Guided** with saved focus, individual or paired targets, information suggestions, three valid private bluffs and pending-action review before transitions. |
-| **Day** | Nominations by player identity, stored threshold, voters and ghost votes tracked, deadline-based timer, execution separate from death, Traveller exile, dawn report and advisory end checks. |
+| **Day** | Nominations by player identity, stored threshold, guided voting round, ghost votes tracked, deadline-based timer, execution separate from death, Traveller exile and advisory end checks. |
 | **Setup** | Bag builder, supported modifiers, composition check and **Setup checks**. Exceptions still need review. |
 | **Characters** | Reference browsing independent of the active script, reworded abilities, search and jinxes. |
 | **Scripts** | Three included scripts, custom library and validated JSON import. Activation is separate, with confirmation and a backup. |
@@ -42,6 +42,11 @@ The command palette remains available with Ctrl+K. Comfort settings depend on br
 support. Views and dialogs preserve focus and scroll position; timer and vote updates
 avoid a full refresh.
 
+**Tools → Phase favourites** offers up to **four night shortcuts and four day shortcuts**
+in a labelled in-page bar, not an overlay. Choices are stored in `S.settings.favourites`.
+Favourites use the app's tools and their restrictions: nominations remain unavailable
+at night, after execution or on a player screen.
+
 Included scripts: **Trouble Brewing**, **Sects & Violets**, **Bad Moon Rising** + a base of
 **143 roles** (FR/EN) for custom scripts. Gothic/clock theme, Cinzel font.
 
@@ -53,9 +58,22 @@ Included scripts: **Trouble Brewing**, **Sects & Violets**, **Bad Moon Rising** 
   The actual Lunatic's night step remains separate from the shown Demon's step;
   the Storyteller still handles relaying their choices.
 - **Effects**: each reminder has a source player/character, target and expiry
-  (manual, next dawn or next dusk). Moving or removing a reminder recomputes statuses
+  (manual, next dawn, next dusk or a precise deadline). Moving or removing a reminder recomputes statuses
   without erasing other sources. Free-text notes do not create effects through keywords.
   Manual statuses are separate from effects.
+- **Effect deadlines**: existing dawn/dusk expiry is unchanged. A precise deadline uses
+  `expires: "scheduled"` and a `schedule` object with `phase` (`"night"` or `"day"`)
+  and `number`. It targets the **end** of the named phase and never automatically removes the effect.
+  A duration in nights includes the current night, or the upcoming one during the day:
+  Night 2 + three nights means end of Night 4. Edit the deadline with the reminder's
+  clock button in the player card. **Tools → Effect deadlines** also lets you edit
+  or explicitly remove it. Pending-action review offers removal or keeping it for
+  this transition with a reason. An overdue effect stays active and resurfaces at
+  the next boundary. Sources and deadlines survive
+  copying, moving, undo and export.
+- **Player links**: a private view based only on recorded reminders, showing incoming
+  and outgoing links, source player/character, target and duration. Manual effects are
+  separate. A missing or unrecorded source stays unknown; no link is inferred from a role.
 - **Night choices**: the dialog offers source, token, effect and expiry. You can
   **Record choice without effect**. A drunk or poisoned source cannot apply its effect,
   but its choice can still be recorded. The Storyteller confirms deaths:
@@ -68,6 +86,10 @@ Included scripts: **Trouble Brewing**, **Sects & Violets**, **Bad Moon Rising** 
   and recorded in the notebook. Bluffs display only with three distinct valid choices.
   Hiding information opens a neutral screen; only **Return to Storyteller** restores
   the private interface. Table mode uses this same path for its public counts and timer.
+- **Communication cards**: ask someone to choose one or two players, open/close their
+  eyes, use an ability, or show Yes/No. The public screen reveals no recipient name,
+  character or status. These gestures are not automatically recorded as received
+  information; hiding always leads through the neutral screen.
 - **Private role distribution**: show each player's believed character after confirming.
   Already shown / Not shown tracking is individual and invalidated by character changes.
   After the neutral screen and Storyteller return, select and confirm the next player;
@@ -90,6 +112,13 @@ Included scripts: **Trouble Brewing**, **Sects & Violets**, **Bad Moon Rising** 
   ghost voter refunds the vote if that nomination spent it. Switching to manual totals
   requires confirmation, clears detailed voters and refunds their ghost votes;
   ghost-vote tracking then becomes manual.
+- **Guided voting round**: from a nomination, follow seats clockwise, starting after
+  the nominee and ending with the nominee. Choose Vote yes / No vote for each player;
+  dead players without a ghost vote cannot vote yes. Correct with Undo last gesture when needed.
+  Close and reopen to resume the same round. Restart requires confirmation, clears
+  ballots and refunds ghost votes for **this nomination only**. If seats, player states or votes have
+  changed elsewhere, restarting is required rather than silently overwriting those
+  changes. Execution is never automatic; adjudicate vote-modifying abilities separately.
 - **Execution and ending**: one daily execution is tracked even if the executed player
   survives. An exceptional execution needs an explicit reason. The Virgin's first
   nomination is tracked across the game, not reset daily. An end suggestion never
@@ -102,6 +131,19 @@ Included scripts: **Trouble Brewing**, **Sects & Violets**, **Bad Moon Rising** 
 - **Timer**: a timestamped deadline accounts for elapsed time in the background and
   after refresh. A legacy timer without a deadline resumes paused. Importing a game
   or undoing an action also pauses the timer.
+
+## Progressive debrief with selected public content
+
+From **Recap → Progressive debrief**, privately prepare stages from captures and the
+notebook. No character or event is checked by default. Select precisely what can be
+revealed and review the **Exact public preview**. Adding a notebook entry requires
+explicit approval to publish that private data. Approved texts are stable copies
+stored in `S.debrief`, not a presentation that silently changes with the game.
+
+Show one stage at a time: hide, neutral screen, return to Storyteller, then choose
+the next stage. Previous and Return to beginning change only the presentation, not
+the game. If play is still ongoing, a warning and confirmation precede each projection
+that could reveal secrets.
 
 ## Backups, scripts and offline use
 
@@ -186,12 +228,12 @@ Then open http://localhost:8000
 From the project folder, Node's built-in runner executes the `*.test.cjs` tests:
 
 ```powershell
-node --test
+node --test "tests\*.test.cjs"
 ```
 
 Suites cover `game-core`, `session-core`, persistence, offline support, app integration,
-`workflows` and the v26 experience. `tests\browser-check.js` and
-`tests\browser-data-check.js` are scenarios for a Playwright tool providing `page`,
+`workflows`, the v26 experience, `voting-core`, `shortcuts` and `presentation`. `tests\browser-*.js`
+are scenarios for a Playwright tool providing `page`,
 not standalone Node commands. Their targeted checks are not exhaustive game-rules validation.
 
 ## Deployment
@@ -215,6 +257,10 @@ blood-clocktower-mj/
 ├─ js/session-core.js     # timer, participant counts and captures
 ├─ js/experience.js       # Storyteller workflows and private screens
 ├─ js/workflows.js        # templates, exercises and pending actions
+├─ js/voting-core.js      # guided round and vote gesture provenance
+├─ js/round-ui.js         # guided voting and effect deadlines
+├─ js/shortcuts.js        # phase favourites and factual links
+├─ js/presentation.js     # communication cards and selected debrief
 ├─ js/persistence.js      # backups and storage protection
 ├─ js/offline.js          # cache status and updates
 ├─ tests/                 # Node tests and Playwright tool scenarios

@@ -76,12 +76,13 @@ function serviceWorker() {
   };
 }
 
-test("v26 precaches every boot module and bundled data without forced activation", async () => {
+test("v27 precaches every boot module and bundled data without forced activation", async () => {
   const sw = serviceWorker();
-  assert.equal(sw.CACHE, "grimoire-mj-v26");
+  assert.equal(sw.CACHE, "grimoire-mj-v27");
   assert.ok(sw.ASSETS.includes("css/experience.css"));
   assert.ok(sw.ASSETS.includes("css/workflows.css"));
-  for (const file of ["game-core.js", "session-core.js", "persistence.js", "experience.js", "workflows.js", "offline.js", "app.js"]) {
+  for (const css of ["round-ui", "shortcuts", "presentation"]) assert.ok(sw.ASSETS.includes("css/" + css + ".css"));
+  for (const file of ["game-core.js", "voting-core.js", "session-core.js", "persistence.js", "experience.js", "workflows.js", "round-ui.js", "shortcuts.js", "presentation.js", "offline.js", "app.js"]) {
     assert.ok(sw.ASSETS.includes(`js/${file}`));
   }
   for (const file of sw.ASSETS) {
@@ -188,7 +189,7 @@ test("offline readiness checks every asset rather than cache presence", async ()
   }
   const status = await sw.status();
   assert.equal(status.type, "OFFLINE_STATUS");
-  assert.equal(status.version, "grimoire-mj-v26");
+  assert.equal(status.version, "grimoire-mj-v27");
   assert.equal(status.ready, true);
 });
 
@@ -211,7 +212,7 @@ function client(options = {}) {
       messages.push(message.type);
       if (options.messageError) throw new Error(options.messageError);
       ports[0].postMessage(options.reply || {
-        type: "OFFLINE_STATUS", ready: true, version: "grimoire-mj-v26"
+        type: "OFFLINE_STATUS", ready: true, version: "grimoire-mj-v27"
       });
     }
   });
@@ -265,7 +266,7 @@ test("OfflineSupport reports readiness/connectivity and registers only once", as
   const app = client();
   await app.start();
   assert.equal(app.latest.ready, true);
-  assert.equal(app.latest.version, "grimoire-mj-v26");
+  assert.equal(app.latest.version, "grimoire-mj-v27");
   assert.equal(app.latest.supported, true);
   assert.equal(app.latest.error, null);
   await app.start();

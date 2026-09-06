@@ -415,7 +415,7 @@ function wfComparisonValue(field, value, capture, player) {
       const sourceRole = wfRoleName(reminder.sourceRoleId);
       const source = wfCapturePersonName(capture, reminder.sourcePlayerId);
       const effect = { poisoned: tr("Empoisonné", "Poisoned"), drunk: tr("Ivre", "Drunk"), protected: tr("Protégé", "Protected") }[reminder.effect];
-      const expiry = { dawn: tr("Aube", "Dawn"), dusk: tr("Crépuscule", "Dusk"), manual: tr("Retrait manuel", "Manual removal") }[reminder.expires] || tr("Durée inconnue", "Unknown duration");
+      const expiry = reminder.expires === "scheduled" ? expiryName(reminder.expires, reminder) : { dawn: tr("Aube", "Dawn"), dusk: tr("Crépuscule", "Dusk"), manual: tr("Retrait manuel", "Manual removal") }[reminder.expires] || tr("Durée inconnue", "Unknown duration");
       return `${loc(reminder.label) || reminder.key || tr("Rappel", "Reminder")} · ${source} · ${sourceRole}${effect ? " · " + effect : ""} · ${expiry}`;
     }).join("\n");
   }
@@ -494,6 +494,7 @@ function openSnapshotComparison() {
 function getPendingActions(nextPhase, nightSteps) {
   const explicit = (Array.isArray(S.pendingActions) ? S.pendingActions : []).filter(action => action && action.status === "open");
   const actions = explicit.map(action => ({ ...action, source: "explicit" }));
+  actions.push(...getScheduledEffectActions(nextPhase));
   if (S.phase === "night") {
     const steps = Array.isArray(nightSteps) ? nightSteps : typeof getNightSteps === "function" ? getNightSteps() : [];
     steps.filter(step => step && typeof step.key === "string" && !["meta:dawn", "meta:dusk"].includes(step.key) &&
@@ -534,6 +535,11 @@ function wfResolvePending(action, reason) {
     target.status = "resolved"; target.resolutionReason = text; target.resolvedAt = Date.now();
   } else if (action.source === "night-step") {
     S.night.checked[action.stepKey] = true;
+  } else if (action.source === "scheduled-effect") {
+    const player = S.players.find(p => p.id === action.playerId);
+    const reminder = player?.reminders.find(r => r.id === action.reminderId && JSON.stringify(r.schedule) === action.schedule);
+    if (!reminder) wfError("L'effet a changé. Rouvrez le panneau.", "The effect changed. Reopen the panel.");
+    S.effectReviews = { ...S.effectReviews, [reminder.id]: { key: scheduledReviewKey(player.id, reminder), reason: text, at: Date.now() } };
   } else {
     S.pendingActions = S.pendingActions || [];
     S.pendingActions.push({
@@ -562,7 +568,8 @@ function reviewPendingTransition(nextPhase, commit, nightSteps) {
         return `<article class="wf-card"><strong>${escapeHtml(action.text || action.kind || tr("Action", "Action"))}</strong>
           <p class="hint">${escapeHtml(player ? player.name + " · " + stamp : stamp)}</p>
           <label class="wf-field">${tr("Motif de résolution / non applicable", "Reason for resolution / not applicable")}<input id="wf-reason-${index}" maxlength="1000"></label>
-          <button class="btn small" data-wf-resolve="${index}">${tr("Résoudre / non applicable", "Resolve / not applicable")}</button></article>`;
+          ${action.source === "scheduled-effect" ? `<p class="hint">${tr("Échéance proposée : l'effet reste actif tant que vous ne confirmez pas son retrait.", "Proposed deadline: the effect remains active until you confirm its removal.")}</p><button class="btn small gold" data-wf-effect-remove="${index}">${tr("Retirer l'effet à échéance", "Remove effect at deadline")}</button>` : ""}
+          <button class="btn small" data-wf-resolve="${index}">${action.source === "scheduled-effect" ? tr("Maintenir pour cette transition", "Keep for this transition") : tr("Résoudre / non applicable", "Resolve / not applicable")}</button></article>`;
       }).join("") || `<p>${tr("Aucune action listée. Cela ne garantit pas que toutes les règles ont été vérifiées.", "No actions listed. This does not guarantee that every rule has been checked.")}</p>`}
       ${typeof commit === "function" ? `<label class="wf-field">${tr("Motif pour continuer avec des actions ouvertes", "Reason to continue with open actions")}<textarea id="wf-continue-reason" maxlength="1000"></textarea></label>
         <div class="row"><button class="btn ghost" onclick="closeModal()">${tr("Retour", "Back")}</button><button class="btn gold" id="wf-continue">${actions.length ? tr("Continuer malgré les actions", "Continue anyway") : tr("Continuer", "Continue")}</button></div>` : ""}`);
@@ -572,6 +579,13 @@ function reviewPendingTransition(nextPhase, commit, nightSteps) {
         const index = Number(button.dataset.wfResolve), action = actions[index];
         if (!getPendingActions(nextPhase, nightSteps).some(item => item.id === action.id && item.source === action.source)) wfError("Cette action a changé. Rouvrez le panneau.", "This action changed. Reopen the panel.");
         wfResolvePending(action, wfElement("wf-reason-" + index).value); show();
+      });
+      document.querySelectorAll("[data-wf-effect-remove]").forEach(button => {
+        button.onclick = () => wfAction(() => {
+          if (!guard() || committed) wfError("La phase a changé. Rouvrez le panneau.", "The phase changed. Reopen the panel.");
+          removeScheduledEffect(actions[Number(button.dataset.wfEffectRemove)]);
+          show();
+        });
       });
     });
     if (typeof commit === "function") wfElement("wf-continue").onclick = () => wfAction(() => {

@@ -254,8 +254,8 @@ function defaultState() {
     settings: { keepAwake: true, volume: 0.6, accent: "purple", haptics: true, confirmActions: true, dockOpen: false },
     log: [],
     history: [],
-    bag: [], bluffs: [], setupChecks: {}, winner: null, schemaVersion: 3,
-    pendingActions: [], revealedRoles: {}, phaseReviews: {}
+    bag: [], bluffs: [], setupChecks: {}, winner: null, schemaVersion: 4,
+    pendingActions: [], revealedRoles: {}, phaseReviews: {}, effectReviews: {}, debrief: null
   };
 }
 
@@ -306,7 +306,9 @@ function normalizeGame(input) {
   state.bluffs = Array.isArray(state.bluffs) ? state.bluffs : [];
   if (!Array.isArray(state.pendingActions)) throw new Error("Invalid pending actions");
   if (!state.revealedRoles || typeof state.revealedRoles !== "object" || Array.isArray(state.revealedRoles)) throw new Error("Invalid reveal progress");
-  state.schemaVersion = 3;
+  if (!state.effectReviews || typeof state.effectReviews !== "object" || Array.isArray(state.effectReviews)) throw new Error("Invalid effect review state");
+  if (state.debrief != null && (typeof state.debrief !== "object" || Array.isArray(state.debrief))) throw new Error("Invalid debrief state");
+  state.schemaVersion = 4;
   return state;
 }
 function storageProblem(message) {
@@ -395,6 +397,9 @@ async function boot() {
   if (!currentScript()) throw new Error("Saved script unavailable: " + S.scriptId);
   initExperience();
   initWorkflows();
+  initRoundUI();
+  initShortcuts();
+  initPresentation();
   wireChrome();
   initParticles();
   applyLang();
@@ -494,6 +499,12 @@ function handleShortcuts(e) {
 }
 function applyTheme() { document.body.classList.toggle("bright", !!(S.settings && S.settings.bright)); document.body.classList.toggle("hc", !!(S.settings && S.settings.contrast)); }
 const DOCK_TOOLS = [
+  { icon: "⚖", key: "guidedVote", fn: () => openGuidedVote() },
+  { icon: "★", key: "favourites", fn: () => openFavourites() },
+  { icon: "⌛", key: "scheduledEffects", fn: () => openScheduledEffects() },
+  { icon: "🤫", key: "silentCards", fn: () => openSilentCards() },
+  { icon: "↔", key: "playerLinks", fn: () => openPlayerLinks() },
+  { icon: "🎭", key: "progressiveDebrief", fn: () => openProgressiveDebrief() },
   { icon: "👁", key: "roleTour", fn: () => openRoleDistributionTour() },
   { icon: "🎯", key: "multiTargets", fn: () => openMultiTargetPicker() },
   { icon: "⚠", key: "pendingActions", fn: () => openPendingActions(getNightSteps()) },
@@ -749,6 +760,7 @@ function snapshot(includeScripts = false) {
     scriptId: S.scriptId, bag: S.bag, bluffs: S.bluffs, setupChecks: S.setupChecks,
     winner: S.winner, notes: S.notes, log: S.log, timer: { ...S.timer, remaining: SessionCore.timerRemaining(S.timer) }, nightOrder: S.nightOrder,
     pendingActions: S.pendingActions, revealedRoles: S.revealedRoles, phaseReviews: S.phaseReviews, exercise: S.exercise,
+    effectReviews: S.effectReviews, debrief: S.debrief,
     ...(includeScripts ? { _custom: CUSTOM, snapshots: S.snapshots } : {}), _view: currentView
   }));
 }
@@ -880,6 +892,7 @@ function openRecap() {
     <div style="max-height:44vh;overflow-y:auto">${rows.map(r => r.html).join("") || `<p class="list-empty">${t("noPlayers") || "—"}</p>`}</div>
     <div class="modal-actions">
       <button class="btn small ghost" id="recap-export">⬇ ${t("exportLog")}</button>
+      <button class="btn small" id="recap-progressive">${t("progressiveDebrief")}</button>
       <span class="spacer"></span>
       <button class="btn gold" onclick="closeModal()">${t("close")}</button>
     </div>`);
@@ -897,6 +910,7 @@ function openRecap() {
     });
     downloadFile("recap-partie.txt", lines.join("\n"), "text/plain");
   };
+  $("#recap-progressive").onclick = openProgressiveDebrief;
 }
 
 /* ---------- Vote d'exil (Voyageurs) ---------- */
@@ -1559,7 +1573,7 @@ function openSeatModal(pid) {
     `<span class="chip" data-rem="${escapeHtml(loc(r))}" data-remkey="${escapeHtml(r.en || "")}">＋ ${escapeHtml(loc(r))}</span>`).join("");
   if (!remChips) remChips = `<span style="color:var(--muted);font-size:.8rem">${t("noReminders")}</span>`;
   const activeRem = (p.reminders || []).map((r, i) =>
-    `<button class="chip on" data-remdel="${i}">${escapeHtml(r.label)}${r.sourceRoleId ? " · " + escapeHtml(loc((charById(r.sourceRoleId) || { name: r.sourceRoleId }).name)) : ""}${r.effect ? " · " + t(r.effect) + " (" + expiryName(r.expires) + ")" : ""} ✕</button>`).join("");
+    `<button class="chip on" data-remdel="${i}">${escapeHtml(r.label)}${r.sourceRoleId ? " · " + escapeHtml(loc((charById(r.sourceRoleId) || { name: r.sourceRoleId }).name)) : ""}${r.effect ? " · " + t(r.effect) + " (" + expiryName(r.expires, r) + ")" : ""} ✕</button>`).join("");
 
   openModal(`
     <button class="close-x" onclick="closeModal()">×</button>
@@ -1586,6 +1600,7 @@ function openSeatModal(pid) {
       <span style="color:var(--muted);font-size:.72rem;flex:1;min-width:140px">${t("isDrunkHint")}</span>
     </div>` : ""}
     ${playerExtrasHtml(p)}
+    <button class="btn small" id="s-links">↔ ${t("playerLinks")}</button>
 
     <label class="field">💬 ${t("claim")} <span style="opacity:.6">(${t("claimHint")})</span></label>
     <input type="text" id="s-claim" value="${escapeHtml(p.claim || "")}" placeholder="${t("claimNone")}" />
@@ -1600,7 +1615,7 @@ function openSeatModal(pid) {
     <div class="chip-wrap" id="rem-src">${remChips}
       <span class="chip" data-remcustom="1">✎ ${t("customReminder")}</span>
     </div>
-    ${activeRem ? `<div class="chip-wrap">${activeRem}</div>` : ""}
+    ${activeRem ? `<div class="chip-wrap">${activeRem}</div><p class="hint">${tr("Les échéances avancées sont proposées au MJ, jamais retirées automatiquement.", "Advanced deadlines are presented for review, never removed automatically.")}</p><div class="chip-wrap">${p.reminders.map((r, i) => `<button class="btn small ghost" data-rem-schedule="${i}">⌛ ${escapeHtml(r.label)}</button>`).join("")}</div>` : ""}
 
     <div class="modal-actions">
       <button class="btn small" id="s-reveal">👁 ${t("reveal")}</button>
@@ -1613,6 +1628,8 @@ function openSeatModal(pid) {
 
   const rerender = () => { scheduleRoleAnnouncement(p); save(); renderAll(); openSeatModal(pid); };
   wirePlayerExtras(p, rerender);
+  $("#s-links").onclick = () => openPlayerLinks(pid);
+  $$("[data-rem-schedule]").forEach(b => b.onclick = () => editReminderSchedule(pid, p.reminders[+b.dataset.remSchedule].id));
   $("#s-rempicker").onclick = () => openReminderPicker(pid);
   $("#s-alive").onclick = () => {
     pushHistory();
@@ -1710,6 +1727,7 @@ function newGame() {
   if (TIMER_HANDLE) { clearInterval(TIMER_HANDLE); TIMER_HANDLE = null; }
   S.timer.running = false; S.timer.deadline = null; S.timer.remaining = S.timer.total;
   S.pendingActions = []; S.revealedRoles = {}; S.phaseReviews = {}; S.exercise = null;
+  S.effectReviews = {}; S.debrief = null;
   save(); renderAll(); toast(t("toastNew"));
 }
 
@@ -2080,6 +2098,7 @@ function renderDay() {
           <button class="btn small ghost" data-vplus="${nm.id}">＋</button>
           <span style="color:var(--muted)">/ ${threshold}</span>
           <button class="btn small ghost" data-voters="${nm.id}">👥 ${t("voters")}</button>
+          <button class="btn small ghost" data-guided-vote="${nm.id}">⚖ ${t("guidedVote")}</button>
           <button class="btn small ${nm.executed ? "primary" : "ghost"}" data-exec="${nm.id}">${nm.executed ? "✔ " + t("executed") : t("execute")}</button>
           <button class="btn small ghost" data-ndel="${nm.id}" style="color:var(--blood-bright)">🗑</button>
         </div>
@@ -2131,6 +2150,7 @@ function renderDay() {
   $$("[data-vplus]").forEach(b => b.onclick = () => adjVote(b.dataset.vplus, 1));
   $$("[data-vminus]").forEach(b => b.onclick = () => adjVote(b.dataset.vminus, -1));
   $$("[data-voters]").forEach(b => b.onclick = () => openVoters(b.dataset.voters));
+  $$("[data-guided-vote]").forEach(b => b.onclick = () => openGuidedVote(b.dataset.guidedVote));
   $$("[data-exec]").forEach(b => b.onclick = () => execNom(b.dataset.exec));
   $$("[data-ndel]").forEach(b => b.onclick = () => {
     if (S.day.execution) return toast(tr("Annulez d'abord l'exécution.", "Undo the execution first."));
@@ -2139,7 +2159,7 @@ function renderDay() {
     S.day.nominations = S.day.nominations.filter(x => x.id !== b.dataset.ndel); save(); renderAll();
   });
   if (S.day.execution || S.phase !== "day") {
-    $$("[data-vplus],[data-vminus],[data-voters],[data-exec],[data-ndel],#d-nom,#d-manual-exec").forEach(b => b.disabled = true);
+    $$("[data-vplus],[data-vminus],[data-voters],[data-guided-vote],[data-exec],[data-ndel],#d-nom,#d-manual-exec").forEach(b => b.disabled = true);
   }
   restoreInteraction(v, ui);
   VIEW_SIGNATURES.set("day", viewSignature("day"));
@@ -2910,7 +2930,10 @@ function scheduleRoleAnnouncement(p) {
     text: tr("Changement de personnage ou d'alignement à annoncer à ", "Character or alignment change to announce to ") + p.name,
     status: "open", phase: S.phase, night: S.night.number, day: S.day.number });
 }
-function expiryName(value) {
+function expiryName(value, reminder) {
+  if (value === "scheduled") return reminder?.schedule ?
+    (reminder.schedule.phase === "night" ? tr("Fin de la nuit ", "End of Night ") : tr("Fin du jour ", "End of Day ")) + reminder.schedule.number + tr(" (retrait à confirmer)", " (confirm removal)") :
+    tr("Échéance précise", "Scheduled deadline");
   return value === "dawn" ? tr("aube suivante", "next dawn") : value === "dusk" ? tr("crépuscule suivant", "next dusk") : tr("retrait manuel", "manual removal");
 }
 function openReminderPicker(targetId, roleId, remIdx = 0, sourceId) {
@@ -2932,11 +2955,14 @@ function openReminderPicker(targetId, roleId, remIdx = 0, sourceId) {
     <label class="field">${t("addReminder")}</label><select id="rem-kind">${role.reminders.map((r, i) => `<option value="${i}" ${i === remIdx ? "selected" : ""}>${escapeHtml(loc(r))}</option>`).join("")}</select>
     <label class="field">${tr("Joueur source", "Source player")}</label><select id="rem-actor">${actors.map(p => `<option value="${p.id}" ${p.id === sourceId ? "selected" : ""}>${escapeHtml(p.name)}</option>`).join("")}${actors.length ? "" : `<option value="">${tr("Préparation MJ", "Storyteller setup")}</option>`}</select>
     <label class="field">${tr("Effet à appliquer", "Effect to apply")}</label><select id="rem-effect"><option value="">${tr("Rappel seul, aucun effet automatique", "Reminder only, no automatic effect")}</option>${["poisoned", "drunk", "protected"].map(k => `<option value="${k}" ${effect === k ? "selected" : ""}>${t(k)}</option>`).join("")}${key === "Dead" ? `<option value="death">${tr("Mort confirmée par le MJ", "Death confirmed by Storyteller")}</option>` : ""}</select>
-    <label class="field">${tr("Expiration", "Expiry")}</label><select id="rem-expiry">${["manual", "dawn", "dusk"].map(k => `<option value="${k}" ${k === knownExpiry ? "selected" : ""}>${expiryName(k)}</option>`).join("")}</select>
+    <label class="field">${tr("Expiration", "Expiry")}</label><select id="rem-expiry">${["manual", "dawn", "dusk", "scheduled"].map(k => `<option value="${k}" ${k === knownExpiry ? "selected" : ""}>${expiryName(k)}</option>`).join("")}</select>
+    <div id="rem-schedule-fields" hidden><label class="field">${tr("Échéance", "Deadline")}</label><select id="rem-schedule-mode"><option value="night">${tr("Fin de la nuit", "End of night")}</option><option value="day">${tr("Fin du jour", "End of day")}</option><option value="nights">${tr("Pendant plusieurs nuits", "For several nights")}</option></select><label class="field">${tr("Numéro ou durée en nuits", "Number or duration in nights")}</label><input id="rem-schedule-number" type="number" min="1" max="999" value="${S.night.number}"><p class="hint">${tr("La durée inclut la nuit actuelle, ou la prochaine s'il fait jour. Le retrait sera proposé au MJ.", "Duration includes the current night, or the upcoming night during daytime. Removal will be proposed to the Storyteller.")}</p></div>
+    <p id="rem-schedule-error" role="alert"></p>
     <p class="hint" id="rem-warning"></p>
     <details class="hint"><summary>${tr("Choix et effet : quelle différence ?", "Choice versus effect?")}</summary>${tr("Un joueur ivre ou empoisonné choisit normalement, mais n'applique pas sa capacité. Enregistrez alors uniquement son choix. Les autres immunités, protections et effets de mort restent à arbitrer. Un jeton libre n'est jamais interprété comme une règle.", "A drunk or poisoned player still chooses but cannot apply their ability. Record only their choice. Adjudicate other immunities, protection and death effects yourself. A free-text reminder is never interpreted as a rule.")}</details>
     <div class="modal-actions"><button class="btn gold" id="rem-apply">${t("applyToken")}</button><button class="btn" id="rem-choice">${tr("Noter le choix sans effet", "Record choice without effect")}</button><button class="btn ghost" onclick="closeModal()">${t("cancel")}</button></div>`);
   $("#rem-kind").onchange = e => openReminderPicker(targetId, roleId, +e.target.value, $("#rem-actor").value);
+  $("#rem-expiry").onchange = e => $("#rem-schedule-fields").hidden = e.target.value !== "scheduled";
   const refresh = () => {
     const actor = S.players.find(p => p.id === $("#rem-actor").value);
     const simulated = actor && (actor.roleId === "lunatic" || (actor.shownRoleId && actor.roleId !== roleId));
@@ -2951,13 +2977,18 @@ function openReminderPicker(targetId, roleId, remIdx = 0, sourceId) {
     const source = S.players.find(p => p.id === $("#rem-actor").value);
     const actorId = source?.id || null;
     const selectedEffect = $("#rem-effect").value;
+    let schedule;
+    if (!choiceOnly && selectedEffect !== "death" && $("#rem-expiry").value === "scheduled") {
+      try { schedule = scheduleFromInputs($("#rem-schedule-mode").value, $("#rem-schedule-number").value); }
+      catch (error) { $("#rem-schedule-error").textContent = error.message; return; }
+    }
     if (!choiceOnly && selectedEffect && source && (GameCore.isImpaired(source) || source.roleId === "lunatic" || (source.shownRoleId && source.roleId !== roleId))) return toast(t("impaired"));
     pushHistory();
     if (!choiceOnly) {
       if (selectedEffect === "death" && target.alive) { target.alive = false; target.ghostUsed = false; }
       else if (selectedEffect !== "death") GameCore.addReminder(S.players, target.id, {
         label: loc(rem), key, sourceRoleId: roleId, sourcePlayerId: source?.id || null,
-        effect: selectedEffect || null, expires: $("#rem-expiry").value
+        effect: selectedEffect || null, expires: $("#rem-expiry").value, ...(schedule ? { schedule } : {})
       });
     }
     const line = loc(role.name) + " → " + target.name + " : " + loc(rem) + (choiceOnly ? " (" + tr("choix sans effet", "choice without effect") + ")" : "");
@@ -3002,6 +3033,7 @@ function renderSessionBanner() {
     save(); backupBefore(tr("Avant mise à jour", "Before update")); OfflineSupport.applyUpdate();
   };
   renderExerciseBanner(b);
+  renderFavourites();
 }
 function exitTraining() {
   if (!TRAINING) return;
