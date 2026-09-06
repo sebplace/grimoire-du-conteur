@@ -7,8 +7,9 @@
   <title>Grimoire du Conteur — Blood on the Clocktower</title>
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="assets/icons/icon.svg" type="image/svg+xml" />
-  <link rel="apple-touch-icon" href="assets/icons/icon.svg" />
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png" />
   <link rel="stylesheet" href="css/theme.css" />
+  <link rel="stylesheet" href="css/experience.css" />
 </head>
 <body>
   <div id="particles" aria-hidden="true"></div>
@@ -38,9 +39,12 @@
     <button class="tab" data-view="setup" data-i18n="tab.setup">Setup</button>
     <button class="tab" data-view="reference" data-i18n="tab.reference">Personnages</button>
     <button class="tab" data-view="scripts" data-i18n="tab.scripts">Scripts</button>
+    <button class="tab tools-tab" id="btn-tools" data-i18n="tools">Outils</button>
   </nav>
 
   <div id="statusbar" class="statusbar"></div>
+  <div id="session-banner" class="session-banner"></div>
+  <div id="storage-warning" class="storage-warning hidden" role="alert"></div>
 
   <main id="app">
     <section id="view-grimoire" class="view active"></section>
@@ -65,6 +69,10 @@
     <div id="modal" class="modal" role="dialog" aria-modal="true"></div>
   </div>
 
+  <script src="js/game-core.js"></script>
+  <script src="js/persistence.js"></script>
+  <script src="js/experience.js"></script>
+  <script src="js/offline.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

@@ -1,0 +1,97 @@
+/* Additive storyteller tools, using the grimoire's existing palette. */
+.xp-field { display: grid; gap: 6px; margin: 12px 0; min-width: 0; }
+.xp-field > input, .xp-field > select, .xp-field > textarea { width: 100%; min-width: 0; max-width: 100%; }
+.xp-field > textarea {
+  resize: vertical; min-height: 100px; padding: 10px; border: 1px solid var(--line);
+  border-radius: 10px; background: var(--panel); color: var(--ink); font: inherit;
+}
+.xp-field > textarea:focus-visible,
+.xp-gm-row:focus-visible, .xp-player-screen button:focus-visible,
+.xp-modal button:focus-visible, .xp-night-toolbar button:focus-visible {
+  outline: 2px solid var(--gold); outline-offset: 3px;
+}
+.xp-modal, .xp-modal-content, .xp-player-extras { min-width: 0; overflow-wrap: anywhere; }
+.xp-player-extras { margin: 14px 0; padding-top: 8px; border-top: 1px solid var(--line); }
+.xp-warning { color: var(--warn); font-size: .9rem; }
+.xp-note, .xp-check {
+  margin: 10px 0; padding: 12px; border: 1px solid var(--line);
+  border-radius: 10px; background: var(--panel);
+}
+.xp-note-stamp { font-size: .8rem; color: var(--muted); }
+.xp-note-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.xp-note-editor { margin-top: 12px; }
+.xp-manual-check { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; }
+.xp-manual-check input { flex: 0 0 auto; margin-top: 4px; accent-color: var(--gold); }
+.xp-check > strong { font-size: .9rem; }
+.xp-check-count { color: var(--gold-soft); font-weight: 700; }
+.xp-check .row { margin-top: 8px; }
+
+html.xp-screen-open, body.xp-screen-open {
+  overflow: hidden !important; overscroll-behavior: none !important;
+}
+body.xp-screen-open > :not(#xp-player-screen) {
+  visibility: hidden !important; pointer-events: none !important;
+}
+body.xp-screen-open > :not(#xp-player-screen) * { visibility: hidden !important; }
+#xp-player-screen {
+  position: fixed !important; inset: 0 !important; z-index: 2147483647 !important;
+  display: grid !important; place-items: center; margin: 0 !important;
+  width: 100%; height: 100%; min-height: 100dvh; padding: 20px;
+  padding-top: max(20px, env(safe-area-inset-top));
+  padding-bottom: max(20px, env(safe-area-inset-bottom));
+  background: var(--panel, #26162f) !important; color: var(--ink, #efe6f2);
+  opacity: 1 !important; visibility: visible !important; isolation: isolate;
+  overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain;
+  transition: none !important; animation: none !important; transform: none !important;
+}
+.xp-player-content { width: min(100%, 780px); min-width: 0; text-align: center; padding: 16px 0; margin: auto; }
+.xp-player-content h1 { font: 600 clamp(1.7rem, 6vw, 2.8rem) var(--serif); color: var(--gold-soft); overflow-wrap: anywhere; }
+.xp-player-line { font-size: clamp(1.4rem, 5vw, 2.5rem); white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.4; }
+.xp-player-content .btn { min-height: 48px; margin-top: 24px; white-space: normal; }
+
+.xp-gm-list { display: grid; gap: 8px; width: 100%; min-width: 0; }
+.xp-gm-list > .hint { margin-bottom: 2px; }
+.xp-gm-row {
+  display: grid; gap: 5px; text-align: left; width: 100%; min-width: 0;
+  padding: 12px; background: var(--panel); color: var(--ink); border: 1px solid var(--line);
+  border-radius: 12px; font: inherit; cursor: pointer; overflow-wrap: anywhere;
+}
+.xp-gm-row:hover { border-color: var(--gold); }
+.xp-gm-row > * { min-width: 0; white-space: normal; }
+.xp-gm-name { color: var(--gold-soft); }
+.xp-gm-shown, .xp-gm-status, .xp-gm-reminders { font-size: .85rem; }
+.xp-gm-status { color: var(--muted); }
+.xp-night-toolbar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px;
+  padding: 10px; margin: 12px 0; border: 1px solid var(--line); border-radius: 12px;
+  background: var(--panel); min-width: 0;
+}
+.xp-night-progress { flex: 1 1 200px; margin: 0; min-width: 0; overflow-wrap: anywhere; }
+#view-night .night-step.hidden { display: none !important; }
+#view-night .night-step .nbody { min-width: 0; overflow-wrap: anywhere; }
+.xp-tools-sheet .xp-modal-content { display: grid; gap: 8px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.xp-tool-button { display: flex; align-items: center; gap: 10px; text-align: left; min-width: 0; min-height: 48px; white-space: normal; }
+.xp-tool-icon { flex: 0 0 auto; }
+
+@media (max-width: 700px) {
+  #dock, #dock-backdrop { display: none !important; pointer-events: none !important; }
+  body.dock-open main#app, body main#app { padding-left: 8px !important; padding-right: 8px !important; margin-right: 0 !important; }
+  #app > .view { padding-left: 8px; padding-right: 8px; }
+  .xp-gm-row { padding: 12px 10px; }
+  .xp-player-extras .row > .btn { flex: 1 1 150px; }
+  .xp-modal-actions > .btn { min-height: 44px; }
+  .xp-night-toolbar .btn { min-height: 44px; }
+  .xp-night-toolbar > .row { width: 100%; }
+  .xp-night-toolbar > .row > .btn { flex: 1 1 0; }
+  .modal-overlay:has(.xp-tools-sheet) { align-items: flex-end; padding: 0; }
+  #modal:has(.xp-tools-sheet) {
+    width: 100%; max-width: 100%; margin: 0; border-radius: 18px 18px 0 0;
+    max-height: 88dvh; overflow-y: auto; padding-bottom: max(18px, env(safe-area-inset-bottom));
+  }
+}
+@media (max-width: 380px) {
+  .xp-tools-sheet .xp-modal-content { grid-template-columns: 1fr; }
+}
+@media print {
+  body.xp-screen-open > :not(#xp-player-screen) { display: none !important; }
+}

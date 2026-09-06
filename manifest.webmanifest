@@ -2,14 +2,18 @@
   "name": "Grimoire du Conteur — Blood on the Clocktower",
   "short_name": "Grimoire MJ",
   "description": "Assistant du Conteur (MJ) pour animer des parties en présentiel de Blood on the Clocktower : grimoire, ordre de nuit, setup, votes.",
-  "start_url": ".",
-  "scope": ".",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "orientation": "any",
   "background_color": "#140b18",
   "theme_color": "#1a0e1f",
   "lang": "fr",
   "icons": [
+    { "src": "assets/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
     { "src": "assets/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
     { "src": "assets/icons/icon-maskable.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
   ]

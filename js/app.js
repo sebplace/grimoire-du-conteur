@@ -66,7 +66,7 @@ const I18N = {
     jinxes: "Interactions (jinx)", jinxNote: "Règles spéciales quand ces rôles coexistent.",
     chooseTarget: "Choisir la cible", applyToken: "Poser le jeton", targetDone: "Jeton posé",
     tutorialTitle: "Bienvenue, Conteur !", tutorialSkip: "Commencer",
-    infoCalc: "Info calculée", impaired: "ivre/empoisonné → donnez une FAUSSE info",
+    infoCalc: "Suggestion à arbitrer", impaired: "Capacité inactive : information correcte ou incorrecte, au choix du MJ.",
     steps: "sièges", pairs: "paires", evilNb: "voisin(s) maléfique(s)", deadEvil: "mort(s) maléfique(s)",
     showRole: "Montrez", point: "pointez", decoy: "leurre",
     expireTokens: "Expirer les jetons de nuit", expireQ: "Retirer les jetons temporaires (Protégé, Empoisonné) ?",
@@ -95,7 +95,7 @@ const I18N = {
     recap: "Récapitulatif", recapOngoing: "Partie en cours", viewRecap: "Voir le récap",
     exile: "Exil (Voyageur)", doExile: "Exiler", exiled: "Exilé", noTravelers: "Aucun Voyageur en jeu.",
     exileHint: "N'importe qui peut réclamer l'exil d'un Voyageur. Vote à la majorité des vivants, puis c'est vous qui décidez.",
-    exileQ: "Exiler ce Voyageur ?", impairedBanner: "Fausses infos à donner :",
+    exileQ: "Exiler ce Voyageur ?", impairedBanner: "Capacités inactives, simuler le réveil :",
     lock: "Verrou d'écran", locked: "Écran verrouillé", unlockHold: "Maintenez pour déverrouiller",
     unlocking: "Déverrouillage…", lockHint: "L'écran ignore les touchers accidentels quand la tablette circule.",
     dawnReport: "Rapport d'aube", dawnReadAloud: "À annoncer à la table :", dawnNoDeath: "La nuit fut calme, personne n'est mort.",
@@ -115,8 +115,8 @@ const I18N = {
     bluffReadTitle: "À montrer / lire au Démon", bluffNotInPlay: "Ces personnages ne sont PAS en jeu",
     bluffAuto: "Tirer 3 au hasard", bluffClear: "Effacer", bluffPickHint: "Touchez 3 personnages bons absents pour les attribuer au Démon (ou tirez-les au hasard).",
     bluffPick: "Choisir les bluffs", bluffCount: "sélectionné(s)",
-    isDrunkTitle: "En réalité l'Ivrogne", isDrunkHint: "Le joueur croit être son rôle mais reçoit de fausses infos toute la partie.",
-    impairedFalseInfo: "⚠ Donne une FAUSSE info (ivre / empoisonné)",
+    isDrunkTitle: "En réalité l'Ivrogne", isDrunkHint: "Rôle réel : Marginal. Il croit être un Villageois, sans en avoir la capacité.",
+    impairedFalseInfo: "⚠ Capacité inactive. Simulez le réveil, sans appliquer son effet.",
     placeReminder: "Poser un jeton", reminderPlaced: "Jeton posé", pickReminderFirst: "Touchez d'abord un jeton, puis un joueur.",
     dockAutoClosed: "", drunkBadge: "IVRE"
   },
@@ -173,7 +173,7 @@ const I18N = {
     jinxes: "Jinxes", jinxNote: "Special rules when these roles coexist.",
     chooseTarget: "Choose target", applyToken: "Place token", targetDone: "Token placed",
     tutorialTitle: "Welcome, Storyteller!", tutorialSkip: "Start",
-    infoCalc: "Computed info", impaired: "drunk/poisoned → give FALSE info",
+    infoCalc: "Suggestion to adjudicate", impaired: "Ability inactive: information may be correct or incorrect, at the Storyteller's discretion.",
     steps: "seats", pairs: "pairs", evilNb: "evil neighbour(s)", deadEvil: "dead evil",
     showRole: "Show", point: "point to", decoy: "decoy",
     expireTokens: "Expire night tokens", expireQ: "Remove temporary tokens (Protected, Poisoned)?",
@@ -202,7 +202,7 @@ const I18N = {
     recap: "Recap", recapOngoing: "Game in progress", viewRecap: "View recap",
     exile: "Exile (Traveller)", doExile: "Exile", exiled: "Exiled", noTravelers: "No Traveller in play.",
     exileHint: "Anyone may call to exile a Traveller. Vote by majority of the living, then you decide.",
-    exileQ: "Exile this Traveller?", impairedBanner: "False info to give:",
+    exileQ: "Exile this Traveller?", impairedBanner: "Inactive abilities, simulate waking:",
     lock: "Screen lock", locked: "Screen locked", unlockHold: "Hold to unlock",
     unlocking: "Unlocking…", lockHint: "The screen ignores accidental taps while the tablet is passed around.",
     dawnReport: "Dawn report", dawnReadAloud: "Announce to the table:", dawnNoDeath: "The night was calm, nobody died.",
@@ -222,8 +222,8 @@ const I18N = {
     bluffReadTitle: "Show / read to the Demon", bluffNotInPlay: "These characters are NOT in play",
     bluffAuto: "Draw 3 at random", bluffClear: "Clear", bluffPickHint: "Tap 3 absent good characters to give to the Demon (or draw them at random).",
     bluffPick: "Pick bluffs", bluffCount: "selected",
-    isDrunkTitle: "Actually the Drunk", isDrunkHint: "The player thinks they have their role but gets false info all game.",
-    impairedFalseInfo: "⚠ Give FALSE info (drunk / poisoned)",
+    isDrunkTitle: "Actually the Drunk", isDrunkHint: "Actual character: Outsider. They believe they are a Townsfolk but do not have its ability.",
+    impairedFalseInfo: "⚠ Ability inactive. Simulate waking without applying its effect.",
     placeReminder: "Place token", reminderPlaced: "Token placed", pickReminderFirst: "Tap a token first, then a player.",
     dockAutoClosed: "", drunkBadge: "DRUNK"
   }
@@ -235,6 +235,11 @@ let SCRIPTS = {};           // id -> { meta, characters, charById }
 let CUSTOM = {};            // id -> script (importés)
 let MASTER = null;          // { rolesById, jinxes } base complète (lazy)
 let S = null;              // état de session (persistant)
+const TRAINING_KEY = "botc-mj-training-v2";
+let TRAINING = false, PERSISTENCE = null, READ_ONLY = false, RELEASE_GAME_LOCK = null;
+let OFFLINE = { ready: false, updateAvailable: false };
+let referenceScriptId = null;
+const tr = (fr, en) => S && S.lang === "en" ? en : fr;
 
 function defaultState() {
   return {
@@ -249,23 +254,81 @@ function defaultState() {
     settings: { keepAwake: true, volume: 0.6, accent: "purple", haptics: true, confirmActions: true, dockOpen: false },
     log: [],
     history: [],
-    bag: []
+    bag: [], bluffs: [], setupChecks: {}, winner: null, schemaVersion: 2
   };
 }
 
 function load() {
-  try {
-    const raw = localStorage.getItem(STORE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      S = Object.assign(defaultState(), parsed);
-      CUSTOM = parsed._custom || {};
-    } else { S = defaultState(); }
-  } catch (e) { S = defaultState(); }
+  TRAINING = sessionStorage.getItem(TRAINING_KEY + ":active") === "1";
+  PERSISTENCE = new GamePersistence(TRAINING ? sessionStorage : localStorage, TRAINING ? TRAINING_KEY : STORE_KEY);
+  const parsed = PERSISTENCE.read();
+  S = normalizeGame(parsed || defaultState());
+  CUSTOM = S._custom || {};
+  delete S._custom;
 }
 function save() {
+  if (READ_ONLY) { storageProblem(tr("Une autre fenêtre utilise cette partie. Rechargez après l'avoir fermée.", "Another window is editing this game. Close it, then reload.")); throw new Error("Read-only game"); }
+  S.players.forEach(p => GameCore.normalizePlayer(p));
   const out = Object.assign({}, S, { _custom: CUSTOM });
-  localStorage.setItem(STORE_KEY, JSON.stringify(out));
+  try { PERSISTENCE.write(out); }
+  catch (error) { storageProblem(error.name === "GameConflictError" ? tr("La partie a changé dans un autre onglet. Votre copie n'a pas écrasé la sauvegarde.", "Another tab changed the game. Your copy did not overwrite it.") : tr("Sauvegarde impossible. Exportez la partie avant de fermer.", "Unable to save. Export the game before closing.")); throw error; }
+}
+function normalizeGame(input) {
+  if (!input || typeof input !== "object" || !Array.isArray(input.players) || !input.night || !input.day || !["night", "day"].includes(input.phase)) throw new Error("Invalid game structure");
+  const state = Object.assign(defaultState(), input);
+  state.settings = Object.assign(defaultState().settings, input.settings);
+  state.timer = Object.assign(defaultState().timer, input.timer);
+  state.day = Object.assign({ number: 0, nominations: [] }, input.day);
+  state.night = Object.assign({ number: 1, mode: "first", checked: {} }, input.night);
+  if (!Array.isArray(state.day.nominations) || !state.night.checked || typeof state.night.checked !== "object" || Array.isArray(state.night.checked) || !Number.isInteger(state.night.number) || state.night.number < 1 || !Number.isInteger(state.day.number) || state.day.number < 0) throw new Error("Invalid night or nominations");
+  const ids = new Set();
+  state.players.forEach(p => {
+    if (!p || typeof p.id !== "string" || !/^[a-z0-9][a-z0-9_-]{0,159}$/i.test(p.id) || ids.has(p.id) || typeof p.name !== "string" || (p.roleId != null && typeof p.roleId !== "string")) throw new Error("Invalid or duplicate player");
+    ids.add(p.id); GameCore.normalizePlayer(p);
+  });
+  const byName = name => { const found = state.players.filter(p => p.name === name); return found.length === 1 ? found[0].id : null; };
+  const nominationIds = new Set();
+  state.day.nominations.forEach(n => {
+    if (!n || typeof n.id !== "string" || !/^[a-z0-9][a-z0-9_-]*$/i.test(n.id) || nominationIds.has(n.id) || !Number.isInteger(n.votes) || n.votes < 0) throw new Error("Invalid nomination");
+    nominationIds.add(n.id);
+    for (const key of ["voters", "ghostVoters"]) {
+      if (n[key] != null && (!Array.isArray(n[key]) || n[key].some(id => typeof id !== "string") || new Set(n[key]).size !== n[key].length)) throw new Error("Invalid nomination " + key);
+    }
+    if (n.threshold != null && (!Number.isInteger(n.threshold) || n.threshold < 1)) throw new Error("Invalid nomination threshold");
+    n.nomineeId = n.nomineeId || byName(n.nominee);
+    n.nominatorId = n.nominatorId || byName(n.nominator);
+    n.threshold = n.threshold || Math.ceil(state.players.filter(p => p.alive && !p.exiled).length / 2);
+    n.voters = n.voters || []; n.ghostVoters = n.ghostVoters || [];
+    if (n.executed && !state.day.execution) state.day.execution = { nominationId: n.id, playerId: n.nomineeId };
+  });
+  state.bluffs = Array.isArray(state.bluffs) ? state.bluffs : [];
+  state.schemaVersion = 2;
+  return state;
+}
+function storageProblem(message) {
+  READ_ONLY = true;
+  if (TIMER_HANDLE) { clearInterval(TIMER_HANDLE); TIMER_HANDLE = null; }
+  const panel = $("#storage-warning");
+  panel.classList.remove("hidden");
+  panel.innerHTML = `<h3>${tr("Protection de la sauvegarde", "Save protection")}</h3><p>${escapeHtml(message)}</p><button class="btn" id="conflict-export">${t("exportJSON")}</button> <button class="btn gold" id="conflict-reload">${tr("Recharger", "Reload")}</button> <button class="btn" id="conflict-training">${tr("Entraînement isolé", "Isolated training")}</button>`;
+  $("#app").inert = true; $(".topbar").inert = true; $("#tabs").inert = true; $("#dock").inert = true; $("#modal-overlay").inert = true;
+  $("#conflict-export").onclick = exportGameJSON;
+  $("#conflict-reload").onclick = () => location.reload();
+  $("#conflict-training").onclick = () => { READ_ONLY = false; panel.classList.add("hidden"); ["#app", ".topbar", "#tabs", "#dock", "#modal-overlay"].forEach(s => $(s).inert = false); startTestGame(); };
+}
+async function acquireGameLock() {
+  if (TRAINING || !navigator.locks) return;
+  await new Promise(resolve => {
+    navigator.locks.request(STORE_KEY, { ifAvailable: true }, lock => {
+      if (!lock) { READ_ONLY = true; resolve(); return; }
+      return new Promise(release => { RELEASE_GAME_LOCK = release; resolve(); });
+    }).catch(error => { storageProblem(error.message); resolve(); });
+  });
+}
+function backupBefore(reason) {
+  if (READ_ONLY) throw new Error("Read-only game");
+  try { PERSISTENCE.backup(reason); }
+  catch (error) { storageProblem(tr("Impossible de créer la sauvegarde de sécurité. Opération interrompue.", "Unable to create safety backup. Operation stopped.")); throw error; }
 }
 
 /* ---------- Helpers ---------- */
@@ -279,7 +342,10 @@ function loc(obj) { // objet {fr,en} -> chaîne
   return obj[S.lang] || obj.en || obj.fr || "";
 }
 function currentScript() { return SCRIPTS[S.scriptId] || CUSTOM[S.scriptId]; }
-function charById(id) { const sc = currentScript(); return sc && sc.charById[id]; }
+function charById(id) { const sc = currentScript(); return (sc && sc.charById[id]) || masterRole(id) || null; }
+function shownRole(p) { return charById(GameCore.shownRoleId(p)); }
+function nightRoleId(p) { return p.roleId === "drunk" ? GameCore.shownRoleId(p) : p.roleId; }
+function activePlayers() { return S.players.filter(p => !p.exiled && charById(p.roleId)?.team !== "fabled"); }
 function teamName(team) { return loc(GAME.teams[team]) || team; }
 
 function toast(msg, action) {
@@ -304,13 +370,16 @@ async function fetchJSON(url) {
 }
 async function boot() {
   load();
+  const requestedLang = new URLSearchParams(location.search).get("lang");
+  if (["fr", "en"].includes(requestedLang)) S.lang = requestedLang;
+  await acquireGameLock();
   if (S.timer && S.timer.running) S.timer.running = false;
   GAME = await fetchJSON("data/game.json");
   try {
     const m = await fetchJSON("data/all-roles.json");
     const rolesById = {}; (m.roles || []).forEach(r => rolesById[r.id] = r);
     MASTER = { rolesById, jinxes: m.jinxes || {} };
-  } catch (e) { MASTER = { rolesById: {}, jinxes: {} }; }
+  } catch (e) { throw new Error(tr("Base des rôles indisponible. Ouvrez l'app en ligne avant la partie.", "Role database unavailable. Open the app online before playing.") + " " + e.message); }
   for (const s of BUNDLED_SCRIPTS) {
     try {
       const data = await fetchJSON(s.file);
@@ -319,16 +388,20 @@ async function boot() {
   }
   // scripts personnalisés importés
   for (const id in CUSTOM) registerScript(id, CUSTOM[id], true);
-  if (!currentScript()) S.scriptId = BUNDLED_SCRIPTS[0].id;
+  if (!currentScript()) throw new Error("Saved script unavailable: " + S.scriptId);
+  initExperience();
   wireChrome();
   initParticles();
   applyLang();
   renderAll();
-  let launched = false;
-  try {
-    const p = new URLSearchParams(location.search);
-    if (p.get("test") === "1") { history.replaceState(null, "", location.pathname); startTestGame(); launched = true; }
-  } catch (_) {}
+  OfflineSupport.start(status => { OFFLINE = status; renderSessionBanner(); });
+  window.addEventListener("storage", event => {
+    if (!TRAINING && event.key === STORE_KEY && event.newValue !== PERSISTENCE.expected) storageProblem(tr("Cette partie a été modifiée dans un autre onglet.", "This game was changed in another tab."));
+  });
+  const params = new URLSearchParams(location.search);
+  let launched = params.get("test") === "1";
+  if (launched) { params.delete("test"); history.replaceState(null, "", location.pathname + (params.size ? "?" + params : "")); startTestGame(); }
+  if (READ_ONLY) { storageProblem(tr("La partie est déjà ouverte en écriture dans une autre fenêtre.", "The game is already open for editing in another window.")); return; }
   if (!launched && !S.tutoDone) showWelcome();
 }
 function showWelcome() {
@@ -347,8 +420,8 @@ function registerScript(id, data, custom = false) {
   const charById = {};
   (data.characters || []).forEach(c => charById[c.id] = c);
   const rec = { meta: data.meta || { id, name: id }, characters: data.characters || [], charById };
-  if (custom) CUSTOM[id] = data; else SCRIPTS[id] = rec;
-  if (!SCRIPTS[id]) SCRIPTS[id] = rec; // exposer aussi les customs via SCRIPTS pour lookup
+  if (custom) CUSTOM[id] = data;
+  SCRIPTS[id] = rec;
 }
 
 /* =========================================================================
@@ -357,7 +430,8 @@ function registerScript(id, data, custom = false) {
 function wireChrome() {
   $("#lang-fr").onclick = () => setLang("fr");
   $("#lang-en").onclick = () => setLang("en");
-  $$(".tab").forEach(tab => tab.onclick = () => switchView(tab.dataset.view));
+  $$(".tab[data-view]").forEach(tab => tab.onclick = () => switchView(tab.dataset.view));
+  $("#btn-tools").onclick = openMobileTools;
   $("#btn-menu").onclick = () => switchView("scripts");
   $("#modal-overlay").onclick = (e) => { if (e.target.id === "modal-overlay") closeModal(); };
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeModal(); });
@@ -385,7 +459,7 @@ function wireChrome() {
   const TABS = ["grimoire", "night", "day", "setup", "reference", "scripts"];
   app.addEventListener("touchstart", (e) => { if (e.touches.length !== 1) return; sx = e.touches[0].clientX; sy = e.touches[0].clientY; st0 = Date.now(); }, { passive: true });
   app.addEventListener("touchend", (e) => {
-    if (!e.changedTouches.length) return;
+    if (!e.changedTouches.length || e.target.closest(".seat, button, input, select, textarea, .badge, .chip, .ntarget") || document.body.classList.contains("modal-open")) return;
     const dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy;
     if (Date.now() - st0 < 500 && Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 2) {
       const i = TABS.indexOf(currentView);
@@ -395,8 +469,10 @@ function wireChrome() {
   }, { passive: true });
 }
 function handleShortcuts(e) {
+  if (READ_ONLY || playerScreenActive() || !$("#lock-overlay").classList.contains("hidden") || !$("#table-overlay").classList.contains("hidden")) return;
   if (e.target && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
-  if (e.key === " " && currentView === "night") { e.preventDefault(); const cb = document.querySelector(".night-step:not(.checked) .night-check"); if (cb) cb.click(); }
+  if (!$("#modal-overlay").classList.contains("hidden")) return;
+  if (e.key === " " && currentView === "night") { e.preventDefault(); const cb = [...document.querySelectorAll(".night-step:not(.checked) .night-check")].find(c => c.getClientRects().length); if (cb) cb.click(); }
   else if (e.key === "z" && (e.ctrlKey || e.metaKey) && e.shiftKey) { e.preventDefault(); redo(); }
   else if (e.key === "z" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); undo(); }
   else if (e.key === "y" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); redo(); }
@@ -410,6 +486,12 @@ function handleShortcuts(e) {
 }
 function applyTheme() { document.body.classList.toggle("bright", !!(S.settings && S.settings.bright)); document.body.classList.toggle("hc", !!(S.settings && S.settings.contrast)); }
 const DOCK_TOOLS = [
+  { icon: "☑", key: "setupChecklist", fn: () => openSetupChecklist() },
+  { icon: "👁", key: "privateMessage", fn: () => openMessageComposer() },
+  { icon: "📒", key: "informationNotebook", fn: () => openNotebook() },
+  { icon: "🧪", key: "trainingGame", fn: () => startTestGame() },
+  { icon: "🛟", key: "safetyBackups", fn: () => openBackups() },
+  { icon: "🏁", key: "endCheck", fn: () => openEndDecision() },
   { icon: "🔒", key: "lock", fn: () => lockScreen() },
   { icon: "🎲", key: "randomTool", fn: () => openRandomTool() },
   { icon: "🏁", key: "recap", fn: () => openRecap() },
@@ -614,7 +696,14 @@ function openSettings() {
   $("#set-import").onclick = importGameJSON;
   $("#set-whatsnew").onclick = showWelcome;
   $("#set-about").onclick = openAbout;
-  $("#set-reset").onclick = () => { if (confirm(t("resetQ"))) { localStorage.clear(); location.reload(); } };
+  $("#set-reset").onclick = () => {
+    if (!confirm(t("resetQ"))) return;
+    backupBefore(t("resetData"));
+    const storage = TRAINING ? sessionStorage : localStorage;
+    storage.removeItem(TRAINING ? TRAINING_KEY : STORE_KEY);
+    storage.removeItem(SAVES_KEY);
+    location.reload();
+  };
   if ($("#set-install")) $("#set-install").onclick = installApp;
 }
 
@@ -640,16 +729,18 @@ function openAbout() {
    Infrastructure : journal, annuler (undo), sauvegardes, fin de partie
    ========================================================================= */
 const SAVES_KEY = "botc-mj-saves-v1";
-function snapshot() {
+function snapshot(includeScripts = false) {
   return JSON.parse(JSON.stringify({
     players: S.players, night: S.night, day: S.day, phase: S.phase,
-    scriptId: S.scriptId, _view: currentView
+    scriptId: S.scriptId, bag: S.bag, bluffs: S.bluffs, setupChecks: S.setupChecks,
+    winner: S.winner, notes: S.notes, log: S.log, timer: S.timer, nightOrder: S.nightOrder,
+    ...(includeScripts ? { _custom: CUSTOM, snapshots: S.snapshots } : {}), _view: currentView
   }));
 }
 function pushHistory() {
   S.history = S.history || [];
   S.history.push(snapshot());
-  if (S.history.length > 50) S.history.shift();
+  while (S.history.length > 1 && (S.history.length > 50 || JSON.stringify(S.history).length > 250000)) S.history.shift();
   S.redo = [];
 }
 function captureSnapshot() {
@@ -673,8 +764,13 @@ function openSnapshots() {
     <div class="modal-actions"><button class="btn gold" onclick="closeModal()">${t("close")}</button></div>`);
 }
 function applySnapshot(snap) {
-  const view = snap._view; delete snap._view;
-  Object.assign(S, snap);
+  const restored = JSON.parse(JSON.stringify(snap));
+  const view = restored._view; delete restored._view;
+  delete restored._custom;
+  S = normalizeGame(Object.assign({}, S, restored));
+  delete S._custom;
+  if (TIMER_HANDLE) { clearInterval(TIMER_HANDLE); TIMER_HANDLE = null; }
+  S.timer.running = false;
   save(); buzz(15);
   if (view && view !== currentView) switchView(view); else renderAll();
 }
@@ -743,7 +839,7 @@ function openRandomTool() {
 
 /* ---------- Récapitulatif de fin de partie ---------- */
 function openRecap() {
-  const end = checkEndGame();
+  const end = S.winner ? { winner: S.winner, text: t(S.winner === "good" ? "endGood" : "endEvil") } : null;
   const order = ["townsfolk", "outsider", "minion", "demon", "traveler", "fabled"];
   const rows = S.players.map(p => {
     const c = p.roleId && charById(p.roleId);
@@ -755,7 +851,7 @@ function openRecap() {
     return { team, html: `<div class="log-row"><span>${status} ${glyph} <strong>${escapeHtml(p.name)}</strong></span> <span style="color:var(--muted)">${escapeHtml(roleName)}${align}</span></div>` };
   });
   rows.sort((a, b) => order.indexOf(a.team) - order.indexOf(b.team));
-  const living = S.players.filter(p => p.alive).length;
+  const living = activePlayers().filter(p => p.alive).length;
   const banner = end
     ? `<div class="recap-winner ${end.winner === "good" ? "win-good" : "win-evil"}">${end.winner === "good" ? "🏆" : "☠️"} ${escapeHtml(end.text)}</div>`
     : `<div class="hint">${t("recapOngoing")}</div>`;
@@ -788,7 +884,7 @@ function openRecap() {
 
 /* ---------- Vote d'exil (Voyageurs) ---------- */
 function openExile() {
-  const travs = S.players.filter(p => { const c = p.roleId && charById(p.roleId); return c && c.team === "traveler"; });
+  const travs = S.players.filter(p => !p.exiled && charById(p.roleId)?.team === "traveler");
   if (!travs.length) { toast(t("noTravelers")); return; }
   const living = S.players.filter(p => p.alive).length;
   const majority = Math.ceil(living / 2);
@@ -814,6 +910,7 @@ function openExile() {
     if (!confirmAction(t("exileQ") + " " + p.name)) return;
     pushHistory();
     p.alive = false;
+    p.exiled = true;
     logEvent(`${p.name} — ${t("exiled")}`, "🧳");
     buzz([30, 40, 30]); try { playBell(200, .7); } catch (_) {}
     save(); renderAll(); openExile(); announceEndIfAny();
@@ -828,20 +925,21 @@ function downloadFile(name, content, mime) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 function exportGameJSON() {
-  downloadFile("partie-" + new Date().toISOString().slice(0, 10) + ".json", JSON.stringify(snapshot(), null, 2), "application/json");
+  downloadFile("partie-" + new Date().toISOString().slice(0, 10) + ".json", JSON.stringify(snapshot(true), null, 2), "application/json");
 }
 function importGameJSON() {
   const inp = document.createElement("input"); inp.type = "file"; inp.accept = "application/json,.json";
   inp.onchange = () => {
     const f = inp.files[0]; if (!f) return;
     const r = new FileReader();
-    r.onload = () => { try { const d = JSON.parse(r.result); Object.assign(S, d); save(); closeModal(); renderAll(); toast("✔"); } catch (e) { alert("Import: " + e.message); } };
+    r.onload = () => { try { replaceGame(JSON.parse(r.result), t("importJSON")); } catch (e) { alert("Import: " + e.message); } };
+    r.onerror = () => alert(tr("Lecture du fichier impossible.", "Unable to read file."));
     r.readAsText(f);
   };
   inp.click();
 }
-function getSaves() { try { return JSON.parse(localStorage.getItem(SAVES_KEY) || "{}"); } catch (_) { return {}; } }
-function setSaves(o) { localStorage.setItem(SAVES_KEY, JSON.stringify(o)); }
+function getSaves() { return JSON.parse((TRAINING ? sessionStorage : localStorage).getItem(SAVES_KEY) || "{}"); }
+function setSaves(o) { (TRAINING ? sessionStorage : localStorage).setItem(SAVES_KEY, JSON.stringify(o)); }
 function openSavedGames() {
   const saves = getSaves();
   const ids = Object.keys(saves).sort((a, b) => saves[b].date - saves[a].date);
@@ -862,32 +960,23 @@ function openSavedGames() {
   $("#sv-new").onclick = () => {
     const name = prompt(t("gameName"), loc(currentScript().meta.name) + " " + new Date().toLocaleDateString());
     if (!name) return;
-    const s = getSaves(); const id = uid(); s[id] = { name, date: Date.now(), state: snapshot() }; setSaves(s); openSavedGames(); toast("💾");
+    const s = getSaves(); const id = uid(); s[id] = { name, date: Date.now(), state: snapshot(true) }; setSaves(s); openSavedGames(); toast("💾");
   };
   $$("[data-load]").forEach(b => b.onclick = () => {
     const s = getSaves()[b.dataset.load]; if (!s) return;
-    Object.assign(S, s.state); save(); closeModal(); renderAll(); toast("✔ " + s.name);
+    replaceGame(s.state, t("loadGame") + ": " + s.name);
   });
-  $$("[data-del]").forEach(b => b.onclick = () => { const s = getSaves(); delete s[b.dataset.del]; setSaves(s); openSavedGames(); });
+  $$("[data-del]").forEach(b => b.onclick = () => { if (!confirm(t("deleteGame") + " ?")) return; const s = getSaves(); delete s[b.dataset.del]; setSaves(s); openSavedGames(); });
 }
 
 /* Détection de fin de partie (suggestion, non contraignante) */
 function checkEndGame() {
-  const alive = S.players.filter(p => p.alive);
-  const demonInPlay = S.players.some(p => { const c = p.roleId && charById(p.roleId); return c && c.team === "demon"; });
-  const demonAlive = alive.some(p => { const c = p.roleId && charById(p.roleId); return c && c.team === "demon"; });
-  if (demonInPlay && !demonAlive) return { winner: "good", text: t("endGood") };
-  const aliveNonTravel = alive.filter(p => { const c = p.roleId && charById(p.roleId); return !c || c.team !== "traveler"; });
-  if (aliveNonTravel.length <= 2 && S.players.length >= 5) return { winner: "evil", text: t("endEvil") };
-  return null;
+  const candidate = GameCore.endCandidate(S, charById);
+  return candidate ? { ...candidate, text: t(candidate.winner === "good" ? "endGood" : "endEvil") } : null;
 }
 function announceEndIfAny() {
   const r = checkEndGame();
-  if (r) {
-    playBell(r.winner === "good" ? 720 : 180, 1.2); buzz([40, 60, 40]);
-    logEvent(r.text, r.winner === "good" ? "🏆" : "☠");
-    setTimeout(() => showEndOverlay(r), 250);
-  }
+  if (r && !S.winner) toast(tr("Fin possible : résolvez les capacités avant de conclure.", "Possible game end: resolve abilities before concluding."), { label: t("endCheck"), fn: openEndDecision });
 }
 function showEndOverlay(r) {
   const good = r.winner === "good";
@@ -978,10 +1067,10 @@ function updatePhaseBadge() {
 }
 function updateStatusBar() {
   const sb = $("#statusbar"); if (!sb) return;
-  const n = S.players.length;
+  const n = activePlayers().length;
   if (!n) { sb.innerHTML = ""; sb.style.display = "none"; return; }
   sb.style.display = "";
-  const living = S.players.filter(p => p.alive).length;
+  const living = activePlayers().filter(p => p.alive).length;
   const majority = Math.ceil(living / 2);
   sb.innerHTML = `
     <span class="sb-item">🌿 <b>${living}</b> ${t("livingC").toLowerCase()}</span>
@@ -1000,7 +1089,9 @@ function flashPhase(kind) {
 
 /* ---------- Render dispatcher ---------- */
 function renderAll() {
+  S.players.forEach(p => GameCore.normalizePlayer(p));
   updatePhaseBadge();
+  renderSessionBanner();
   ({
     grimoire: renderGrimoire, night: renderNight, day: renderDay,
     setup: renderSetup, reference: renderReference, scripts: renderScripts
@@ -1020,6 +1111,8 @@ function renderGrimoire() {
       <button class="btn small ghost" id="g-clear">✧ ${t("clearRoles")}</button>
       <button class="btn small ghost" id="g-undo">↶ ${t("undo")}</button>
       <button class="btn small ghost" id="g-redo">↪ ${t("redo")}</button>
+      <button class="btn small ghost" id="g-layout">${S.settings.gmList ? tr("Cercle", "Circle") : tr("Liste MJ", "GM list")}</button>
+      <button class="btn small ghost" id="g-checklist">${tr("Préparation", "Preparation")}</button>
       <button class="btn small ghost" id="g-zoomout">➖</button>
       <button class="btn small ghost" id="g-zoomin">➕</button>
       <input type="text" id="g-search" class="g-search" placeholder="🔍 ${t("searchPlayer")}" autocomplete="off">
@@ -1031,7 +1124,9 @@ function renderGrimoire() {
   `;
   $("#g-addmenu").onclick = openAddMenu;
   $("#g-shuffle").onclick = shuffleRoles;
-  $("#g-clear").onclick = () => { if (confirmAction(t("confirmClear"))) { pushHistory(); S.players.forEach(p => p.roleId = null); save(); renderGrimoire(); } };
+  $("#g-clear").onclick = () => { if (confirm(t("confirmClear"))) { backupBefore(t("clearRoles")); pushHistory(); S.players.forEach(p => GameCore.setRole(p, null)); save(); renderGrimoire(); } };
+  $("#g-layout").onclick = () => { S.settings.gmList = !S.settings.gmList; save(); renderGrimoire(); };
+  $("#g-checklist").onclick = openSetupChecklist;
   $("#g-undo").onclick = undo;
   $("#g-redo").onclick = redo;
   $("#g-zoomin").onclick = () => { GZOOM = Math.min(1.8, GZOOM + 0.15); $("#circle").style.transform = `scale(${GZOOM})`; };
@@ -1048,6 +1143,12 @@ function renderGrimoire() {
     });
   };
   $("#g-new").onclick = newGame;
+  if (S.settings.gmList) {
+    const list = $("#circle"); list.id = "gm-list"; list.className = "gm-list"; list.removeAttribute("style");
+    renderGMList(list);
+    gsearch.oninput = () => { const q = gsearch.value.toLowerCase(); [...list.children].forEach(row => row.hidden = !row.textContent.toLowerCase().includes(q)); };
+    return;
+  }
 
   const circle = $("#circle");
   const center = document.createElement("div");
@@ -1100,6 +1201,7 @@ function renderGrimoire() {
     if (p.statuses.poisoned) badges.push(`<span class="badge poisoned">☠</span>`);
     if (p.statuses.drunk) badges.push(`<span class="badge drunk">🍺</span>`);
     if (p.statuses.protected) badges.push(`<span class="badge protected">🛡</span>`);
+    if (p.shownRoleId) badges.push(`<span class="badge">${tr("Croit être", "Believes")} : ${escapeHtml(loc((shownRole(p) || { name: "?" }).name))}</span>`);
     if (!p.alive && p.ghostUsed) badges.push(`<span class="badge ghost">👻✔</span>`);
     else if (!p.alive) badges.push(`<span class="badge ghost">👻</span>`);
     (p.reminders || []).forEach((r, ri) => badges.push(`<span class="badge custom" data-pid="${p.id}" data-ridx="${ri}">${escapeHtml(r.label)}</span>`));
@@ -1143,8 +1245,7 @@ function attachReminderDrags() {
         const src = S.players.find(x => x.id === rd.pid);
         if (target && src && target.id !== src.id && src.reminders[rd.ridx]) {
           pushHistory();
-          const [tok] = src.reminders.splice(rd.ridx, 1);
-          target.reminders = target.reminders || []; target.reminders.push(tok);
+          GameCore.moveReminder(S.players, src.id, rd.ridx, target.id);
           save(); renderGrimoire(); buzz(12); toast("→ " + target.name);
         }
       };
@@ -1216,9 +1317,9 @@ function quickActions(pid) {
     <div class="modal-actions"><button class="btn small ghost" id="qa-full">✎ ${t("assignRole")}…</button><span class="spacer"></span><button class="btn gold" onclick="closeModal()">${t("close")}</button></div>`);
   const rr = () => { save(); renderGrimoire(); quickActions(pid); };
   $("#qa-kill").onclick = () => { pushHistory(); p.alive = !p.alive; if (p.alive) p.ghostUsed = false; const rn = p.roleId ? loc(charById(p.roleId).name) : ""; logEvent(`${p.name}${rn ? " (" + rn + ")" : ""} ${p.alive ? t("revived") : t("killed")}`, p.alive ? "✚" : "☠"); buzz(p.alive ? 15 : [20, 40]); save(); renderGrimoire(); if (!p.alive) announceEndIfAny(); quickActions(pid); };
-  $("#qa-poison").onclick = () => { p.statuses.poisoned = !p.statuses.poisoned; rr(); };
-  $("#qa-protect").onclick = () => { p.statuses.protected = !p.statuses.protected; rr(); };
-  $("#qa-drunk").onclick = () => { p.statuses.drunk = !p.statuses.drunk; rr(); };
+  $("#qa-poison").onclick = () => { toggleManualStatus(p, "poisoned"); rr(); };
+  $("#qa-protect").onclick = () => { toggleManualStatus(p, "protected"); rr(); };
+  $("#qa-drunk").onclick = () => { toggleManualStatus(p, "drunk"); rr(); };
   $("#qa-full").onclick = () => { closeModal(); openSeatModal(pid); };
 }
 function nearestSeatIdx(x, y) {
@@ -1285,18 +1386,29 @@ function openAddMenu() {
 }
 function shuffleSeats() { if (!S.players.length) return; pushHistory(); S.players = shuffleArr(S.players); save(); renderGrimoire(); toast("🔀"); }
 function loadDemoGame() {
-  if (!confirmAction(t("confirmNew"))) return;
+  return startTestGame();
+}
+function createTrainingGame() {
   const demo = ["washerwoman", "chef", "empath", "fortuneteller", "monk", "poisoner", "imp"];
   S.scriptId = "trouble-brewing";
   S.players = demo.map((r, i) => ({ id: uid(), name: (S.lang === "fr" ? "Joueur " : "Player ") + (i + 1), roleId: r, alive: true, ghostUsed: false, align: (r === "poisoner" || r === "imp") ? "evil" : "good", statuses: { poisoned: false, drunk: false, protected: false }, reminders: [], claim: "" }));
   S.night = { mode: "first", number: 1, checked: {} }; S.day = { number: 0, nominations: [] };
   S.phase = "night"; S.log = []; S.history = []; S.bag = []; S.bluffs = [];
-  save(); renderAll(); toast("🎲");
+  S.night.aliveAtDusk = S.players.map(p => p.id);
+  S.tutoDone = true;
 }
-/* Lance la partie de test (démo) puis affiche le Grimoire — appelable depuis le guide. */
 function startTestGame() {
-  loadDemoGame();
-  switchView("grimoire");
+  if (TRAINING && !confirm(tr("Recommencer l'entraînement ? La vraie partie reste intacte.", "Restart training? Your real game stays untouched."))) return false;
+  if (TIMER_HANDLE) { clearInterval(TIMER_HANDLE); TIMER_HANDLE = null; }
+  if (!TRAINING && !READ_ONLY) backupBefore(tr("Avant entraînement", "Before training"));
+  const prefs = { lang: S.lang, sound: S.sound, settings: { ...S.settings } };
+  TRAINING = true; READ_ONLY = false;
+  if (RELEASE_GAME_LOCK) { RELEASE_GAME_LOCK(); RELEASE_GAME_LOCK = null; }
+  PERSISTENCE = new GamePersistence(sessionStorage, TRAINING_KEY); PERSISTENCE.read();
+  S = Object.assign(defaultState(), prefs);
+  createTrainingGame();
+  sessionStorage.setItem(TRAINING_KEY + ":active", "1");
+  save(); closeModal(); switchView("grimoire"); return true;
 }
 
 function addTravelerPrompt() {
@@ -1334,24 +1446,10 @@ function addTravelerPrompt() {
 
 function revealRole(pid) {
   const p = S.players.find(x => x.id === pid); if (!p) return;
-  const c = p.roleId && charById(p.roleId);
-  const team = c ? c.team : "empty";
-  const glyph = c ? (TEAM_GLYPH[c.team] || "🎲") : "❓";
-  const align = p.align === "evil" ? "🔴 " + t("evil") : (p.align === "good" ? "🔵 " + t("good") : "");
-  const ov = document.createElement("div");
-  ov.className = "reveal-overlay t-" + team;
-  ov.innerHTML = `<div class="reveal-card">
-    <div class="reveal-small">${escapeHtml(p.name)} · ${t("youAre")}</div>
-    <div class="reveal-glyph">${glyph}</div>
-    <div class="reveal-name">${c ? escapeHtml(loc(c.name)) : "—"}</div>
-    ${c ? `<div class="reveal-ability">${escapeHtml(loc(c.ability))}</div>` : ""}
-    ${align ? `<div class="reveal-align">${align}</div>` : ""}
-    <div class="reveal-hint">👆 ${t("revealTap")}</div>
-  </div>`;
-  ov.onclick = () => ov.remove();
-  document.body.appendChild(ov);
-  closeModal();
-  buzz(15);
+  const c = shownRole(p);
+  if (!c || (p.roleId === "drunk" && (!p.shownRoleId || c.team !== "townsfolk")) || (p.roleId === "lunatic" && (!p.shownRoleId || c.team !== "demon"))) return toast(tr("Choisissez d'abord un rôle montré valide dans la fiche.", "Choose a valid shown character in the player card first."));
+  const alignment = p.roleId === "lunatic" && p.shownRoleId ? "evil" : GameCore.effectiveAlignment(p, charById);
+  showPlayerScreen({ title: p.name + " · " + t("youAre"), lines: [loc(c.name), loc(c.ability), t(alignment)], playerId: p.id, kind: "role" });
 }
 function highlightNeighbours(pid) {
   const idx = S.players.findIndex(p => p.id === pid); if (idx < 0) return;
@@ -1363,6 +1461,7 @@ function highlightNeighbours(pid) {
 }
 function openSeatModal(pid) {
   const p = S.players.find(x => x.id === pid); if (!p) return;
+  GameCore.normalizePlayer(p);
   const sc = currentScript();
   const role = p.roleId ? charById(p.roleId) : null;
 
@@ -1385,7 +1484,7 @@ function openSeatModal(pid) {
     `<span class="chip" data-rem="${escapeHtml(loc(r))}" data-remkey="${escapeHtml(r.en || "")}">＋ ${escapeHtml(loc(r))}</span>`).join("");
   if (!remChips) remChips = `<span style="color:var(--muted);font-size:.8rem">${t("noReminders")}</span>`;
   const activeRem = (p.reminders || []).map((r, i) =>
-    `<span class="chip on" data-remdel="${i}">${escapeHtml(r.label)} ✕</span>`).join("");
+    `<button class="chip on" data-remdel="${i}">${escapeHtml(r.label)}${r.sourceRoleId ? " · " + escapeHtml(loc((charById(r.sourceRoleId) || { name: r.sourceRoleId }).name)) : ""}${r.effect ? " · " + t(r.effect) + " (" + expiryName(r.expires) + ")" : ""} ✕</button>`).join("");
 
   openModal(`
     <button class="close-x" onclick="closeModal()">×</button>
@@ -1406,11 +1505,12 @@ function openSeatModal(pid) {
       <button class="btn small ${p.align === "evil" ? "gold" : "ghost"}" id="s-evil">🔴 ${t("evil")}</button>
     </div>
 
-    ${role && (role.team === "townsfolk" || role.team === "outsider") ? `
+    ${role && (role.team === "townsfolk" || role.id === "drunk") ? `
     <div class="row" style="margin-top:8px">
-      <button class="btn small ${p.statuses.drunk ? "gold" : "ghost"}" id="s-isdrunk">🍺 ${t("isDrunkTitle")}${p.statuses.drunk ? " ✔" : ""}</button>
+      <button class="btn small ${p.roleId === "drunk" ? "gold" : "ghost"}" id="s-isdrunk">🍺 ${t("isDrunkTitle")}${p.roleId === "drunk" ? " ✔" : ""}</button>
       <span style="color:var(--muted);font-size:.72rem;flex:1;min-width:140px">${t("isDrunkHint")}</span>
     </div>` : ""}
+    ${playerExtrasHtml(p)}
 
     <label class="field">💬 ${t("claim")} <span style="opacity:.6">(${t("claimHint")})</span></label>
     <input type="text" id="s-claim" value="${escapeHtml(p.claim || "")}" placeholder="${t("claimNone")}" />
@@ -1420,6 +1520,8 @@ function openSeatModal(pid) {
     <div id="role-chips">${roleChips}</div>
 
     <h3>${t("addReminder")}</h3>
+    <p class="hint">${tr("Les boutons de statut sont des effets manuels. Un effet provenant d'un jeton se retire en supprimant ce jeton. Les notes libres n'activent aucun pouvoir.", "Status buttons control manual effects. Remove a sourced effect by removing its token. Free-text notes never activate abilities.")}</p>
+    <button class="btn small" id="s-rempicker">${tr("Choisir un jeton d'un autre rôle", "Choose another character's reminder")}</button>
     <div class="chip-wrap" id="rem-src">${remChips}
       <span class="chip" data-remcustom="1">✎ ${t("customReminder")}</span>
     </div>
@@ -1434,7 +1536,9 @@ function openSeatModal(pid) {
     </div>
   `);
 
-  const rerender = () => { save(); openSeatModal(pid); renderGrimoire(); };
+  const rerender = () => { save(); renderAll(); openSeatModal(pid); };
+  wirePlayerExtras(p, rerender);
+  $("#s-rempicker").onclick = () => openReminderPicker(pid);
   $("#s-alive").onclick = () => {
     pushHistory();
     p.alive = !p.alive; if (p.alive) p.ghostUsed = false;
@@ -1444,18 +1548,18 @@ function openSeatModal(pid) {
     save(); openSeatModal(pid); renderGrimoire();
     if (!p.alive) { announceEndIfAny(); toastUndo(`☠ ${p.name}`); }
   };
-  if ($("#s-ghost")) $("#s-ghost").onclick = () => { p.ghostUsed = !p.ghostUsed; rerender(); };
-  $("#s-poison").onclick = () => { p.statuses.poisoned = !p.statuses.poisoned; rerender(); };
-  $("#s-drunk").onclick = () => { p.statuses.drunk = !p.statuses.drunk; rerender(); };
+  if ($("#s-ghost")) $("#s-ghost").onclick = () => { pushHistory(); p.ghostUsed = !p.ghostUsed; rerender(); };
+  $("#s-poison").onclick = () => { toggleManualStatus(p, "poisoned"); rerender(); };
+  $("#s-drunk").onclick = () => { toggleManualStatus(p, "drunk"); rerender(); };
   if ($("#s-isdrunk")) $("#s-isdrunk").onclick = () => {
-    p.statuses.drunk = !p.statuses.drunk;
-    p.reminders = (p.reminders || []).filter(r => r.key !== "IsTheDrunk");
-    if (p.statuses.drunk) p.reminders.push({ label: t("drunkBadge"), key: "IsTheDrunk" });
+    pushHistory();
+    if (p.roleId === "drunk") GameCore.setRole(p, p.shownRoleId || null);
+    else GameCore.setRole(p, "drunk", p.roleId);
     rerender();
   };
-  $("#s-protect").onclick = () => { p.statuses.protected = !p.statuses.protected; rerender(); };
-  $("#s-good").onclick = () => { p.align = (p.align === "good") ? null : "good"; rerender(); };
-  $("#s-evil").onclick = () => { p.align = (p.align === "evil") ? null : "evil"; rerender(); };
+  $("#s-protect").onclick = () => { toggleManualStatus(p, "protected"); rerender(); };
+  $("#s-good").onclick = () => { pushHistory(); p.align = (p.align === "good") ? null : "good"; rerender(); };
+  $("#s-evil").onclick = () => { pushHistory(); p.align = (p.align === "evil") ? null : "evil"; rerender(); };
   const claimEl = $("#s-claim");
   if (claimEl) claimEl.onchange = () => { p.claim = claimEl.value.trim(); save(); renderGrimoire(); };
   const rs = $("#role-search");
@@ -1467,20 +1571,19 @@ function openSeatModal(pid) {
     });
   };
   $$("[data-role]").forEach(ch => ch.onclick = () => {
-    p.roleId = (p.roleId === ch.dataset.role) ? null : ch.dataset.role;
-    const c = p.roleId && charById(p.roleId);
-    if (c) { if (c.team === "demon" || c.team === "minion") p.align = p.align || "evil"; else if (c.team !== "traveler") p.align = p.align || "good"; }
+    pushHistory();
+    GameCore.setRole(p, (p.roleId === ch.dataset.role) ? null : ch.dataset.role);
     rerender();
   });
   $$("[data-rem]").forEach(ch => ch.onclick = () => {
-    addReminderToken(p, ch.dataset.rem, ch.dataset.remkey || ""); rerender();
+    openReminderPicker(pid, role.id, roleReminders.findIndex(r => loc(r) === ch.dataset.rem));
   });
   $$("[data-remdel]").forEach(ch => ch.onclick = () => {
-    p.reminders.splice(+ch.dataset.remdel, 1); rerender();
+    pushHistory(); GameCore.removeReminder(p, +ch.dataset.remdel); rerender();
   });
   $("[data-remcustom]").onclick = () => {
     const label = prompt(t("customReminder"));
-    if (label && label.trim()) { addReminderToken(p, label.trim()); rerender(); }
+    if (label && label.trim()) { pushHistory(); GameCore.addReminder(S.players, p.id, { label: label.trim(), effect: null, expires: "manual" }); rerender(); }
   };
   $("#s-rename").onclick = () => {
     const nn = prompt(t("playerName"), p.name);
@@ -1488,7 +1591,9 @@ function openSeatModal(pid) {
   };
   $("#s-reveal").onclick = () => revealRole(pid);
   $("#s-remove").onclick = () => {
-    S.players = S.players.filter(x => x.id !== pid); save(); closeModal(); renderGrimoire();
+    if (!confirm(t("remove") + " : " + p.name + " ?")) return;
+    backupBefore(t("remove")); pushHistory();
+    S.players = S.players.filter(x => x.id !== pid); save(); closeModal(); renderAll();
   };
   highlightNeighbours(pid);
 }
@@ -1496,6 +1601,8 @@ function openSeatModal(pid) {
 function shuffleRoles() {
   const sc = currentScript();
   if (!S.players.length) return toast(t("centerHint"));
+  if (!confirm(tr("Réattribuer tous les rôles ? Une copie sera conservée.", "Reassign all characters? A safety copy will be kept."))) return;
+  backupBefore(t("shuffle")); pushHistory();
   // Attribution simple : rôles non-voyageurs mélangés, distribués selon la table de setup si possible.
   const pool = sc.characters.filter(c => c.team !== "traveler" && c.team !== "fabled");
   const n = S.players.length;
@@ -1506,21 +1613,26 @@ function shuffleRoles() {
     const pick = (team, k) => shuffleArr(pool.filter(c => c.team === team)).slice(0, k);
     chosen = [...pick("townsfolk", nt), ...pick("outsider", no), ...pick("minion", nm), ...pick("demon", nd)];
   }
+  if (!pool.length) return toast(t("needRoles"));
   while (chosen.length < n) chosen.push(...shuffleArr(pool));
   chosen = shuffleArr(chosen).slice(0, n);
-  S.players.forEach((p, i) => p.roleId = chosen[i] ? chosen[i].id : null);
+  S.players.forEach((p, i) => { GameCore.setRole(p, chosen[i] ? chosen[i].id : null); p.align = null; });
   save(); renderGrimoire(); toast("🎲");
 }
 function shuffleArr(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
 
 function newGame() {
-  if (!confirmAction(t("confirmNew"))) return;
+  if (!confirm(t("confirmNew"))) return;
+  backupBefore(t("newGame"));
   const keepPlayers = S.players.map(p => ({ id: uid(), name: p.name, roleId: null, alive: true, ghostUsed: false, statuses: { poisoned: false, drunk: false, protected: false }, reminders: [], claim: "" }));
   S.players = keepPlayers;
   S.night = { mode: "first", number: 1, checked: {} };
   S.day = { number: 0, nominations: [] };
   S.phase = "night";
-  S.log = []; S.history = [];
+  S.log = []; S.history = []; S.redo = []; S.bluffs = []; S.bag = [];
+  S.winner = null; S.setupChecks = {}; S.snapshots = []; S.notes = "";
+  if (TIMER_HANDLE) { clearInterval(TIMER_HANDLE); TIMER_HANDLE = null; }
+  S.timer.running = false; S.timer.remaining = S.timer.total;
   save(); renderAll(); toast(t("toastNew"));
 }
 
@@ -1536,15 +1648,15 @@ function bluffsBlock() {
   const sc = currentScript();
   const inPlay = inPlayRoleIds();
   const good = sc.characters.filter(c => (c.team === "townsfolk" || c.team === "outsider") && !inPlay.has(c.id));
-  if (!good.length) return "";
   const chosen = new Set(S.bluffs || []);
   const candBadges = good.map(c => {
     const on = chosen.has(c.id);
-    return `<span class="bluff-cand ${on ? "on" : ""}" data-bluff="${c.id}">${on ? "✓ " : ""}${escapeHtml(loc(c.name))}</span>`;
+    return `<button class="bluff-cand ${on ? "on" : ""}" aria-pressed="${on}" data-bluff="${escapeHtml(c.id)}">${on ? "✓ " : ""}${escapeHtml(loc(c.name))}</button>`;
   }).join(" ");
   const locked = (S.bluffs || []).map(id => charById(id)).filter(Boolean);
   let readout = "";
-  if (locked.length) {
+  const valid = chosen.size === 3 && (S.bluffs || []).length === 3 && [...chosen].every(id => good.some(c => c.id === id));
+  if (valid) {
     const names = locked.map(c => `<b>${escapeHtml(loc(c.name))}</b>`).join(" · ");
     readout = `<div class="bluff-readout">
       <div class="bluff-read-title">🎭 ${t("bluffReadTitle")}</div>
@@ -1557,12 +1669,16 @@ function bluffsBlock() {
     <div class="bluff-cands">${candBadges}</div>
     <div class="row" style="margin-top:8px">
       <button class="btn small ghost" data-bluff-lock="1">🎲 ${t("bluffAuto")}</button>
+      <button class="btn small gold" data-bluff-show ${valid ? "" : "disabled"}>👁 ${tr("Montrer au Démon", "Show to Demon")}</button>
       ${chosen.size ? `<button class="btn small ghost" data-bluff-clear="1">✖ ${t("bluffClear")}</button>` : ""}
     </div>
     ${readout}
+    ${chosen.size && !valid ? `<p class="hint">${tr("Choisissez exactement trois rôles valides. Une attribution ou un changement de script peut invalider la sélection.", "Choose exactly three valid characters. Assigning roles or changing scripts can invalidate this selection.")}</p>` : ""}
   </div>`;
 }
 function toggleBluff(id) {
+  if (!currentScript().charById[id] || inPlayRoleIds().has(id)) return toast(tr("Ce personnage n'est plus disponible.", "This character is no longer available."));
+  pushHistory();
   S.bluffs = S.bluffs || [];
   const i = S.bluffs.indexOf(id);
   if (i >= 0) S.bluffs.splice(i, 1);
@@ -1584,69 +1700,79 @@ function lockBluffs() {
   const sc = currentScript();
   const inPlay = inPlayRoleIds();
   const good = sc.characters.filter(c => (c.team === "townsfolk" || c.team === "outsider") && !inPlay.has(c.id));
-  S.bluffs = shuffleArr(good).slice(0, 3).map(c => c.id);
+  if (good.length < 3) return toast(tr("Moins de trois personnages disponibles.", "Fewer than three characters available."));
+  pushHistory(); S.bluffs = shuffleArr(good).slice(0, 3).map(c => c.id);
   save(); renderNight();
 }
 
 /* ---------- Calculateur d'infos (vraie info depuis le grimoire) ---------- */
-function isEvilTrue(p) { const c = p.roleId && charById(p.roleId); return (c && (c.team === "minion" || c.team === "demon")) || p.align === "evil"; }
-function holderOf(charId) { return S.players.find(p => p.roleId === charId); }
+function isEvilTrue(p) { return GameCore.effectiveAlignment(p, charById) === "evil"; }
+function holderOf(charId) { return S.players.find(p => GameCore.shownRoleId(p) === charId && p.alive && !p.exiled) || S.players.find(p => GameCore.shownRoleId(p) === charId && !p.exiled); }
 function aliveNeighbours(idx) {
-  const n = S.players.length; const res = [];
+  const seated = activePlayers(), source = S.players[idx];
+  idx = seated.findIndex(p => p.id === source?.id);
+  if (idx < 0) return [];
+  const n = seated.length; const res = [];
   for (const dir of [-1, 1]) {
     let k = idx;
-    for (let s = 0; s < n; s++) { k = (k + dir + n) % n; if (k === idx) break; if (S.players[k].alive) { res.push(S.players[k]); break; } }
+    for (let s = 0; s < n; s++) { k = (k + dir + n) % n; if (k === idx) break; if (seated[k].alive) { res.push(seated[k]); break; } }
   }
   return res;
 }
 function seatDistance(i, j) { const n = S.players.length; const d = Math.abs(i - j); return Math.min(d, n - d); }
-function computeNightInfo(charId) {
-  const sc = currentScript(); const holder = holderOf(charId); if (!holder) return null;
+function computeNightInfo(charId, playerId) {
+  const holder = playerId ? S.players.find(p => p.id === playerId) : holderOf(charId); if (!holder) return null;
   const idx = S.players.indexOf(holder);
-  const impaired = holder.statuses && (holder.statuses.poisoned || holder.statuses.drunk);
+  const impaired = GameCore.isImpaired(holder);
   let text = null;
   if (charId === "empath") {
     const nb = aliveNeighbours(idx); const evil = nb.filter(isEvilTrue).length;
     text = `${evil} ${t("evilNb")}`;
   } else if (charId === "chef") {
-    let pairs = 0; const n = S.players.length;
-    for (let i = 0; i < n; i++) { if (isEvilTrue(S.players[i]) && isEvilTrue(S.players[(i + 1) % n])) pairs++; }
+    let pairs = 0; const seated = activePlayers(), n = seated.length;
+    for (let i = 0; i < n; i++) { if (isEvilTrue(seated[i]) && isEvilTrue(seated[(i + 1) % n])) pairs++; }
     text = `${pairs} ${t("pairs")}`;
   } else if (charId === "oracle") {
-    const de = S.players.filter(p => !p.alive && isEvilTrue(p)).length;
+    const de = activePlayers().filter(p => !p.alive && isEvilTrue(p)).length;
     text = `${de} ${t("deadEvil")}`;
   } else if (charId === "clockmaker") {
     const demons = S.players.map((p, i) => ({ p, i })).filter(x => { const c = x.p.roleId && charById(x.p.roleId); return c && c.team === "demon"; });
     const minions = S.players.map((p, i) => ({ p, i })).filter(x => { const c = x.p.roleId && charById(x.p.roleId); return c && c.team === "minion"; });
     if (demons.length && minions.length) { const d = Math.min(...minions.map(m => Math.min(...demons.map(dm => seatDistance(dm.i, m.i))))); text = `${d} ${t("steps")}`; }
   } else if (charId === "flowergirl") {
+    if (S.day.nominations.some(nm => nm.voteMode === "manual" || nm.votes !== (nm.voters || []).length)) return { text: tr("Votes détaillés incomplets : information à déterminer par le MJ.", "Detailed voting incomplete: Storyteller must determine the information."), impaired };
     const demonVoted = (S.day.nominations || []).some(nm => (nm.voters || []).some(id => { const p = S.players.find(x => x.id === id); return p && isEvilTrue(p) && (p.roleId && charById(p.roleId).team === "demon"); }));
-    text = demonVoted ? "✅ oui/yes" : "❌ non/no";
+    text = demonVoted ? tr("Oui", "Yes") : tr("Non", "No");
   } else if (charId === "washerwoman" || charId === "librarian" || charId === "investigator") {
     const wantTeam = charId === "washerwoman" ? "townsfolk" : (charId === "librarian" ? "outsider" : "minion");
     const cands = S.players.filter(p => { const c = p.roleId && charById(p.roleId); return c && c.team === wantTeam && p.id !== holder.id; });
     if (cands.length) {
-      const pick = cands[0];
+      S.night.suggestions = S.night.suggestions || {};
+      const infoKey = charId + ":" + holder.id;
+      const suggestion = S.night.suggestions[infoKey];
+      const pick = (suggestion && cands.find(p => p.id === suggestion.pick)) || cands[0];
       const others = S.players.filter(p => p.id !== holder.id && p.id !== pick.id);
-      const decoy = others.length ? shuffleArr(others)[0] : null;
+      const decoy = (suggestion && others.find(p => p.id === suggestion.decoy)) || others[0] || null;
+      S.night.suggestions[infoKey] = { pick: pick.id, decoy: decoy && decoy.id };
       text = `${t("showRole")} « ${loc(charById(pick.roleId).name)} » · ${t("point")} ${pick.name}${decoy ? " + " + decoy.name + " (" + t("decoy") + ")" : ""}`;
-    } else if (charId === "librarian") { text = "0 (aucun Marginal / no Outsider)"; }
+    } else if (charId === "librarian") { text = tr("0 (aucun Marginal)", "0 (no Outsider)"); }
   }
   if (text == null) return null;
   return { text, impaired };
 }
-function infoBlock(charId) {
-  const info = computeNightInfo(charId); if (!info) return "";
+function infoBlock(charId, playerId) {
+  const info = computeNightInfo(charId, playerId); if (!info) return "";
   return `<div style="margin-top:8px;padding:7px 9px;border:1px solid ${info.impaired ? "var(--blood)" : "var(--outsider)"};border-radius:8px;background:${info.impaired ? "rgba(160,30,44,.10)" : "rgba(47,165,160,.08)"}">
     <span style="font-size:.72rem;color:${info.impaired ? "var(--blood-bright)" : "var(--outsider)"};font-weight:700">🧮 ${t("infoCalc")}: </span>
     <span style="font-weight:700">${escapeHtml(info.text)}</span>
+    <p class="hint">${tr("Suggestion uniquement : les enregistrements particuliers, capacités et choix du MJ peuvent la modifier. Consignez l'information réellement donnée dans le carnet.", "Suggestion only: registration, abilities and Storyteller choices may change it. Record the information actually given in the notebook.")}</p>
     ${info.impaired ? `<div style="font-size:.7rem;color:var(--blood-bright);margin-top:3px">⚠ ${t("impaired")}</div>` : ""}
   </div>`;
 }
 function renderNight() {
   const v = $("#view-night");
   const mode = S.night.mode;
-  const inPlay = inPlayRoleIds();
+  const inPlay = new Set(S.players.filter(p => !p.exiled).map(nightRoleId));
   const sc = currentScript();
   const metaKey = mode === "first" ? "firstNightMeta" : "otherNightMeta";
   const nightField = mode === "first" ? "firstNight" : "otherNight";
@@ -1660,16 +1786,19 @@ function renderNight() {
   sc.characters.forEach(c => {
     const ord = c[nightField] || 0;
     if (ord > 0 && inPlay.has(c.id)) {
-      const holders = S.players.filter(p => p.roleId === c.id).map(p => p.name).join(", ");
-      steps.push({ key: "char:" + c.id, charId: c.id, order: ord, type: "char", team: c.team,
-        title: loc(c.name), text: loc(c[remField]) || loc(c.ability), who: holders,
-        reminders: c.reminders || [] });
+      const holders = S.players.filter(p => !p.exiled && nightRoleId(p) === c.id);
+      holders.forEach(p => {
+        const who = p.name + (p.shownRoleId ? " · " + tr("croit être ", "believes ") + loc(shownRole(p)?.name) : "") + (p.alive ? "" : tr(" (mort : vérifier la capacité)", " (dead: check ability)"));
+        steps.push({ key: "char:" + c.id + (holders.length > 1 ? ":" + p.id : ""), charId: c.id, playerId: p.id, order: ord, type: "char", team: c.team,
+          title: loc(c.name), text: loc(c[remField]) || loc(c.ability), who,
+          reminders: c.reminders || [] });
+      });
     }
   });
   steps.sort((a, b) => a.order - b.order);
   // ne garder les infos Sbires/Démon en 1re nuit que s'il y a de l'évil en jeu
   if (mode === "first") {
-    const hasEvil = [...inPlay].some(id => { const c = charById(id); return c && (c.team === "minion" || c.team === "demon"); });
+    const hasEvil = S.players.filter(p => !p.exiled && charById(p.roleId)?.team !== "fabled" && charById(p.roleId)?.team !== "traveler").length >= 7 && [...inPlayRoleIds()].some(id => { const c = charById(id); return c && (c.team === "minion" || c.team === "demon"); });
     if (!hasEvil) steps = steps.filter(s => s.key !== "meta:minioninfo" && s.key !== "meta:demoninfo");
   }
   // Réordonnancement manuel des personnages (override par script + mode), info/aube restent fixes
@@ -1691,17 +1820,17 @@ function renderNight() {
     let extra = "";
     if (s.key === "meta:demoninfo") extra = bluffsBlock();
     let infoHtml = "";
-    if (s.type === "char") { infoHtml = infoBlock(s.charId); extra += infoHtml; }
+    if (s.type === "char") { infoHtml = infoBlock(s.charId, s.playerId); extra += infoHtml; }
     // Rappel « fausse info » si le porteur est ivre/empoisonné et qu'aucun calcul ne l'a déjà signalé
     if (s.type === "char" && !infoHtml) {
-      const holderImpaired = S.players.some(p => p.roleId === s.charId && p.statuses && (p.statuses.poisoned || p.statuses.drunk));
+      const holderImpaired = S.players.some(p => p.id === s.playerId && GameCore.isImpaired(p));
       if (holderImpaired) extra += `<div class="impaired-note">${t("impairedFalseInfo")}</div>`;
     }
     if (s.type === "char" && s.reminders && s.reminders.length) {
       s.reminders.forEach((rem, remIdx) => {
         const remLabel = loc(rem);
         const targets = S.players.map(p =>
-          `<span class="ntarget ${p.alive ? "" : "dead"}" data-tgt="${p.id}" data-char="${s.charId}" data-remidx="${remIdx}">${escapeHtml(p.name)}</span>`).join("");
+          `<button class="ntarget ${p.alive ? "" : "dead"}" data-tgt="${p.id}" data-char="${s.charId}" data-source="${s.playerId}" data-remidx="${remIdx}">${escapeHtml(p.name)}</button>`).join("");
         extra += `<div class="night-targets"><span style="color:var(--muted);font-size:.72rem;width:100%">👉 ${t("chooseTarget")} → « ${escapeHtml(remLabel)} »</span>${targets}</div>`;
       });
     }
@@ -1743,6 +1872,7 @@ function renderNight() {
     ${impairedBanner}
     <p class="hint">${t("nightGuide")} ${mode === "first" ? "· " + t("bluffHint") : ""}</p>
     ${stepHtml}
+    <div class="row"><button class="btn small" id="night-notebook">${tr("Carnet d'informations", "Information notebook")}</button><button class="btn small" id="night-checklist">${tr("Préparation", "Preparation")}</button></div>
   `;
   $("#nt-first").onclick = () => { S.night.mode = "first"; save(); renderNight(); };
   $("#nt-other").onclick = () => { S.night.mode = "other"; save(); renderNight(); };
@@ -1750,81 +1880,35 @@ function renderNight() {
     S.night.checked[e.target.dataset.check] = e.target.checked; save();
     e.target.closest(".night-step").classList.toggle("checked", e.target.checked);
   });
-  $$("[data-tgt]").forEach(el => el.onclick = () => applyNightAction(el.dataset.char, el.dataset.tgt, +el.dataset.remidx || 0));
+  $$("[data-tgt]").forEach(el => el.onclick = () => openReminderPicker(el.dataset.tgt, el.dataset.char, +el.dataset.remidx || 0, el.dataset.source));
   $$("[data-nup]").forEach(el => el.onclick = () => moveNightStep(el.dataset.nup, -1));
   $$("[data-ndown]").forEach(el => el.onclick = () => moveNightStep(el.dataset.ndown, 1));
   $$("[data-bluff-lock]").forEach(el => el.onclick = lockBluffs);
   $$("[data-bluff]").forEach(el => el.onclick = () => toggleBluff(el.dataset.bluff));
   $$("[data-bluff-clear]").forEach(el => el.onclick = () => { S.bluffs = []; save(); renderNight(); });
+  $$("[data-bluff-show]").forEach(el => el.onclick = showBluffsToPlayer);
+  $("#night-notebook").onclick = () => openNotebook();
+  $("#night-checklist").onclick = openSetupChecklist;
   if ($("#n-end")) $("#n-end").onclick = endNight;
   if ($("#n-start")) $("#n-start").onclick = startNight;
+  enhanceNightView(steps);
 }
 
 /* Applique le jeton/statut du rôle à la cible désignée pendant la nuit. */
 const STATUS_MAP = { Poisoned: "poisoned", Drunk: "drunk", Protected: "protected" };
 /* Déduit un statut (ivre/empoisonné/protégé) à partir d'un libellé libre saisi par le MJ. */
-function statusFromLabel(label) {
-  const s = String(label || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-  if (/(ivre|ivrogne|saoul|soul|drunk)/.test(s)) return "drunk";
-  if (/(empoison|poison)/.test(s)) return "poisoned";
-  if (/(proteg|protect|monk|moine)/.test(s)) return "protected";
-  return null;
-}
-/* Ajoute un jeton de rappel à un joueur et synchronise le statut correspondant si reconnu. */
-function addReminderToken(p, label, key) {
-  p.reminders = p.reminders || [];
-  p.reminders.push(key ? { label, key } : { label });
-  const st = statusFromLabel(key || label);
-  if (st && p.statuses) p.statuses[st] = true;
-}
 function applyNightAction(charId, playerId, remIdx) {
-  const c = charById(charId); const p = S.players.find(x => x.id === playerId);
-  if (!c || !p) return;
-  pushHistory();
-  const rem = c.reminders && c.reminders[remIdx || 0];
-  const remEn = rem ? (rem.en || "") : "";
-  const remLabel = rem ? loc(rem) : "";
-  // Retirer un éventuel jeton identique déjà posé par ce rôle ailleurs (source unique).
-  const statusKey = STATUS_MAP[remEn];
-  if (statusKey) S.players.forEach(x => { x.reminders = (x.reminders || []).filter(r => r.key !== remEn); if (x.statuses) x.statuses[statusKey] = false; });
-  if (remEn === "Dead") {
-    p.alive = false; p.ghostUsed = false;
-  } else if (statusKey) {
-    p.statuses[statusKey] = true;
-    p.reminders.push({ label: remLabel, key: remEn });
-  } else {
-    p.reminders.push({ label: remLabel, key: remEn });
-  }
-  logEvent(`${loc(c.name)} → ${p.name} (${remLabel})`, "🌙");
-  buzz(remEn === "Dead" ? [20, 40] : 12);
-  save(); renderNight(); renderGrimoire();
-  if (remEn === "Dead") announceEndIfAny();
-  toast("✔ " + p.name);
+  openReminderPicker(playerId, charId, remIdx || 0);
 }
 function expireNightTokens(keys) {
-  const map = { Protected: "protected", Poisoned: "poisoned", Drunk: "drunk" };
-  let n = 0;
-  S.players.forEach(p => {
-    const before = (p.reminders || []).length;
-    p.reminders = (p.reminders || []).filter(r => !keys.includes(r.key));
-    n += before - p.reminders.length;
-    keys.forEach(k => { if (map[k] && p.statuses) p.statuses[map[k]] = false; });
-  });
-  return n;
+  if (keys.includes("Poisoned")) GameCore.expireEffects(S.players, "dusk");
+  if (keys.includes("Protected")) GameCore.expireEffects(S.players, "dawn");
 }
 function startNight() {
-  pushHistory();
-  S.phase = "night";
-  if (S.night.mode === "first" && S.night.number > 1) S.night.mode = "other";
-  S.night.checked = {};
-  S.night.aliveAtDusk = S.players.filter(p => p.alive).map(p => p.id);
-  expireNightTokens(["Poisoned"]); // le poison expire au crépuscule suivant
-  playBell(330, 0.7); flashPhase("night"); buzz(20); updateAmbientPhase();
-  logEvent(`${t("nightPhase")} — ${t("nightNum")} ${S.night.number}`, "🌙");
-  save(); renderAll();
-  toastUndo(`🌙 ${t("nightNum")} ${S.night.number}`);
+  startNightFromDay();
 }
 function endNight() {
+  if (S.phase !== "night") return toast(tr("Vous êtes déjà au jour.", "It is already day."));
   pushHistory();
   S.phase = "day";
   S.day.number = S.night.number;      // jour N suit la nuit N
@@ -1832,6 +1916,7 @@ function endNight() {
   S.night.mode = "other";
   S.night.checked = {};
   S.day.nominations = [];
+  S.day.execution = null;
   captureSnapshot();                  // capture du grimoire à l'aube
   expireNightTokens(["Protected"]);   // la protection expire à l'aube
   playBell(560, 0.7); flashPhase("day"); buzz(20); updateAmbientPhase();
@@ -1882,33 +1967,39 @@ function renderDay() {
   const v = $("#view-day");
   const living = S.players.filter(p => p.alive).length;
   const dead = S.players.length - living;
-  const majority = Math.ceil(living / 2);
+  const majority = GameCore.nominationThreshold(S.players, charById);
+  const leader = GameCore.nominationLeader(S.day.nominations);
 
   const noms = S.day.nominations.map(nm => {
     nm.voters = nm.voters || [];
     const vcount = nm.votes || 0;
-    const pass = vcount >= majority;
+    const threshold = nm.threshold || majority;
+    const pass = vcount >= threshold;
+    const nominee = S.players.find(p => p.id === nm.nomineeId)?.name || nm.nominee || "?";
+    const nominator = S.players.find(p => p.id === nm.nominatorId)?.name || nm.nominator || "?";
     return `
       <div class="nom-card" data-nom="${nm.id}">
         <div class="row">
-          <strong>${escapeHtml(nm.nominee || "?")}</strong>
-          <span style="color:var(--muted);font-size:.82rem">${t("nominator")}: ${escapeHtml(nm.nominator || "—")}</span>
+          <strong>${escapeHtml(nominee)}${leader.nominationId === nm.id ? " ⚖" : ""}</strong>
+          <span style="color:var(--muted);font-size:.82rem">${t("nominator")}: ${escapeHtml(nominator)}</span>
           <span class="spacer"></span>
           <button class="btn small ghost" data-vminus="${nm.id}">−</button>
           <span class="vote-count ${pass ? "pass" : ""}">${vcount}</span>
           <button class="btn small ghost" data-vplus="${nm.id}">＋</button>
-          <span style="color:var(--muted)">/ ${majority}</span>
+          <span style="color:var(--muted)">/ ${threshold}</span>
           <button class="btn small ghost" data-voters="${nm.id}">👥 ${t("voters")}</button>
           <button class="btn small ${nm.executed ? "primary" : "ghost"}" data-exec="${nm.id}">${nm.executed ? "✔ " + t("executed") : t("execute")}</button>
           <button class="btn small ghost" data-ndel="${nm.id}" style="color:var(--blood-bright)">🗑</button>
         </div>
-        <div class="vote-bar"><div class="vote-bar-fill ${pass ? "pass" : ""}" style="width:${Math.min(100, majority ? (vcount / majority * 100) : 0)}%"></div></div>
+        <div class="vote-bar"><div class="vote-bar-fill ${pass ? "pass" : ""}" style="width:${Math.min(100, threshold ? (vcount / threshold * 100) : 0)}%"></div></div>
         ${nm.voters.length ? `<div style="font-size:.75rem;color:var(--muted);margin-top:6px">👥 ${nm.voters.map(id => { const p = S.players.find(x => x.id === id); return p ? escapeHtml(p.name) : ""; }).filter(Boolean).join(", ")}</div>` : ""}
       </div>`;
   }).join("") || `<p class="list-empty">${t("noNoms")}</p>`;
 
   v.innerHTML = `
     <h2>☀️ ${t("dayNum")} ${S.day.number || 1}</h2>
+    <p class="hint">${S.day.execution ? tr("Exécution du jour effectuée.", "Today's execution is complete.") : leader.tied ? tr("Égalité en tête : personne au billot.", "Top vote tied: nobody on the block.") : leader.nominationId ? tr("Au billot : ", "On the block: ") + escapeHtml(S.day.nominations.find(n => n.id === leader.nominationId).nominee) : tr("Personne au billot.", "Nobody on the block.")}</p>
+    <details class="hint"><summary>${tr("Comment arbitrer les votes ?", "How to adjudicate votes?")}</summary>${tr("Le seuil est figé au début de chaque nomination. Seul le meilleur total admissible, sans égalité, place un candidat au billot. Une exécution peut ne pas tuer. Les capacités particulières restent à arbitrer ; utilisez Exécution MJ avec un motif.", "The threshold is fixed at nomination time. Only the highest qualifying, untied total places a candidate on the block. An execution may not kill. Adjudicate special abilities using Storyteller execution with a reason.")}</details>
     <div class="stat-row">
       <div class="stat"><div class="sv">${living}</div><div class="sl">${t("livingC")}</div></div>
       <div class="stat"><div class="sv">${dead}</div><div class="sl">${t("deadC")}</div></div>
@@ -1916,6 +2007,7 @@ function renderDay() {
     </div>
     <div class="row" style="margin-bottom:12px">
       <button class="btn gold" id="d-nom">＋ ${t("nominate")}</button>
+      <button class="btn ghost" id="d-manual-exec">${tr("Exécution MJ", "Storyteller execution")}</button>
       ${S.players.some(p => { const c = p.roleId && charById(p.roleId); return c && c.team === "traveler"; }) ? `<button class="btn ghost" id="d-exile">🧳 ${t("exile")}</button>` : ""}
       <span class="spacer"></span>
       <button class="btn primary" id="d-night">🌙 ${t("startNight")}</button>
@@ -1936,8 +2028,10 @@ function renderDay() {
     ${noms}
   `;
   $("#d-nom").onclick = nominatePrompt;
+  $("#d-manual-exec").onclick = () => execNom(null);
   if ($("#d-exile")) $("#d-exile").onclick = openExile;
   $("#d-night").onclick = startNightFromDay;
+  $("#d-night").disabled = S.phase !== "day";
   $("#tm-start").onclick = () => { S.timer.running ? pauseTimer() : startTimer(); };
   $("#tm-reset").onclick = () => { resetTimer(); };
   $("#tm-suggest").onclick = suggestTimer;
@@ -1946,7 +2040,15 @@ function renderDay() {
   $$("[data-vminus]").forEach(b => b.onclick = () => adjVote(b.dataset.vminus, -1));
   $$("[data-voters]").forEach(b => b.onclick = () => openVoters(b.dataset.voters));
   $$("[data-exec]").forEach(b => b.onclick = () => execNom(b.dataset.exec));
-  $$("[data-ndel]").forEach(b => b.onclick = () => { S.day.nominations = S.day.nominations.filter(x => x.id !== b.dataset.ndel); save(); renderDay(); });
+  $$("[data-ndel]").forEach(b => b.onclick = () => {
+    if (S.day.execution) return toast(tr("Annulez d'abord l'exécution.", "Undo the execution first."));
+    if (!confirm(tr("Supprimer cette nomination et restituer ses votes fantômes ?", "Delete this nomination and refund its ghost votes?"))) return;
+    pushHistory(); GameCore.clearNominationVotes(S, b.dataset.ndel);
+    S.day.nominations = S.day.nominations.filter(x => x.id !== b.dataset.ndel); save(); renderAll();
+  });
+  if (S.day.execution || S.phase !== "day") {
+    $$("[data-vplus],[data-vminus],[data-voters],[data-exec],[data-ndel],#d-nom,#d-manual-exec").forEach(b => b.disabled = true);
+  }
 }
 
 function openVoters(nomId) {
@@ -1967,14 +2069,12 @@ function openVoters(nomId) {
     <div class="modal-actions"><button class="btn gold" onclick="closeModal()">${t("close")}</button></div>`);
   $$("[data-vp]").forEach(el => el.onclick = () => {
     const pid = el.dataset.vp; const p = S.players.find(x => x.id === pid);
-    const idx = nm.voters.indexOf(pid);
-    if (idx >= 0) { nm.voters.splice(idx, 1); if (!p.alive) p.ghostUsed = false; }
-    else {
-      if (!p.alive && p.ghostUsed) { toast("👻✖"); return; }
-      nm.voters.push(pid); if (!p.alive) p.ghostUsed = true;
-    }
-    nm.votes = nm.voters.length;
-    save(); openVoters(nomId); renderDay();
+    if (!p || p.exiled || charById(p.roleId)?.team === "fabled") return toast(tr("Ce joueur ne peut pas voter.", "This player cannot vote."));
+    if (S.phase !== "day" || S.day.execution) return toast(tr("Vote clos.", "Voting is closed."));
+    const enabled = !nm.voters.includes(pid);
+    if (enabled && !p.alive && p.ghostUsed) return toast("👻 " + tr("Vote déjà utilisé.", "Vote already spent."));
+    pushHistory(); GameCore.setVoter(S, nomId, pid, enabled); nm.voteMode = "detailed";
+    save(); renderAll(); openVoters(nomId);
   });
 }
 let TIMER_HANDLE = null;
@@ -2016,10 +2116,13 @@ function advancePhase() {
   if (S.phase === "night") endNight(); else startNightFromDay();
 }
 function startNightFromDay() {
+  if (S.phase !== "day") return toast(tr("La nuit est déjà en cours.", "Night is already in progress."));
   pushHistory();
   S.phase = "night";
   S.night.mode = "other";
   S.night.checked = {};
+  S.night.suggestions = {}; S.night.focusKey = null;
+  expireNightTokens(["Poisoned"]);
   S.night.aliveAtDusk = S.players.filter(p => p.alive).map(p => p.id);
   stopTimer();
   playBell(330, 0.7); flashPhase("night"); buzz(20); updateAmbientPhase();
@@ -2028,50 +2131,76 @@ function startNightFromDay() {
   toastUndo(`🌙 ${t("nightNum")} ${S.night.number}`);
 }
 function nominatePrompt() {
-  const alive = S.players.filter(p => p.alive);
-  const opts = S.players.map(p => `<option value="${escapeHtml(p.name)}">${escapeHtml(p.name)}${p.alive ? "" : " ✝"}</option>`).join("");
+  if (S.phase !== "day" || S.day.execution) return toast(tr("Les nominations sont fermées.", "Nominations are closed."));
+  const eligible = S.players.filter(p => !p.exiled && charById(p.roleId)?.team !== "fabled");
+  const nominees = eligible.filter(p => charById(p.roleId)?.team !== "traveler" && !S.day.nominations.some(n => n.nomineeId === p.id));
+  const nominators = eligible.filter(p => p.alive && !S.day.nominations.some(n => n.nominatorId === p.id));
+  if (!nominees.length || !nominators.length) return toast(tr("Aucune nomination autorisée restante.", "No eligible nominations remain."));
+  const opts = players => players.map(p => `<option value="${p.id}">${escapeHtml(p.name)}${p.alive ? "" : " ✝"}</option>`).join("");
   openModal(`
     <h3>${t("nominate")}</h3>
     <label class="field">${t("nominee")}</label>
-    <select id="nom-nominee">${opts}</select>
+    <select id="nom-nominee">${opts(nominees)}</select>
     <label class="field">${t("nominator")}</label>
-    <select id="nom-nominator">${opts}</select>
+    <select id="nom-nominator">${opts(nominators)}</select>
     <div class="modal-actions">
       <button class="btn gold" id="nom-ok">${t("confirm")}</button>
       <button class="btn ghost" onclick="closeModal()">${t("cancel")}</button>
     </div>`);
   $("#nom-ok").onclick = () => {
-    const nomineeName = $("#nom-nominee").value, nominatorName = $("#nom-nominator").value;
-    S.day.nominations.push({ id: uid(), nominee: nomineeName, nominator: nominatorName, votes: 0, voters: [], executed: false });
+    const nomineeId = $("#nom-nominee").value, nominatorId = $("#nom-nominator").value;
+    const error = GameCore.validateNomination(S, nominatorId, nomineeId, charById);
+    if (error) return toast(tr("Nomination non autorisée : ", "Nomination not allowed: ") + error);
+    const nominee = S.players.find(p => p.id === nomineeId), nominator = S.players.find(p => p.id === nominatorId);
+    const nomineeName = nominee.name, nominatorName = nominator.name;
+    pushHistory();
+    S.day.nominations.push({ id: uid(), nominee: nomineeName, nominator: nominatorName, nomineeId, nominatorId, threshold: GameCore.nominationThreshold(S.players, charById), votes: 0, voters: [], ghostVoters: [], executed: false });
     logEvent(`${nominatorName} → ${nomineeName} (${t("nominatedFlag")})`, "⚖️");
     // Détection Vierge : 1re nomination du Vierge par un Villageois
-    const nominee = S.players.find(x => x.name === nomineeName);
-    const nominator = S.players.find(x => x.name === nominatorName);
     const nomineeRole = nominee && nominee.roleId && charById(nominee.roleId);
     const nominatorRole = nominator && nominator.roleId && charById(nominator.roleId);
-    const virginFirst = nomineeRole && nomineeRole.id === "virgin" && S.day.nominations.filter(n => n.nominee === nomineeName).length === 1;
-    if (virginFirst && nominatorRole && nominatorRole.team === "townsfolk") {
+    const virginFirst = nomineeRole && nomineeRole.id === "virgin" && !nominee.virginNominated;
+    if (nomineeRole?.id === "virgin") { nominee.virginNominated = true; nominee.abilityUsage = GameCore.isImpaired(nominee) ? "spent" : "used"; }
+    if (virginFirst && nominee.alive && !GameCore.isImpaired(nominee) && nominatorRole && nominatorRole.team === "townsfolk") {
       save(); closeModal(); renderDay();
-      setTimeout(() => alert("⚠ " + t("virginNote")), 100);
+      setTimeout(() => alert(tr("Vierge : première nomination. Vérifiez les enregistrements particuliers ; si sa capacité s'applique, utilisez Exécution MJ pour le nominateur.", "Virgin: first nomination. Check special registration; if the ability applies, use Storyteller execution for the nominator.")), 100);
       return;
     }
     save(); closeModal(); renderDay();
   };
 }
-function adjVote(id, d) { const nm = S.day.nominations.find(x => x.id === id); if (nm) { nm.voters = []; nm.votes = Math.max(0, (nm.votes || 0) + d); save(); renderDay(); } }
+function adjVote(id, d) {
+  const nm = S.day.nominations.find(x => x.id === id); if (!nm || S.day.execution || S.phase !== "day") return toast(tr("Vote clos.", "Voting closed."));
+  if (nm.voters.length && !confirm(tr("Passer au comptage manuel ? Les votants détaillés seront retirés et leurs votes fantômes restitués. Gérez ensuite les votes fantômes manuellement.", "Switch to manual counting? Detailed voters will be removed and their ghost votes refunded. Track ghost votes manually afterwards."))) return;
+  const votes = Math.max(0, (nm.votes || 0) + d);
+  pushHistory(); GameCore.clearNominationVotes(S, id); nm.votes = votes; nm.voteMode = "manual"; save(); renderAll();
+}
 function execNom(id) {
-  const nm = S.day.nominations.find(x => x.id === id); if (!nm) return;
-  pushHistory();
-  S.day.nominations.forEach(x => x.executed = false);
-  nm.executed = true;
-  const p = S.players.find(x => x.name === nm.nominee && x.alive) || S.players.find(x => x.name === nm.nominee);
-  if (p && p.alive) { p.alive = false; p.ghostUsed = false; }
-  const rn = (p && p.roleId) ? loc(charById(p.roleId).name) : "";
-  logEvent(`${nm.nominee}${rn ? " (" + rn + ")" : ""} ${t("executedLog")}`, "⚰");
-  buzz([20, 40, 20]);
-  save(); renderDay();
-  toastUndo(`⚰ ${nm.nominee}`);
-  announceEndIfAny();
+  if (S.phase !== "day" || S.day.execution) return toast(tr("Une seule exécution par jour. Annulez d'abord l'exécution précédente.", "Only one execution per day. Undo the previous execution first."));
+  const nm = S.day.nominations.find(x => x.id === id);
+  const leader = GameCore.nominationLeader(S.day.nominations);
+  const players = S.players.filter(p => !p.exiled && !["fabled", "traveler"].includes(charById(p.roleId)?.team));
+  if (!players.length) return toast(t("needRoles"));
+  const exceptional = !nm || leader.nominationId !== id;
+  openModal(`<h3>${t("execute")}</h3>
+    <p class="hint">${tr("L'exécution et la mort sont distinctes. Confirmez les capacités avant d'appliquer le résultat.", "Execution and death are separate. Resolve abilities before applying the result.")}</p>
+    <label class="field">${t("playerName")}</label><select id="exec-player">${players.map(p => `<option value="${p.id}" ${nm?.nomineeId === p.id ? "selected" : ""}>${escapeHtml(p.name)}</option>`).join("")}</select>
+    <label class="field">${tr("Résultat", "Outcome")}</label><select id="exec-death"><option value="survives">${tr("Exécuté sans nouvelle mort", "Executed without a new death")}</option><option value="dies">${tr("Exécuté et meurt", "Executed and dies")}</option></select>
+    <label class="field">${tr("Motif MJ (obligatoire hors candidat au billot)", "Storyteller reason (required outside the block)")}</label><input id="exec-reason" type="text">
+    <p class="hint">${exceptional ? tr("Pas de candidat unique au billot sélectionné : décision exceptionnelle du MJ.", "No selected sole candidate on the block: exceptional Storyteller decision.") : ""}</p>
+    <div class="modal-actions"><button class="btn gold" id="exec-confirm">${t("confirm")}</button><button class="btn ghost" onclick="closeModal()">${t("cancel")}</button></div>`);
+  $("#exec-confirm").onclick = () => {
+    if (S.day.execution) return toast(tr("Exécution déjà enregistrée.", "Execution already recorded."));
+    const p = S.players.find(x => x.id === $("#exec-player").value);
+    const reason = $("#exec-reason").value.trim();
+    if ((exceptional || p.id !== nm?.nomineeId) && !reason) return toast(tr("Indiquez le motif de cette décision.", "Enter the reason for this decision."));
+    const dies = $("#exec-death").value === "dies";
+    pushHistory(); S.day.execution = { playerId: p.id, nominationId: id || null, died: dies && p.alive, reason };
+    if (nm && p.id === nm.nomineeId) nm.executed = true;
+    if (dies && p.alive) { p.alive = false; p.ghostUsed = false; }
+    logEvent(p.name + " : " + t("executedLog") + " · " + (dies ? t("dead") : tr("sans nouvelle mort", "without a new death")) + (reason ? " · " + reason : ""), "⚰");
+    save(); closeModal(); renderAll(); toastUndo(t("executed")); announceEndIfAny();
+  };
 }
 
 /* =========================================================================
@@ -2153,6 +2282,9 @@ function renderSetup() {
   `;
   $("#su-count").onchange = (e) => {
     const target = Math.max(5, Math.min(20, +e.target.value || 5));
+    if (target < S.players.length && !confirm(tr("Retirer les derniers joueurs ? Une copie sera conservée.", "Remove the last players? A safety copy will be kept."))) { renderSetup(); return; }
+    if (target < S.players.length) backupBefore(t("playersCount"));
+    pushHistory();
     while (S.players.length < target) S.players.push(newPlayer());
     while (S.players.length > target) S.players.pop();
     save(); renderSetup();
@@ -2198,17 +2330,20 @@ function autoFillBag(n) {
 }
 function dealBag() {
   if (!(S.bag || []).length) return;
+  if (!confirm(tr("Distribuer le sac et réinitialiser les joueurs ? Une copie sera conservée.", "Deal the bag and reset players? A safety copy will be kept."))) return;
+  backupBefore(t("dealBag"));
   pushHistory();
   const n = S.bag.length;
   while (S.players.length < n) S.players.push(newPlayer());
   while (S.players.length > n) S.players.pop();
   const roles = shuffleArr(S.bag.slice());
   S.players.forEach((p, i) => {
-    p.roleId = roles[i] || null;
+    GameCore.setRole(p, roles[i] || null);
     const c = p.roleId && charById(p.roleId);
     p.align = c ? ((c.team === "minion" || c.team === "demon") ? "evil" : "good") : null;
-    p.alive = true; p.ghostUsed = false;
-    p.statuses = { poisoned: false, drunk: false, protected: false }; p.reminders = [];
+    p.alive = true; p.ghostUsed = false; p.exiled = false;
+    p.manualStatuses = { poisoned: false, drunk: false, protected: false }; p.reminders = [];
+    p.information = []; p.abilityUsage = "available"; p.virginNominated = false; GameCore.recomputeStatuses(p);
   });
   logEvent(`${t("dealBag")} (${n})`, "🎯");
   save(); switchView("grimoire"); toast("🎯");
@@ -2219,10 +2354,10 @@ function dealBag() {
    ========================================================================= */
 function renderReference() {
   const v = $("#view-reference");
-  const sc = currentScript();
+  const sc = (referenceScriptId && SCRIPTS[referenceScriptId]) || currentScript();
   const order = ["townsfolk", "outsider", "minion", "demon", "traveler", "fabled"];
   const byTeam = {}; sc.characters.forEach(c => (byTeam[c.team] = byTeam[c.team] || []).push(c));
-  let html = `<h2>${loc(sc.meta.name)}</h2><p class="hint">${loc(sc.meta.note)}</p>
+  let html = `<h2>${escapeHtml(loc(sc.meta.name))}</h2><p class="hint">${escapeHtml(loc(sc.meta.note))}</p>${sc !== currentScript() ? `<p class="hint">${tr("Consultation uniquement : la partie active ne change pas.", "Browsing only: the active game is unchanged.")} <button class="btn small" id="ref-current">${tr("Revenir au script actif", "Return to active script")}</button></p>` : ""}
     <input type="text" id="ref-search" placeholder="🔎 ${t("searchRole")}" style="width:100%;max-width:340px;margin-bottom:12px" />`;
   order.forEach(team => {
     if (!byTeam[team]) return;
@@ -2241,10 +2376,10 @@ function renderReference() {
       <div class="char-grid">${cards}</div>
     </div>`;
   });
-  const jinx = scriptJinxes();
+  const jinx = scriptJinxes(sc);
   if (jinx.length) {
     const rows = jinx.map(j => {
-      const a = charById(j.a), b = charById(j.b);
+      const a = sc.charById[j.a], b = sc.charById[j.b];
       return `<div class="char-card" style="border-left-color:var(--warn)">
         <div class="cn"><span>⚡ ${escapeHtml(loc(a.name))} × ${escapeHtml(loc(b.name))}</span></div>
         <div class="ca">${escapeHtml(j.reason)}</div>
@@ -2257,6 +2392,7 @@ function renderReference() {
     </div>`;
   }
   v.innerHTML = html;
+  if ($("#ref-current")) $("#ref-current").onclick = () => { referenceScriptId = null; renderReference(); };
   const rsr = $("#ref-search");
   if (rsr) rsr.oninput = () => {
     const q = rsr.value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -2290,56 +2426,69 @@ function renderScripts() {
     <h2>${t("tab.scripts")}</h2>
     <div class="char-grid">${cards}</div>
     <h3>${t("importScript")}</h3>
-    <p class="hint">Format JSON officiel (liste d'IDs de rôles) ou format complet de ce projet.</p>
+    <p class="hint">${tr("Liste d'identifiants officiels ou définitions complètes. Un rôle inconnu ou incomplet est signalé, jamais remplacé par un Villageois fictif. L'import ajoute le script à la bibliothèque sans modifier la partie.", "Official character IDs or complete definitions. Unknown or incomplete characters are reported, never silently replaced. Import adds to the library without changing the game.")}</p>
     <input type="file" id="imp-file" accept="application/json,.json" />
   `;
-  $$("[data-use]").forEach(b => b.onclick = () => { S.scriptId = b.dataset.use; save(); renderAll(); toast("✔"); });
-  $$("[data-ref]").forEach(b => b.onclick = () => { S.scriptId = b.dataset.ref; save(); switchView("reference"); });
+  $$("[data-use]").forEach(b => b.onclick = () => activateScript(b.dataset.use));
+  $$("[data-ref]").forEach(b => b.onclick = () => { referenceScriptId = b.dataset.ref; switchView("reference"); });
   $("#imp-file").onchange = importScript;
 }
 function importScript(e) {
   const file = e.target.files[0]; if (!file) return;
+  if (file.size > 2 * 1024 * 1024) return alert(tr("Fichier trop volumineux (maximum 2 Mo).", "File too large (maximum 2 MB)."));
   const reader = new FileReader();
   reader.onload = () => {
     try {
       const data = JSON.parse(reader.result);
       const norm = normalizeScript(data, file.name);
+      if (CUSTOM[norm.meta.id] && !confirm(tr("Remplacer ce script dans la bibliothèque ?", "Replace this script in the library?"))) return;
+      if (S.scriptId === norm.meta.id && S.players.some(p => p.roleId)) throw new Error(tr("Ce script est utilisé par la partie. Donnez un autre nom à l'import.", "This script is used by the current game. Use another import name."));
+      backupBefore(t("importScript"));
       registerScript(norm.meta.id, norm, true);
-      SCRIPTS[norm.meta.id] = { meta: norm.meta, characters: norm.characters, charById: (() => { const m = {}; norm.characters.forEach(c => m[c.id] = c); return m; })() };
-      S.scriptId = norm.meta.id; save(); renderAll(); toast("✔ " + loc(norm.meta.name));
+      save(); renderAll(); toast("✔ " + loc(norm.meta.name));
     } catch (err) { alert("Import échoué / Import failed: " + err.message); }
   };
+  reader.onerror = () => alert(tr("Lecture du fichier impossible.", "Unable to read file."));
   reader.readAsText(file);
 }
 // Accepte soit le format complet du projet, soit un simple tableau d'IDs (format officiel clocktower.online).
 function masterRole(id) { return MASTER && MASTER.rolesById[id]; }
 function normalizeScript(data, fname) {
-  if (Array.isArray(data)) {
-    // format officiel : [{id:"_meta",name,author}, "washerwoman", {id:"custom",...}]
-    const metaEntry = data.find(x => x && x.id === "_meta") || {};
-    const ids = data.filter(x => typeof x === "string" || (x && x.id && x.id !== "_meta"));
-    const chars = ids.map(x => {
-      const id = (typeof x === "string" ? x : x.id).replace(/^_+/, "");
-      const m = masterRole(id) || (SCRIPTS["trouble-brewing"] && SCRIPTS["trouble-brewing"].charById[id]);
-      if (m) return m;
-      const c = typeof x === "object" ? x : { id };
-      return { id, name: c.name || id, team: c.team || "townsfolk", ability: c.ability || "",
-        firstNight: c.firstNight || 0, otherNight: c.otherNight || 0, setup: !!c.setup,
-        firstNightReminder: c.firstNightReminder || "", otherNightReminder: c.otherNightReminder || "", reminders: c.reminders || [] };
-    });
-    const id = (metaEntry.name || fname.replace(/\.json$/i, "")).toLowerCase().replace(/[^a-z0-9]+/g, "-");
-    return { meta: { id, name: metaEntry.name || id, author: metaEntry.author || "", note: { fr: "Script importé — rôles résolus depuis la base complète.", en: "Imported script — roles resolved from the master database." } }, characters: chars };
-  }
-  // format complet du projet
-  const meta = data.meta || {};
-  meta.id = meta.id || (fname.replace(/\.json$/i, "").toLowerCase().replace(/[^a-z0-9]+/g, "-"));
-  return { meta, characters: data.characters || [] };
+  const array = Array.isArray(data);
+  if (!data || typeof data !== "object") throw new Error(tr("Structure de script invalide.", "Invalid script structure."));
+  const meta = (array ? data.find(x => x?.id === "_meta") : data.meta) || {};
+  const entries = array ? data.filter(x => x?.id !== "_meta") : data.characters;
+  if (!Array.isArray(entries) || !entries.length || entries.length > 300) throw new Error(tr("Le script doit contenir de 1 à 300 rôles.", "Script must contain 1 to 300 characters."));
+  const ids = new Set(), text = x => typeof x === "string" || (x && typeof x === "object" && !Array.isArray(x) && Object.values(x).every(v => typeof v === "string"));
+  const chars = entries.map(entry => {
+    const id = typeof entry === "string" ? entry : entry?.id;
+    if (typeof id !== "string" || !/^[a-z0-9][a-z0-9_-]*$/i.test(id) || ["constructor", "prototype"].includes(id) || ids.has(id)) throw new Error(tr("Identifiant invalide ou doublon : ", "Invalid or duplicate ID: ") + id);
+    ids.add(id);
+    const known = masterRole(id);
+    const hasDefinition = typeof entry === "object" && Object.hasOwn(entry, "ability");
+    if (known && !hasDefinition) return known;
+    const c = entry;
+    if (!hasDefinition || !text(c.name) || !text(c.ability) || !["townsfolk", "outsider", "minion", "demon", "traveler", "fabled"].includes(c.team) || !Number.isFinite(c.firstNight) || !Number.isFinite(c.otherNight) || c.firstNight < 0 || c.otherNight < 0 || !Array.isArray(c.reminders) || !c.reminders.every(text)) throw new Error(tr("Rôle inconnu ou incomplet : ", "Unknown or incomplete character: ") + id);
+    return { id, name: c.name, ability: c.ability, team: c.team, firstNight: c.firstNight, otherNight: c.otherNight, firstNightReminder: text(c.firstNightReminder) ? c.firstNightReminder : "", otherNightReminder: text(c.otherNightReminder) ? c.otherNightReminder : "", reminders: c.reminders, setup: !!c.setup };
+  });
+  const name = text(meta.name) ? meta.name : fname.replace(/\.json$/i, "");
+  const slug = (typeof name === "string" ? name : name.fr || name.en || "script").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-") || "script";
+  return { meta: { id: "custom-" + slug, name, author: typeof meta.author === "string" ? meta.author : "", note: { fr: "Script importé. Capacités particulières à arbitrer par le MJ.", en: "Imported script. Adjudicate special abilities as Storyteller." } }, characters: chars };
+}
+function activateScript(id) {
+  if (!SCRIPTS[id]) return toast(tr("Script indisponible.", "Script unavailable."));
+  if (!confirm(tr("Activer ce script ? Les rôles, effets, bluffs et le suivi de partie seront réinitialisés. Une copie sera conservée.", "Activate this script? Characters, effects, bluffs and game progress will reset. A safety copy will be kept."))) return;
+  backupBefore(t("selectScript"));
+  const players = S.players.filter(p => charById(p.roleId)?.team !== "fabled").map(p => newPlayer(p.name));
+  if (TIMER_HANDLE) { clearInterval(TIMER_HANDLE); TIMER_HANDLE = null; }
+  S = Object.assign(defaultState(), { players, scriptId: id, settings: S.settings, lang: S.lang, sound: S.sound, tutoDone: true });
+  referenceScriptId = null; save(); renderAll();
 }
 
 /* Jinxes : paires de rôles avec règle spéciale, présentes dans le script courant. */
-function scriptJinxes() {
+function scriptJinxes(sc = currentScript()) {
   if (!MASTER || !MASTER.jinxes) return [];
-  const sc = currentScript(); if (!sc) return [];
+  if (!sc) return [];
   const ids = new Set(sc.characters.map(c => c.id));
   const out = [];
   Object.keys(MASTER.jinxes).forEach(a => {
@@ -2584,9 +2733,138 @@ function openValidator() {
     <div class="modal-actions"><button class="btn gold" onclick="closeModal()">${t("close")}</button></div>`);
 }
 
-/* ---------- Service worker (PWA hors-ligne) ---------- */
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+function toggleManualStatus(p, key) {
+  GameCore.normalizePlayer(p);
+  pushHistory();
+  GameCore.setManualStatus(p, key, !p.manualStatuses[key]);
+  if (p.statuses[key] && !p.manualStatuses[key]) toast(tr("Le rôle ou un jeton maintient cet effet. Retirez sa source pour le terminer.", "The character or a token still causes this effect. Remove its source to end it."));
+}
+function expiryName(value) {
+  return value === "dawn" ? tr("aube suivante", "next dawn") : value === "dusk" ? tr("crépuscule suivant", "next dusk") : tr("retrait manuel", "manual removal");
+}
+function openReminderPicker(targetId, roleId, remIdx = 0, sourceId) {
+  const target = S.players.find(p => p.id === targetId);
+  if (!target) return toast(t("needRoles"));
+  if (!roleId) {
+    const roles = currentScript().characters.filter(c => c.reminders?.length);
+    openModal(`<h3>${t("addReminder")} : ${escapeHtml(target.name)}</h3><p class="hint">${tr("Choisissez le rôle à l'origine du rappel, puis son jeton.", "Choose the source character, then its reminder.")}</p><div class="chip-wrap">${roles.map(c => `<button class="chip" data-remrole="${escapeHtml(c.id)}">${escapeHtml(loc(c.name))}</button>`).join("")}</div><button class="btn" onclick="closeModal()">${t("close")}</button>`);
+    $$("[data-remrole]").forEach(b => b.onclick = () => openReminderPicker(targetId, b.dataset.remrole));
+    return;
+  }
+  const role = charById(roleId);
+  if (!role?.reminders?.length) return toast(t("noReminders"));
+  const actors = S.players.filter(p => !p.exiled && (p.roleId === roleId || GameCore.shownRoleId(p) === roleId));
+  const rem = role.reminders[remIdx], key = typeof rem === "string" ? rem : rem.en;
+  const effect = STATUS_MAP[key] || "";
+  const knownExpiry = roleId === "monk" && effect === "protected" ? "dawn" : roleId === "poisoner" && effect === "poisoned" ? "dusk" : "manual";
+  openModal(`<h3>${escapeHtml(loc(role.name))} → ${escapeHtml(target.name)}</h3>
+    <label class="field">${t("addReminder")}</label><select id="rem-kind">${role.reminders.map((r, i) => `<option value="${i}" ${i === remIdx ? "selected" : ""}>${escapeHtml(loc(r))}</option>`).join("")}</select>
+    <label class="field">${tr("Joueur source", "Source player")}</label><select id="rem-actor">${actors.map(p => `<option value="${p.id}" ${p.id === sourceId ? "selected" : ""}>${escapeHtml(p.name)}</option>`).join("")}${actors.length ? "" : `<option value="">${tr("Préparation MJ", "Storyteller setup")}</option>`}</select>
+    <label class="field">${tr("Effet à appliquer", "Effect to apply")}</label><select id="rem-effect"><option value="">${tr("Rappel seul, aucun effet automatique", "Reminder only, no automatic effect")}</option>${["poisoned", "drunk", "protected"].map(k => `<option value="${k}" ${effect === k ? "selected" : ""}>${t(k)}</option>`).join("")}${key === "Dead" ? `<option value="death">${tr("Mort confirmée par le MJ", "Death confirmed by Storyteller")}</option>` : ""}</select>
+    <label class="field">${tr("Expiration", "Expiry")}</label><select id="rem-expiry">${["manual", "dawn", "dusk"].map(k => `<option value="${k}" ${k === knownExpiry ? "selected" : ""}>${expiryName(k)}</option>`).join("")}</select>
+    <p class="hint" id="rem-warning"></p>
+    <details class="hint"><summary>${tr("Choix et effet : quelle différence ?", "Choice versus effect?")}</summary>${tr("Un joueur ivre ou empoisonné choisit normalement, mais n'applique pas sa capacité. Enregistrez alors uniquement son choix. Les autres immunités, protections et effets de mort restent à arbitrer. Un jeton libre n'est jamais interprété comme une règle.", "A drunk or poisoned player still chooses but cannot apply their ability. Record only their choice. Adjudicate other immunities, protection and death effects yourself. A free-text reminder is never interpreted as a rule.")}</details>
+    <div class="modal-actions"><button class="btn gold" id="rem-apply">${t("applyToken")}</button><button class="btn" id="rem-choice">${tr("Noter le choix sans effet", "Record choice without effect")}</button><button class="btn ghost" onclick="closeModal()">${t("cancel")}</button></div>`);
+  $("#rem-kind").onchange = e => openReminderPicker(targetId, roleId, +e.target.value, $("#rem-actor").value);
+  const refresh = () => {
+    const actor = S.players.find(p => p.id === $("#rem-actor").value);
+    const simulated = actor && (actor.roleId === "lunatic" || (actor.shownRoleId && actor.roleId !== roleId));
+    const blocked = !!actor && (GameCore.isImpaired(actor) || simulated);
+    const isDead = actor && !actor.alive;
+    if (blocked) $("#rem-effect").value = "";
+    $("#rem-effect").disabled = blocked;
+    $("#rem-warning").textContent = simulated ? tr("Rôle simulé : notez les choix sans appliquer le pouvoir supposé. Pour le Lunatique, transmettez les choix au vrai Démon.", "Simulated character: record choices without applying the believed ability. For the Lunatic, relay choices to the real Demon.") : blocked ? t("impaired") : (isDead ? tr("Source morte : seules certaines capacités fonctionnent encore. Confirmez la règle.", "Dead source: only some abilities still work. Confirm the rule.") : tr("Le jeton mémorise la source, la cible et la durée. Seul cet effet expirera.", "The reminder stores its source, target and duration. Only this effect will expire."));
+  };
+  $("#rem-actor").onchange = refresh; refresh();
+  const record = choiceOnly => {
+    const source = S.players.find(p => p.id === $("#rem-actor").value);
+    const selectedEffect = $("#rem-effect").value;
+    if (!choiceOnly && selectedEffect && source && (GameCore.isImpaired(source) || source.roleId === "lunatic" || (source.shownRoleId && source.roleId !== roleId))) return toast(t("impaired"));
+    pushHistory();
+    if (!choiceOnly) {
+      if (selectedEffect === "death" && target.alive) { target.alive = false; target.ghostUsed = false; }
+      else if (selectedEffect !== "death") GameCore.addReminder(S.players, target.id, {
+        label: loc(rem), key, sourceRoleId: roleId, sourcePlayerId: source?.id || null,
+        effect: selectedEffect || null, expires: $("#rem-expiry").value
+      });
+    }
+    const line = loc(role.name) + " → " + target.name + " : " + loc(rem) + (choiceOnly ? " (" + tr("choix sans effet", "choice without effect") + ")" : "");
+    logEvent(line, "🌙");
+    if (source) { source.information.push({ id: uid(), phase: S.phase, night: S.night.number, day: S.day.number, text: line, ts: Date.now() }); }
+    save(); closeModal(); renderAll(); toastUndo(line);
+    if (selectedEffect === "death" && !choiceOnly) announceEndIfAny();
+  };
+  $("#rem-apply").onclick = () => record(false);
+  $("#rem-choice").onclick = () => record(true);
+}
+function openEndDecision() {
+  const candidate = checkEndGame();
+  openModal(`<h3>${t("endCheck")}</h3><p>${candidate ? escapeHtml(candidate.text) + " ?" : tr("Aucune fin standard détectée.", "No standard game end detected.")}</p>
+    <p class="hint">${tr("Ce n'est pas une décision automatique. Résolvez d'abord les successions (Imp, Femme écarlate...), le Maître, les conditions alternatives et les interactions du script.", "This is not automatic. Resolve succession (Imp, Scarlet Woman...), Mastermind, alternative wins and script interactions first.")}</p>
+    <label class="field">${tr("Décision du MJ", "Storyteller decision")}</label><select id="end-winner"><option value="">${tr("Continuer la partie", "Continue game")}</option><option value="good">${t("endGood")}</option><option value="evil">${t("endEvil")}</option></select>
+    <div class="modal-actions"><button class="btn gold" id="end-confirm">${t("confirm")}</button><button class="btn ghost" onclick="closeModal()">${t("cancel")}</button></div>`);
+  $("#end-confirm").onclick = () => {
+    const winner = $("#end-winner").value;
+    pushHistory(); S.winner = winner || null;
+    logEvent(winner ? t(winner === "good" ? "endGood" : "endEvil") : tr("Le MJ poursuit la partie.", "Storyteller continues the game."), "🏁");
+    save(); closeModal(); renderAll();
+    if (winner) showEndOverlay({ winner, text: t(winner === "good" ? "endGood" : "endEvil") });
+  };
+}
+function renderSessionBanner() {
+  const b = $("#session-banner"); if (!b) return;
+  b.innerHTML = `${TRAINING ? `<strong>🧪 ${tr("Entraînement : vraie partie intacte", "Training: real game untouched")}</strong><button class="btn small" id="exit-training">${tr("Revenir à la vraie partie", "Return to real game")}</button>` : ""}
+    <span class="offline-status">${OFFLINE.ready ? "✓ " + tr("Prêt hors ligne", "Ready offline") : tr("Hors ligne non garanti", "Offline readiness not confirmed")}${OFFLINE.version ? " · " + escapeHtml(OFFLINE.version.replace("grimoire-mj-", "")) : ""}${navigator.onLine ? "" : " · " + tr("Sans connexion", "Offline")}</span>
+    ${OFFLINE.error ? `<span role="alert">${escapeHtml(String(OFFLINE.error))}</span>` : ""}
+    ${OFFLINE.updateAvailable ? `<button class="btn small" id="apply-update">${tr("Mise à jour disponible", "Update available")}</button>` : ""}`;
+  if ($("#exit-training")) $("#exit-training").onclick = exitTraining;
+  if ($("#apply-update")) $("#apply-update").onclick = () => {
+    if (!confirm(tr("Sauvegarder et recharger pour appliquer la mise à jour ? Faites-le entre deux parties.", "Save and reload to update? Prefer doing this between games."))) return;
+    save(); backupBefore(tr("Avant mise à jour", "Before update")); OfflineSupport.applyUpdate();
+  };
+}
+function exitTraining() {
+  if (!TRAINING) return;
+  sessionStorage.removeItem(TRAINING_KEY + ":active");
+  location.href = "index.html";
+}
+function replaceGame(input, reason) {
+  const candidate = normalizeGame(JSON.parse(JSON.stringify(input)));
+  const custom = candidate._custom || CUSTOM;
+  if (!custom || typeof custom !== "object" || Array.isArray(custom)) throw new Error("Invalid script library");
+  const validatedCustom = {};
+  Object.entries(custom).forEach(([id, data]) => {
+    if (!/^[a-z0-9][a-z0-9_-]*$/i.test(id) || ["constructor", "prototype"].includes(id) || BUNDLED_SCRIPTS.some(s => s.id === id)) throw new Error("Invalid custom script ID");
+    const normalized = normalizeScript(data, id);
+    normalized.meta.id = id; validatedCustom[id] = normalized;
+  });
+  const bundled = BUNDLED_SCRIPTS.some(s => s.id === candidate.scriptId);
+  const script = validatedCustom[candidate.scriptId] || (bundled && SCRIPTS[candidate.scriptId]);
+  if (!script) throw new Error("Unknown script: " + candidate.scriptId);
+  const lookup = id => script.characters.find(c => c.id === id) || masterRole(id);
+  candidate.players.forEach(p => {
+    if (p.roleId && !lookup(p.roleId)) throw new Error("Unknown character: " + p.roleId);
+    if (p.shownRoleId && !lookup(p.shownRoleId)) throw new Error("Unknown shown character: " + p.shownRoleId);
+  });
+  if (!confirm(reason + " ? " + tr("La partie actuelle sera sauvegardée avant remplacement.", "The current game will be backed up before replacement."))) return;
+  backupBefore(reason);
+  if (TIMER_HANDLE) { clearInterval(TIMER_HANDLE); TIMER_HANDLE = null; }
+  S = Object.assign(candidate, { lang: S.lang, settings: S.settings }); S.timer.running = false;
+  delete S._custom;
+  S.history = []; S.redo = [];
+  CUSTOM = validatedCustom;
+  Object.keys(SCRIPTS).forEach(id => { if (!BUNDLED_SCRIPTS.some(s => s.id === id)) delete SCRIPTS[id]; });
+  Object.entries(CUSTOM).forEach(([id, data]) => registerScript(id, data, true));
+  referenceScriptId = null;
+  save(); closeModal(); switchView("grimoire");
+}
+function openBackups() {
+  const backups = PERSISTENCE.backups();
+  openModal(`<h3>${tr("Sauvegardes de sécurité", "Safety backups")}</h3><p class="hint">${tr("Jusqu'à huit copies avant remplacement sont conservées selon l'espace disponible, sans les piles Annuler/Rétablir. L'export JSON permet une copie indépendante.", "Up to eight copies before replacement are retained within available storage, without Undo/Redo stacks. Export JSON for an independent copy.")}</p>
+    ${backups.map((b, i) => `<div class="nom-card"><strong>${escapeHtml(b.reason)}</strong> · ${new Date(b.date).toLocaleString()} <button class="btn small" data-restore="${i}">${t("loadGame")}</button> <button class="btn small" data-backup-export="${i}">${t("exportJSON")}</button></div>`).join("") || t("noSaved")}
+    <button class="btn" onclick="closeModal()">${t("close")}</button>`);
+  $$("[data-restore]").forEach(b => b.onclick = () => replaceGame(JSON.parse(backups[+b.dataset.restore].raw), tr("Restaurer la copie", "Restore backup")));
+  $$("[data-backup-export]").forEach(b => b.onclick = () => downloadFile("grimoire-backup.json", backups[+b.dataset.backupExport].raw, "application/json"));
 }
 
 /* ---------- Installation PWA (bouton dédié) ---------- */
@@ -2599,14 +2877,22 @@ function isStandalone() {
 async function installApp() {
   if (isStandalone()) { alert(t("installDone")); return; }
   if (DEFERRED_INSTALL) {
-    DEFERRED_INSTALL.prompt();
-    try { await DEFERRED_INSTALL.userChoice; } catch (_) {}
+    const prompt = DEFERRED_INSTALL;
     DEFERRED_INSTALL = null;
+    try { await prompt.prompt(); await prompt.userChoice; }
+    catch (error) { alert(tr("Installation interrompue : ", "Installation interrupted: ") + error.message); }
     return;
   }
   // iOS Safari / navigateurs sans prompt : instructions manuelles
-  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
-  alert((ios ? t("installIOS") : t("installNo")) + "\n\n" + t("installHint"));
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  alert((ios ? t("installIOS") : tr("Dans le menu du navigateur : Installer l'application ou Ajouter à l'écran d'accueil, si proposé. La disponibilité dépend du navigateur.", "Use the browser menu: Install app or Add to Home Screen, when offered. Availability depends on the browser.")) + "\n\n" + tr("Avant de jouer sans connexion, attendez l'indicateur « Prêt hors ligne ».", "Before playing offline, wait for the Ready offline indicator."));
 }
 
-boot();
+boot().catch(error => {
+  console.error("Startup stopped", error);
+  if (!S) S = defaultState();
+  const panel = $("#storage-warning"); panel.classList.remove("hidden");
+  panel.innerHTML = `<h3>${tr("Ouverture interrompue", "Startup interrupted")}</h3><p>${escapeHtml(error.message)}</p><p>${tr("Vos données n'ont pas été remplacées. Conservez une copie avant toute réparation.", "Your data has not been replaced. Keep a copy before attempting recovery.")}</p><button class="btn" id="rescue-export">${t("exportJSON")}</button><button class="btn" id="rescue-reload">${tr("Réessayer", "Retry")}</button>`;
+  $("#rescue-export").onclick = () => downloadFile("grimoire-recovery.json", (TRAINING ? sessionStorage : localStorage).getItem(TRAINING ? TRAINING_KEY : STORE_KEY) || "{}", "application/json");
+  $("#rescue-reload").onclick = () => location.reload();
+});

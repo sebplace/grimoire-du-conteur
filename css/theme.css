@@ -314,7 +314,7 @@ body.is-day .topbar { background:linear-gradient(180deg,#33264a,#1c0f24); }
 .token.evil-align { box-shadow:0 0 0 2px var(--evil), 0 4px 10px rgba(0,0,0,.4); }
 /* Nuit interactive : cibles cliquables */
 .night-targets { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
-.ntarget { padding:5px 10px; border:1px solid var(--line); border-radius:999px; cursor:pointer; font-size:.8rem; background:#1c1024; }
+.ntarget { padding:5px 10px; border:1px solid var(--line); border-radius:999px; cursor:pointer; font-size:.8rem; font-family:var(--font); color:var(--ink); background:#1c1024; }
 .ntarget:hover { border-color:var(--gold); }
 .ntarget.dead { opacity:.5; text-decoration:line-through; }
 
@@ -613,6 +613,21 @@ body.bright .dock-toggle { color:#5a2a6a; }
   body.dock-open .dock-backdrop { opacity:1; pointer-events:auto; }
 }
 @media print { .dock, .dock-backdrop { display:none; } }
+
+.session-banner { display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:6px 16px; color:var(--muted); font-size:.8rem; }
+.session-banner strong { color:var(--gold-soft); }
+.storage-warning { position:fixed; inset:0; padding:clamp(24px,8vw,120px); z-index:100000; background:var(--bg); color:var(--ink); overflow:auto; }
+.storage-warning.hidden { display:none; }
+.storage-warning .btn { margin:6px; }
+.storage-warning p { max-width:60ch; }
+.night-step .nbody { min-width:0; overflow-wrap:anywhere; }
+.night-step select { max-width:100%; }
+.offline-status { margin-left:auto; }
+@media (max-width:700px) {
+  .session-banner { padding:6px 12px; }
+  .grimoire-toolbar .btn.small { min-height:40px; }
+}
+@media print { .session-banner { display:none; } }
 
 /* ---------- Tirage aléatoire ---------- */
 .rand-result { text-align:center; font-family:var(--serif); font-size:2rem; color:var(--gold-soft); min-height:2.6rem; margin:6px 0 14px; padding:10px; border:1px solid var(--line); border-radius:14px; background:var(--panel); }

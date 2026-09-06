@@ -14,31 +14,114 @@ game *Blood on the Clocktower*.
 
 ## What it does
 
-Combines a **full digital grimoire** and a **storytelling assistant**: build the bag, deal
-roles, follow the night order, manage votes — all tracked automatically.
+A **digital grimoire** and a **storytelling assistant**: build the bag, deal roles,
+follow the night and record votes. The Storyteller adjudicates abilities, deaths,
+exceptions and game end. This is not a complete rules engine.
 
-- 🌍 **Bilingual** FR / EN, switch on the fly
-- 📱 **Installable PWA**, fully **offline**
-- 💾 Auto-save + named games + JSON export/import
-- 🔒 No data online (everything stays on the device)
+- 🌍 **French by default**, English available at any time
+- 📱 **PWA**, installation depends on the browser, offline after full cache confirmation
+- 💾 Auto-save, named games, up to eight safety backups within storage limits and JSON export/import
+- 🔒 Local game data, no server synchronization
 
 ## Features
 
 | Tab | Contents |
 |---|---|
-| **Grimoire** | Player circle, roles (unique emblems), alive/dead, ghost vote, statuses, reminder tokens, **drag & drop** (seats & tokens), **long-press** (quick actions), alignment, **claims**, **nomination flags**, zoom, undo/redo. |
-| **Night** | Filtered night order, **interactive targets** (auto-place tokens), **info calculator** (drunk/poison aware), **false-info banner**, lockable **Demon bluffs**, manual reordering. |
-| **Day** | Nominations, **vote history** (voters + ghost votes), auto majority, **timer** (+ **suggested duration** from living count), **vote bar**, execution, **Traveller exile**, **dawn report** (night deaths to read aloud), end-game detection. |
-| **Setup** | **Bag builder** + auto modifiers (Baron, Fang Gu…) + **validation** + deal. |
-| **Characters** | Full reference + **jinxes** + search. |
-| **Scripts** | 3 official scripts + **import any** clocktower.online script (base of 143 roles). |
+| **Grimoire** | Circle or **GM list**, both private. Separate actual and shown characters, life/death, ghost votes, alignment, claims, sourced reminders with expiry, undo/redo. |
+| **Night** | **Full list** or **Guided** with saved focus, target choices confirmed in a dialog, information suggestions, three valid bluffs to show privately. |
+| **Day** | Nominations by player identity, stored threshold, voters and ghost votes tracked, timer, execution separate from death, Traveller exile, dawn report and advisory end checks. |
+| **Setup** | Bag builder, supported modifiers, composition check and **Setup checks**. Exceptions still need review. |
+| **Characters** | Reference browsing independent of the active script, reworded abilities, search and jinxes. |
+| **Scripts** | Three included scripts, custom library and validated JSON import. Activation is separate, with confirmation and a backup. |
 
-**Tools**: 🔒 screen lock · 🎲 random picker · 🏁 game recap · 🎯 command palette (Ctrl+K) · 📊 table mode · ✅ composition validator · 🔍 player search · 👁 private role reveal · 🕶️ privacy screen · 📜 log · 📸 night snapshots ·
-📝 notes · 📖 glossary/rules · 🖨 print · ⚙ settings (keep awake, fullscreen, vibration,
-volume, ambient sound, bright theme, ♿ high contrast/colourblind, accent).
+**Tools**: on phones, a labelled bottom sheet replaces the side dock. It includes the
+per-player, per-phase **Information notebook**, **Private messages**, **Safety backups**,
+training, screen lock, public Table mode, log, snapshots, notes, guide and printing.
+The command palette remains available with Ctrl+K. Comfort settings depend on browser support.
 
 Included scripts: **Trouble Brewing**, **Sects & Violets**, **Bad Moon Rising** + a base of
 **143 roles** (FR/EN) for custom scripts. Gothic/clock theme, Cinzel font.
+
+## Adjudication and privacy
+
+- **Drunk and Lunatic**: actual character (`roleId`) is separate from believed character
+  (`shownRoleId`). “Actually the Drunk” converts a Townsfolk to an Outsider while keeping
+  that shown Townsfolk. The Drunk is not just a temporary status.
+  The actual Lunatic's night step remains separate from the shown Demon's step;
+  the Storyteller still handles relaying their choices.
+- **Effects**: each reminder has a source player/character, target and expiry
+  (manual, next dawn or next dusk). Moving or removing a reminder recomputes statuses
+  without erasing other sources. Free-text notes do not create effects through keywords.
+  Manual statuses are separate from effects.
+- **Night choices**: the dialog offers source, token, effect and expiry. You can
+  **Record choice without effect**. A drunk or poisoned source cannot apply its effect,
+  but its choice can still be recorded. The Storyteller confirms deaths:
+  protection does not universally prevent every cause of death.
+- **Information**: calculations are suggestions, never guaranteed truth. They use recorded
+  alignment; candidate pairs stay stable for the same night. A drunk or poisoned player
+  may receive correct **or** incorrect information. The Storyteller decides and records
+  what they communicate.
+- **Player screen**: only the selected number, two characters, alignment or text is shown,
+  and recorded in the notebook. Bluffs display only with three distinct valid choices.
+  Hiding information opens a neutral screen; only **Return to Storyteller** restores
+  the private interface.
+- **Ability use**: manually track Available / Used / Used without effect, including
+  while impaired. Changing the actual character resets this tracking.
+- **Setup**: check assignments, the Drunk's shown character, bluffs for at least seven
+  non-Travellers, Fortune Teller's Red herring, Washerwoman's Townsfolk / Wrong pair,
+  other setup instructions and jinxes. These checks do not certify every rule.
+- **Nominations**: a living player nominates once per day; each non-Traveller can be
+  nominated once per day, even if dead. The threshold is stored at the start of voting.
+  Only the highest qualifying, untied total puts someone on the block. Removing a
+  ghost voter refunds the vote if that nomination spent it. Switching to manual totals
+  requires confirmation, clears detailed voters and refunds their ghost votes;
+  ghost-vote tracking then becomes manual.
+- **Execution and ending**: one daily execution is tracked even if the executed player
+  survives. An exceptional execution needs an explicit reason. The Virgin's first
+  nomination is tracked across the game, not reset daily. An end suggestion never
+  declares a winner by itself: review Demon succession, Scarlet Woman, Mastermind and
+  alternative conditions before confirming the winner.
+
+## Backups, scripts and offline use
+
+Operations that replace data (new game, reset, clearing or randomly assigning roles,
+dealing, script activation/import, game import or loading) create a prior copy.
+**Tools → Safety backups** keeps **up to eight copies**, also bounded by the storage
+budget. Older copies may be evicted to stay within quota. These copies preserve gameplay
+state, the log and custom definitions, but not undo/redo stacks. Also export JSON:
+local copies cannot protect against cleared browser data. Exports include custom
+script definitions.
+
+Current-game undo history is limited to **50 steps** and **250,000 characters**, so
+it may retain fewer than 50 steps. This bounds undo history, not current gameplay
+state, the log or custom definitions.
+
+Only one tab edits the real game. Protection uses `navigator.locks` when available,
+compares the stored save and watches storage changes. On a conflict, export your state,
+reload or use isolated training. An unreadable save is not overwritten:
+the recovery screen offers a raw export.
+
+Importing a script adds it to the library without activating it. Unknown identifiers,
+duplicates and incomplete definitions are rejected. Complete custom definitions must
+include `name`, `team`, `ability`, `firstNight`, `otherNight` and `reminders`.
+Confirmed activation backs up and resets the game while preserving player names.
+
+Wait for **Ready offline**, after all required files are cached, before disconnecting.
+The banner shows the version; **Update available** applies an update only when you
+choose, preferably between games. PNG icons are provided for the PWA. Direct
+installation depends on the browser; on iOS use Safari → Share → Add to Home Screen.
+
+## Training without touching your real game
+
+The button in [guide section 14](guide.html?lang=en#testgame) opens fresh seven-player
+Trouble Brewing training in the same tab. It uses `sessionStorage`, survives refresh
+within that tab and leaves the real game in `localStorage` untouched. Check the
+**Training: real game untouched** banner, then use **Return to real game** to exit.
+
+The walkthrough covers reveals, information, effects, ghost votes, surviving execution
+and an end decision. Converting the demo's Chef to the Drunk makes its distribution
+invalid: this is an interface exercise, not a legal setup to play unchanged.
+Completing the walkthrough certifies neither every feature nor your rules readiness.
 
 ## Run locally
 
@@ -67,11 +150,15 @@ blood-clocktower-mj/
 ├─ sw.js                 # service worker (offline)
 ├─ css/theme.css
 ├─ js/app.js
+├─ js/game-core.js        # game state and targeted checks
+├─ js/experience.js       # Storyteller workflows and private screens
+├─ js/persistence.js      # backups and storage protection
+├─ js/offline.js          # cache status and updates
 ├─ data/
 │  ├─ game.json          # teams, setup table, night steps
 │  ├─ all-roles.json     # base of 143 roles (FR/EN + jinxes)
 │  └─ scripts/           # trouble-brewing, sects-and-violets, bad-moon-rising
-└─ assets/               # SVG icons + Cinzel font (OFL)
+└─ assets/               # SVG/PNG icons + Cinzel font (OFL)
 ```
 
 ## Credits & licence
