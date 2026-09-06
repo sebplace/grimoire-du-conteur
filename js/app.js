@@ -250,11 +250,12 @@ function defaultState() {
     day: { number: 0, nominations: [] },
     phase: "night",
     sound: true,
-    timer: { total: 300, remaining: 300, running: false },
+    timer: { total: 300, remaining: 300, running: false, deadline: null },
     settings: { keepAwake: true, volume: 0.6, accent: "purple", haptics: true, confirmActions: true, dockOpen: false },
     log: [],
     history: [],
-    bag: [], bluffs: [], setupChecks: {}, winner: null, schemaVersion: 2
+    bag: [], bluffs: [], setupChecks: {}, winner: null, schemaVersion: 3,
+    pendingActions: [], revealedRoles: {}, phaseReviews: {}
   };
 }
 
@@ -269,7 +270,7 @@ function load() {
 function save() {
   if (READ_ONLY) { storageProblem(tr("Une autre fenêtre utilise cette partie. Rechargez après l'avoir fermée.", "Another window is editing this game. Close it, then reload.")); throw new Error("Read-only game"); }
   S.players.forEach(p => GameCore.normalizePlayer(p));
-  const out = Object.assign({}, S, { _custom: CUSTOM });
+  const out = Object.assign({}, S, { _custom: CUSTOM, timer: { ...S.timer, remaining: SessionCore.timerRemaining(S.timer) } });
   try { PERSISTENCE.write(out); }
   catch (error) { storageProblem(error.name === "GameConflictError" ? tr("La partie a changé dans un autre onglet. Votre copie n'a pas écrasé la sauvegarde.", "Another tab changed the game. Your copy did not overwrite it.") : tr("Sauvegarde impossible. Exportez la partie avant de fermer.", "Unable to save. Export the game before closing.")); throw error; }
 }
@@ -278,6 +279,7 @@ function normalizeGame(input) {
   const state = Object.assign(defaultState(), input);
   state.settings = Object.assign(defaultState().settings, input.settings);
   state.timer = Object.assign(defaultState().timer, input.timer);
+  SessionCore.normalizeTimer(state.timer);
   state.day = Object.assign({ number: 0, nominations: [] }, input.day);
   state.night = Object.assign({ number: 1, mode: "first", checked: {} }, input.night);
   if (!Array.isArray(state.day.nominations) || !state.night.checked || typeof state.night.checked !== "object" || Array.isArray(state.night.checked) || !Number.isInteger(state.night.number) || state.night.number < 1 || !Number.isInteger(state.day.number) || state.day.number < 0) throw new Error("Invalid night or nominations");
@@ -302,7 +304,9 @@ function normalizeGame(input) {
     if (n.executed && !state.day.execution) state.day.execution = { nominationId: n.id, playerId: n.nomineeId };
   });
   state.bluffs = Array.isArray(state.bluffs) ? state.bluffs : [];
-  state.schemaVersion = 2;
+  if (!Array.isArray(state.pendingActions)) throw new Error("Invalid pending actions");
+  if (!state.revealedRoles || typeof state.revealedRoles !== "object" || Array.isArray(state.revealedRoles)) throw new Error("Invalid reveal progress");
+  state.schemaVersion = 3;
   return state;
 }
 function storageProblem(message) {
@@ -345,7 +349,8 @@ function currentScript() { return SCRIPTS[S.scriptId] || CUSTOM[S.scriptId]; }
 function charById(id) { const sc = currentScript(); return (sc && sc.charById[id]) || masterRole(id) || null; }
 function shownRole(p) { return charById(GameCore.shownRoleId(p)); }
 function nightRoleId(p) { return p.roleId === "drunk" ? GameCore.shownRoleId(p) : p.roleId; }
-function activePlayers() { return S.players.filter(p => !p.exiled && charById(p.roleId)?.team !== "fabled"); }
+function activePlayers() { return SessionCore.participatingPlayers(S.players, charById); }
+function participantCounts() { return SessionCore.participantCounts(S.players, charById); }
 function teamName(team) { return loc(GAME.teams[team]) || team; }
 
 function toast(msg, action) {
@@ -373,7 +378,6 @@ async function boot() {
   const requestedLang = new URLSearchParams(location.search).get("lang");
   if (["fr", "en"].includes(requestedLang)) S.lang = requestedLang;
   await acquireGameLock();
-  if (S.timer && S.timer.running) S.timer.running = false;
   GAME = await fetchJSON("data/game.json");
   try {
     const m = await fetchJSON("data/all-roles.json");
@@ -390,6 +394,7 @@ async function boot() {
   for (const id in CUSTOM) registerScript(id, CUSTOM[id], true);
   if (!currentScript()) throw new Error("Saved script unavailable: " + S.scriptId);
   initExperience();
+  initWorkflows();
   wireChrome();
   initParticles();
   applyLang();
@@ -402,6 +407,7 @@ async function boot() {
   let launched = params.get("test") === "1";
   if (launched) { params.delete("test"); history.replaceState(null, "", location.pathname + (params.size ? "?" + params : "")); startTestGame(); }
   if (READ_ONLY) { storageProblem(tr("La partie est déjà ouverte en écriture dans une autre fenêtre.", "The game is already open for editing in another window.")); return; }
+  resumeTimerLoop();
   if (!launched && !S.tutoDone) showWelcome();
 }
 function showWelcome() {
@@ -434,7 +440,7 @@ function wireChrome() {
   $("#btn-tools").onclick = openMobileTools;
   $("#btn-menu").onclick = () => switchView("scripts");
   $("#modal-overlay").onclick = (e) => { if (e.target.id === "modal-overlay") closeModal(); };
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeModal(); });
+  document.addEventListener("keydown", handleModalKeyboard);
   const sb = $("#btn-sound");
   sb.textContent = S.sound ? "🔔" : "🔕";
   sb.onclick = () => { S.sound = !S.sound; sb.textContent = S.sound ? "🔔" : "🔕"; save(); if (S.sound) playBell(660, 0.25); };
@@ -453,7 +459,9 @@ function wireChrome() {
   if (S.settings.ambient) setTimeout(startAmbient, 500);
   initWakeLock();
   document.addEventListener("keydown", handleShortcuts);
-  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") requestWakeLock(); });
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") { requestWakeLock(); if (!READ_ONLY && S.timer.running) timerTick(); }
+  });
   // Balayage entre onglets (mobile)
   const app = $("#app"); let sx = 0, sy = 0, st0 = 0;
   const TABS = ["grimoire", "night", "day", "setup", "reference", "scripts"];
@@ -486,6 +494,12 @@ function handleShortcuts(e) {
 }
 function applyTheme() { document.body.classList.toggle("bright", !!(S.settings && S.settings.bright)); document.body.classList.toggle("hc", !!(S.settings && S.settings.contrast)); }
 const DOCK_TOOLS = [
+  { icon: "👁", key: "roleTour", fn: () => openRoleDistributionTour() },
+  { icon: "🎯", key: "multiTargets", fn: () => openMultiTargetPicker() },
+  { icon: "⚠", key: "pendingActions", fn: () => openPendingActions(getNightSteps()) },
+  { icon: "📚", key: "templates", fn: () => openTemplates() },
+  { icon: "🧪", key: "exercises", fn: () => openTrainingExercises() },
+  { icon: "↔", key: "compareSnapshots", fn: () => openSnapshotComparison() },
   { icon: "☑", key: "setupChecklist", fn: () => openSetupChecklist() },
   { icon: "👁", key: "privateMessage", fn: () => openMessageComposer() },
   { icon: "📒", key: "informationNotebook", fn: () => openNotebook() },
@@ -733,7 +747,8 @@ function snapshot(includeScripts = false) {
   return JSON.parse(JSON.stringify({
     players: S.players, night: S.night, day: S.day, phase: S.phase,
     scriptId: S.scriptId, bag: S.bag, bluffs: S.bluffs, setupChecks: S.setupChecks,
-    winner: S.winner, notes: S.notes, log: S.log, timer: S.timer, nightOrder: S.nightOrder,
+    winner: S.winner, notes: S.notes, log: S.log, timer: { ...S.timer, remaining: SessionCore.timerRemaining(S.timer) }, nightOrder: S.nightOrder,
+    pendingActions: S.pendingActions, revealedRoles: S.revealedRoles, phaseReviews: S.phaseReviews, exercise: S.exercise,
     ...(includeScripts ? { _custom: CUSTOM, snapshots: S.snapshots } : {}), _view: currentView
   }));
 }
@@ -745,32 +760,34 @@ function pushHistory() {
 }
 function captureSnapshot() {
   S.snapshots = S.snapshots || [];
-  S.snapshots.push({
-    night: S.night.number - 1,
-    players: S.players.map(p => ({ name: p.name, roleId: p.roleId, alive: p.alive, team: p.roleId && charById(p.roleId) ? charById(p.roleId).team : null }))
-  });
-  if (S.snapshots.length > 40) S.snapshots.shift();
+  S.snapshots.push(SessionCore.capture(S, charById));
+  while (S.snapshots.length > 1 && (S.snapshots.length > 40 || JSON.stringify(S.snapshots).length > 500000)) S.snapshots.shift();
 }
 function openSnapshots() {
   const snaps = (S.snapshots || []);
   const rows = snaps.slice().reverse().map(s => {
     const chips = s.players.map(p => `<span class="badge ${p.alive ? "" : "ghost"}" style="${p.team ? "border-color:var(--" + p.team + ")" : ""}">${escapeHtml(p.name)}${p.roleId ? ": " + escapeHtml(loc((charById(p.roleId) || { name: p.roleId }).name)) : ""}${p.alive ? "" : " ✝"}</span>`).join(" ");
-    return `<div class="nom-card"><div style="color:var(--gold-soft);font-weight:700;margin-bottom:4px">🌙 ${t("nightNum")} ${s.night}</div><div class="seat-badges" style="justify-content:flex-start;max-width:none">${chips}</div></div>`;
+    const label = s.phase === "day" ? "☀️ " + t("dayNum") + " " + s.day : "🌙 " + t("nightNum") + " " + s.night;
+    return `<div class="nom-card"><div style="color:var(--gold-soft);font-weight:700;margin-bottom:4px">${label}${s.time ? " · " + new Date(s.time).toLocaleString(S.lang) : ""}</div><div class="seat-badges" style="justify-content:flex-start;max-width:none">${chips}</div></div>`;
   }).join("") || `<p class="list-empty">${t("noSnapshots")}</p>`;
   openModal(`
     <button class="close-x" onclick="closeModal()">×</button>
     <h3>📸 ${t("snapshots")}</h3>
+    <div class="row"><button class="btn small" id="snapshot-now">${tr("Capturer maintenant", "Capture now")}</button><button class="btn small" id="snapshot-compare">${t("compareSnapshots")}</button></div>
     <div style="max-height:60vh;overflow-y:auto">${rows}</div>
     <div class="modal-actions"><button class="btn gold" onclick="closeModal()">${t("close")}</button></div>`);
+  $("#snapshot-now").onclick = () => { captureSnapshot(); save(); openSnapshots(); };
+  $("#snapshot-compare").onclick = openSnapshotComparison;
 }
 function applySnapshot(snap) {
   const restored = JSON.parse(JSON.stringify(snap));
   const view = restored._view; delete restored._view;
   delete restored._custom;
+  if (restored.timer) { restored.timer.running = false; restored.timer.deadline = null; }
   S = normalizeGame(Object.assign({}, S, restored));
   delete S._custom;
   if (TIMER_HANDLE) { clearInterval(TIMER_HANDLE); TIMER_HANDLE = null; }
-  S.timer.running = false;
+  SessionCore.pauseTimer(S.timer);
   save(); buzz(15);
   if (view && view !== currentView) switchView(view); else renderAll();
 }
@@ -831,7 +848,7 @@ function openRandomTool() {
   $("#r-coin").onclick = () => show(Math.random() < .5 ? "🪙 " + t("heads") : "🪙 " + t("tails"));
   $("#r-die").onclick = () => show("🎲 " + (1 + Math.floor(Math.random() * 6)));
   $("#r-player").onclick = () => {
-    const alive = S.players.filter(p => p.alive);
+    const alive = activePlayers().filter(p => p.alive);
     if (!alive.length) { show("—"); return; }
     show("👤 " + alive[Math.floor(Math.random() * alive.length)].name);
   };
@@ -851,7 +868,7 @@ function openRecap() {
     return { team, html: `<div class="log-row"><span>${status} ${glyph} <strong>${escapeHtml(p.name)}</strong></span> <span style="color:var(--muted)">${escapeHtml(roleName)}${align}</span></div>` };
   });
   rows.sort((a, b) => order.indexOf(a.team) - order.indexOf(b.team));
-  const living = activePlayers().filter(p => p.alive).length;
+  const living = participantCounts().living;
   const banner = end
     ? `<div class="recap-winner ${end.winner === "good" ? "win-good" : "win-evil"}">${end.winner === "good" ? "🏆" : "☠️"} ${escapeHtml(end.text)}</div>`
     : `<div class="hint">${t("recapOngoing")}</div>`;
@@ -859,7 +876,7 @@ function openRecap() {
     <button class="close-x" onclick="closeModal()">×</button>
     <h3>🏁 ${t("recap")}</h3>
     ${banner}
-    <div style="color:var(--muted);font-size:.8rem;margin:6px 0 8px">🌙 ${S.night.number || 0} · ☀️ ${S.day.number || 0} · ${living}/${S.players.length} ${t("livingC")}</div>
+    <div style="color:var(--muted);font-size:.8rem;margin:6px 0 8px">🌙 ${S.night.number || 0} · ☀️ ${S.day.number || 0} · ${living}/${participantCounts().total} ${t("livingC")}</div>
     <div style="max-height:44vh;overflow-y:auto">${rows.map(r => r.html).join("") || `<p class="list-empty">${t("noPlayers") || "—"}</p>`}</div>
     <div class="modal-actions">
       <button class="btn small ghost" id="recap-export">⬇ ${t("exportLog")}</button>
@@ -869,7 +886,7 @@ function openRecap() {
   $("#recap-export").onclick = () => {
     const lines = [];
     if (end) lines.push(end.text);
-    lines.push(`${t("nightNum")}: ${S.night.number || 0} / ${t("dayNum")}: ${S.day.number || 0} · ${living}/${S.players.length} ${t("livingC")}`);
+    lines.push(`${t("nightNum")}: ${S.night.number || 0} / ${t("dayNum")}: ${S.day.number || 0} · ${living}/${participantCounts().total} ${t("livingC")}`);
     lines.push("");
     S.players.slice().sort((a, b) => {
       const ca = a.roleId && charById(a.roleId), cb = b.roleId && charById(b.roleId);
@@ -886,8 +903,7 @@ function openRecap() {
 function openExile() {
   const travs = S.players.filter(p => !p.exiled && charById(p.roleId)?.team === "traveler");
   if (!travs.length) { toast(t("noTravelers")); return; }
-  const living = S.players.filter(p => p.alive).length;
-  const majority = Math.ceil(living / 2);
+  const { living, majority } = participantCounts();
   const rows = travs.map(p => {
     const c = charById(p.roleId);
     return `<div class="nom-card">
@@ -1045,10 +1061,16 @@ let currentView = "grimoire";
 let GZOOM = 1;
 let NIGHT_CHAR_ORDER = [];
 function switchView(view) {
+  const leaving = currentView !== view;
+  if (leaving) VIEW_POSITIONS[currentView] = { x: window.scrollX, y: window.scrollY };
   currentView = view;
   $$(".tab").forEach(x => x.classList.toggle("active", x.dataset.view === view));
   $$(".view").forEach(x => x.classList.toggle("active", x.id === "view-" + view));
   renderAll();
+  if (leaving) {
+    const position = VIEW_POSITIONS[view] || { x: 0, y: 0 };
+    window.scrollTo(position.x, position.y);
+  }
 }
 function updatePhaseBadge() {
   const b = $("#phase-badge");
@@ -1067,11 +1089,9 @@ function updatePhaseBadge() {
 }
 function updateStatusBar() {
   const sb = $("#statusbar"); if (!sb) return;
-  const n = activePlayers().length;
+  const { total: n, living, majority } = participantCounts();
   if (!n) { sb.innerHTML = ""; sb.style.display = "none"; return; }
   sb.style.display = "";
-  const living = activePlayers().filter(p => p.alive).length;
-  const majority = Math.ceil(living / 2);
   sb.innerHTML = `
     <span class="sb-item">🌿 <b>${living}</b> ${t("livingC").toLowerCase()}</span>
     <span class="sb-item">💀 <b>${n - living}</b> ${t("deadC").toLowerCase()}</span>
@@ -1088,14 +1108,60 @@ function flashPhase(kind) {
 }
 
 /* ---------- Render dispatcher ---------- */
+const VIEW_POSITIONS = {};
+const VIEW_SIGNATURES = new Map();
+function viewSignature(view) {
+  const common = [S.lang, S.scriptId, S.phase, S.night.number, S.day.number];
+  const playerState = S.players;
+  const data = {
+    grimoire: [playerState, S.day.nominations, S.settings.gmList, GZOOM],
+    night: [playerState, S.night, S.day.nominations, S.bluffs, S.nightOrder],
+    day: [playerState, S.day],
+    setup: [playerState, S.bag, currentScript()?.characters],
+    reference: [referenceScriptId, SCRIPTS[referenceScriptId || S.scriptId]?.characters],
+    scripts: [Object.keys(CUSTOM), Object.values(SCRIPTS).map(s => [s.meta, s.characters.length])]
+  };
+  return JSON.stringify([common, data[view]]);
+}
+function rememberInteraction(root) {
+  const active = document.activeElement;
+  const selectorFor = el => {
+    if (!el || el === document.body) return null;
+    if (el.id) return "#" + CSS.escape(el.id);
+    const keys = [...el.attributes].filter(a => a.name.startsWith("data-"));
+    if (keys.length) return el.tagName.toLowerCase() + keys.map(a => `[${a.name}="${CSS.escape(a.value)}"]`).join("");
+    return null;
+  };
+  const focus = root.contains(active) ? selectorFor(active) : null;
+  const search = root.querySelector("input[type=text][id*='search']");
+  return { focus, search: search ? { id: search.id, value: search.value, start: search.selectionStart, end: search.selectionEnd } : null,
+    scroll: root.scrollTop, x: window.scrollX, y: window.scrollY,
+    details: [...root.querySelectorAll("details")].map((d, i) => ({ i, open: d.open })) };
+}
+function restoreInteraction(root, context, restoreFocus = true) {
+  if (context.search) {
+    const search = root.querySelector("#" + CSS.escape(context.search.id));
+    if (search) { search.value = context.search.value; search.dispatchEvent(new Event("input", { bubbles: true })); if (context.search.start != null) search.setSelectionRange(context.search.start, context.search.end); }
+  }
+  context.details.forEach(({ i, open }) => { const detail = root.querySelectorAll("details")[i]; if (detail) detail.open = open; });
+  if (restoreFocus && context.focus && !playerScreenActive()) root.querySelector(context.focus)?.focus({ preventScroll: true });
+  root.scrollTop = context.scroll; window.scrollTo(context.x, context.y);
+}
 function renderAll() {
   S.players.forEach(p => GameCore.normalizePlayer(p));
   updatePhaseBadge();
   renderSessionBanner();
-  ({
-    grimoire: renderGrimoire, night: renderNight, day: renderDay,
-    setup: renderSetup, reference: renderReference, scripts: renderScripts
-  })[currentView]();
+  const view = $("#view-" + currentView), signature = viewSignature(currentView);
+  if (VIEW_SIGNATURES.get(currentView) !== signature || !view.firstElementChild) {
+    const context = rememberInteraction(view);
+    ({
+      grimoire: renderGrimoire, night: renderNight, day: renderDay,
+      setup: renderSetup, reference: renderReference, scripts: renderScripts
+    })[currentView]();
+    VIEW_SIGNATURES.set(currentView, viewSignature(currentView));
+    restoreInteraction(view, context);
+  }
+  paintTimer();
 }
 
 /* =========================================================================
@@ -1103,6 +1169,7 @@ function renderAll() {
    ========================================================================= */
 function renderGrimoire() {
   const v = $("#view-grimoire");
+  const ui = rememberInteraction(v);
   const n = S.players.length;
   v.innerHTML = `
     <div class="grimoire-toolbar">
@@ -1113,11 +1180,12 @@ function renderGrimoire() {
       <button class="btn small ghost" id="g-redo">↪ ${t("redo")}</button>
       <button class="btn small ghost" id="g-layout">${S.settings.gmList ? tr("Cercle", "Circle") : tr("Liste MJ", "GM list")}</button>
       <button class="btn small ghost" id="g-checklist">${tr("Préparation", "Preparation")}</button>
+      <button class="btn small ghost" id="g-tour">${t("roleTour")}</button>
       <button class="btn small ghost" id="g-zoomout">➖</button>
       <button class="btn small ghost" id="g-zoomin">➕</button>
       <input type="text" id="g-search" class="g-search" placeholder="🔍 ${t("searchPlayer")}" autocomplete="off">
       <span class="spacer"></span>
-      <span class="badge">${n} ${t("players")}</span>
+      <span class="badge">${participantCounts().total} ${t("players")}</span>
       <button class="btn small primary" id="g-new">${t("newGame")}</button>
     </div>
     <div class="circle-wrap" id="circle" style="transform:scale(${GZOOM});transform-origin:top center"></div>
@@ -1127,10 +1195,11 @@ function renderGrimoire() {
   $("#g-clear").onclick = () => { if (confirm(t("confirmClear"))) { backupBefore(t("clearRoles")); pushHistory(); S.players.forEach(p => GameCore.setRole(p, null)); save(); renderGrimoire(); } };
   $("#g-layout").onclick = () => { S.settings.gmList = !S.settings.gmList; save(); renderGrimoire(); };
   $("#g-checklist").onclick = openSetupChecklist;
+  $("#g-tour").onclick = openRoleDistributionTour;
   $("#g-undo").onclick = undo;
   $("#g-redo").onclick = redo;
-  $("#g-zoomin").onclick = () => { GZOOM = Math.min(1.8, GZOOM + 0.15); $("#circle").style.transform = `scale(${GZOOM})`; };
-  $("#g-zoomout").onclick = () => { GZOOM = Math.max(0.6, GZOOM - 0.15); $("#circle").style.transform = `scale(${GZOOM})`; };
+  $("#g-zoomin").onclick = () => { GZOOM = Math.min(1.8, GZOOM + 0.15); if ($("#circle")) $("#circle").style.transform = `scale(${GZOOM})`; };
+  $("#g-zoomout").onclick = () => { GZOOM = Math.max(0.6, GZOOM - 0.15); if ($("#circle")) $("#circle").style.transform = `scale(${GZOOM})`; };
   const gsearch = $("#g-search");
   if (gsearch) gsearch.oninput = () => {
     const q = gsearch.value.trim().toLowerCase();
@@ -1146,7 +1215,10 @@ function renderGrimoire() {
   if (S.settings.gmList) {
     const list = $("#circle"); list.id = "gm-list"; list.className = "gm-list"; list.removeAttribute("style");
     renderGMList(list);
+    $("#g-zoomin").disabled = true; $("#g-zoomout").disabled = true;
     gsearch.oninput = () => { const q = gsearch.value.toLowerCase(); [...list.children].forEach(row => row.hidden = !row.textContent.toLowerCase().includes(q)); };
+    restoreInteraction(v, ui);
+    VIEW_SIGNATURES.set("grimoire", viewSignature("grimoire"));
     return;
   }
 
@@ -1156,7 +1228,7 @@ function renderGrimoire() {
   if (n === 0) {
     center.innerHTML = `<div>${t("centerHint")}</div>`;
   } else {
-    const living = S.players.filter(p => p.alive).length;
+    const living = participantCounts().living;
     const isNight = S.phase === "night";
     const num = isNight ? S.night.number : (S.day.number || 1);
     const handAngle = ((num - 1) % 12) * 30 + (isNight ? 180 : 0);
@@ -1221,6 +1293,8 @@ function renderGrimoire() {
   });
   if (n > 1) { const h = document.createElement("div"); h.className = "hint"; h.style.textAlign = "center"; h.style.marginTop = "6px"; h.textContent = "↔ " + t("dragHint") + " · " + t("longPressHint"); v.appendChild(h); }
   attachReminderDrags();
+  restoreInteraction(v, ui);
+  VIEW_SIGNATURES.set("grimoire", viewSignature("grimoire"));
 }
 function attachReminderDrags() {
   $$("#circle .badge.custom[data-pid]").forEach(el => {
@@ -1449,6 +1523,7 @@ function revealRole(pid) {
   const c = shownRole(p);
   if (!c || (p.roleId === "drunk" && (!p.shownRoleId || c.team !== "townsfolk")) || (p.roleId === "lunatic" && (!p.shownRoleId || c.team !== "demon"))) return toast(tr("Choisissez d'abord un rôle montré valide dans la fiche.", "Choose a valid shown character in the player card first."));
   const alignment = p.roleId === "lunatic" && p.shownRoleId ? "evil" : GameCore.effectiveAlignment(p, charById);
+  if (!markRoleRevealed(p)) return;
   showPlayerScreen({ title: p.name + " · " + t("youAre"), lines: [loc(c.name), loc(c.ability), t(alignment)], playerId: p.id, kind: "role" });
 }
 function highlightNeighbours(pid) {
@@ -1534,9 +1609,9 @@ function openSeatModal(pid) {
       <span class="spacer"></span>
       <button class="btn gold" onclick="closeModal()">${t("close")}</button>
     </div>
-  `);
+  `, "seat:" + pid);
 
-  const rerender = () => { save(); renderAll(); openSeatModal(pid); };
+  const rerender = () => { scheduleRoleAnnouncement(p); save(); renderAll(); openSeatModal(pid); };
   wirePlayerExtras(p, rerender);
   $("#s-rempicker").onclick = () => openReminderPicker(pid);
   $("#s-alive").onclick = () => {
@@ -1596,6 +1671,7 @@ function openSeatModal(pid) {
     S.players = S.players.filter(x => x.id !== pid); save(); closeModal(); renderAll();
   };
   highlightNeighbours(pid);
+  if (rs?.value) rs.dispatchEvent(new Event("input", { bubbles: true }));
 }
 
 function shuffleRoles() {
@@ -1632,7 +1708,8 @@ function newGame() {
   S.log = []; S.history = []; S.redo = []; S.bluffs = []; S.bag = [];
   S.winner = null; S.setupChecks = {}; S.snapshots = []; S.notes = "";
   if (TIMER_HANDLE) { clearInterval(TIMER_HANDLE); TIMER_HANDLE = null; }
-  S.timer.running = false; S.timer.remaining = S.timer.total;
+  S.timer.running = false; S.timer.deadline = null; S.timer.remaining = S.timer.total;
+  S.pendingActions = []; S.revealedRoles = {}; S.phaseReviews = {}; S.exercise = null;
   save(); renderAll(); toast(t("toastNew"));
 }
 
@@ -1719,7 +1796,11 @@ function aliveNeighbours(idx) {
   }
   return res;
 }
-function seatDistance(i, j) { const n = S.players.length; const d = Math.abs(i - j); return Math.min(d, n - d); }
+function seatDistance(i, j) {
+  const seated = activePlayers(), a = seated.indexOf(S.players[i]), b = seated.indexOf(S.players[j]);
+  if (a < 0 || b < 0) return Infinity;
+  const d = Math.abs(a - b); return Math.min(d, seated.length - d);
+}
 function computeNightInfo(charId, playerId) {
   const holder = playerId ? S.players.find(p => p.id === playerId) : holderOf(charId); if (!holder) return null;
   const idx = S.players.indexOf(holder);
@@ -1769,8 +1850,7 @@ function infoBlock(charId, playerId) {
     ${info.impaired ? `<div style="font-size:.7rem;color:var(--blood-bright);margin-top:3px">⚠ ${t("impaired")}</div>` : ""}
   </div>`;
 }
-function renderNight() {
-  const v = $("#view-night");
+function getNightSteps() {
   const mode = S.night.mode;
   const inPlay = new Set(S.players.filter(p => !p.exiled).map(nightRoleId));
   const sc = currentScript();
@@ -1811,6 +1891,12 @@ function renderNight() {
     chars.sort((a, b) => rank(a.charId) - rank(b.charId));
     steps = [...metaEarly, ...chars, ...dawn];
   }
+  return steps;
+}
+function renderNight() {
+  const v = $("#view-night"), mode = S.night.mode;
+  const ui = rememberInteraction(v);
+  const steps = getNightSteps();
   NIGHT_CHAR_ORDER = steps.filter(s => s.type === "char").map(s => s.charId);
 
   const charCount = NIGHT_CHAR_ORDER.length;
@@ -1827,6 +1913,9 @@ function renderNight() {
       if (holderImpaired) extra += `<div class="impaired-note">${t("impairedFalseInfo")}</div>`;
     }
     if (s.type === "char" && s.reminders && s.reminders.length) {
+      if (["washerwoman", "librarian", "investigator", "fortuneteller"].includes(s.charId)) {
+        extra += `<button class="btn small" data-multi-source="${s.playerId}">${t("multiTargets")}</button>`;
+      }
       s.reminders.forEach((rem, remIdx) => {
         const remLabel = loc(rem);
         const targets = S.players.map(p =>
@@ -1852,7 +1941,7 @@ function renderNight() {
   }).join("");
   if (!steps.length) stepHtml = `<p class="list-empty">${t("noInPlay")}</p>`;
 
-  const impairedPlayers = S.players.filter(p => p.alive && p.statuses && (p.statuses.poisoned || p.statuses.drunk));
+  const impairedPlayers = activePlayers().filter(p => p.alive && p.statuses && (p.statuses.poisoned || p.statuses.drunk));
   const impairedBanner = impairedPlayers.length
     ? `<div class="impaired-banner">⚠ ${t("impairedBanner")} ${impairedPlayers.map(p => escapeHtml(p.name) + (p.statuses.poisoned ? " 🧪" : " 🍺")).join(", ")}</div>`
     : "";
@@ -1881,6 +1970,7 @@ function renderNight() {
     e.target.closest(".night-step").classList.toggle("checked", e.target.checked);
   });
   $$("[data-tgt]").forEach(el => el.onclick = () => openReminderPicker(el.dataset.tgt, el.dataset.char, +el.dataset.remidx || 0, el.dataset.source));
+  $$("[data-multi-source]").forEach(el => el.onclick = () => openMultiTargetPicker(el.dataset.multiSource));
   $$("[data-nup]").forEach(el => el.onclick = () => moveNightStep(el.dataset.nup, -1));
   $$("[data-ndown]").forEach(el => el.onclick = () => moveNightStep(el.dataset.ndown, 1));
   $$("[data-bluff-lock]").forEach(el => el.onclick = lockBluffs);
@@ -1892,6 +1982,8 @@ function renderNight() {
   if ($("#n-end")) $("#n-end").onclick = endNight;
   if ($("#n-start")) $("#n-start").onclick = startNight;
   enhanceNightView(steps);
+  restoreInteraction(v, ui);
+  VIEW_SIGNATURES.set("night", viewSignature("night"));
 }
 
 /* Applique le jeton/statut du rôle à la cible désignée pendant la nuit. */
@@ -1907,9 +1999,11 @@ function expireNightTokens(keys) {
 function startNight() {
   startNightFromDay();
 }
-function endNight() {
+function endNight(reviewed = false) {
   if (S.phase !== "night") return toast(tr("Vous êtes déjà au jour.", "It is already day."));
+  if (reviewed !== true) return reviewPendingTransition("day", () => endNight(true), getNightSteps());
   pushHistory();
+  captureSnapshot();
   S.phase = "day";
   S.day.number = S.night.number;      // jour N suit la nuit N
   S.night.number += 1;
@@ -1917,7 +2011,6 @@ function endNight() {
   S.night.checked = {};
   S.day.nominations = [];
   S.day.execution = null;
-  captureSnapshot();                  // capture du grimoire à l'aube
   expireNightTokens(["Protected"]);   // la protection expire à l'aube
   playBell(560, 0.7); flashPhase("day"); buzz(20); updateAmbientPhase();
   logEvent(`${t("dayPhase")} — ${t("dayNum")} ${S.day.number}`, "☀️");
@@ -1965,9 +2058,8 @@ function openDawnReport() {
    ========================================================================= */
 function renderDay() {
   const v = $("#view-day");
-  const living = S.players.filter(p => p.alive).length;
-  const dead = S.players.length - living;
-  const majority = GameCore.nominationThreshold(S.players, charById);
+  const ui = rememberInteraction(v);
+  const { living, dead, majority } = participantCounts();
   const leader = GameCore.nominationLeader(S.day.nominations);
 
   const noms = S.day.nominations.map(nm => {
@@ -1992,13 +2084,13 @@ function renderDay() {
           <button class="btn small ghost" data-ndel="${nm.id}" style="color:var(--blood-bright)">🗑</button>
         </div>
         <div class="vote-bar"><div class="vote-bar-fill ${pass ? "pass" : ""}" style="width:${Math.min(100, threshold ? (vcount / threshold * 100) : 0)}%"></div></div>
-        ${nm.voters.length ? `<div style="font-size:.75rem;color:var(--muted);margin-top:6px">👥 ${nm.voters.map(id => { const p = S.players.find(x => x.id === id); return p ? escapeHtml(p.name) : ""; }).filter(Boolean).join(", ")}</div>` : ""}
+        <div class="nom-voters" style="font-size:.75rem;color:var(--muted);margin-top:6px">${nm.voters.length ? "👥 " + nm.voters.map(id => { const p = S.players.find(x => x.id === id); return p ? escapeHtml(p.name) : ""; }).filter(Boolean).join(", ") : ""}</div>
       </div>`;
   }).join("") || `<p class="list-empty">${t("noNoms")}</p>`;
 
   v.innerHTML = `
     <h2>☀️ ${t("dayNum")} ${S.day.number || 1}</h2>
-    <p class="hint">${S.day.execution ? tr("Exécution du jour effectuée.", "Today's execution is complete.") : leader.tied ? tr("Égalité en tête : personne au billot.", "Top vote tied: nobody on the block.") : leader.nominationId ? tr("Au billot : ", "On the block: ") + escapeHtml(S.day.nominations.find(n => n.id === leader.nominationId).nominee) : tr("Personne au billot.", "Nobody on the block.")}</p>
+    <p class="hint" id="day-leader" aria-live="polite">${S.day.execution ? tr("Exécution du jour effectuée.", "Today's execution is complete.") : leader.tied ? tr("Égalité en tête : personne au billot.", "Top vote tied: nobody on the block.") : leader.nominationId ? tr("Au billot : ", "On the block: ") + escapeHtml(S.day.nominations.find(n => n.id === leader.nominationId).nominee) : tr("Personne au billot.", "Nobody on the block.")}</p>
     <details class="hint"><summary>${tr("Comment arbitrer les votes ?", "How to adjudicate votes?")}</summary>${tr("Le seuil est figé au début de chaque nomination. Seul le meilleur total admissible, sans égalité, place un candidat au billot. Une exécution peut ne pas tuer. Les capacités particulières restent à arbitrer ; utilisez Exécution MJ avec un motif.", "The threshold is fixed at nomination time. Only the highest qualifying, untied total places a candidate on the block. An execution may not kill. Adjudicate special abilities using Storyteller execution with a reason.")}</details>
     <div class="stat-row">
       <div class="stat"><div class="sv">${living}</div><div class="sl">${t("livingC")}</div></div>
@@ -2049,6 +2141,27 @@ function renderDay() {
   if (S.day.execution || S.phase !== "day") {
     $$("[data-vplus],[data-vminus],[data-voters],[data-exec],[data-ndel],#d-nom,#d-manual-exec").forEach(b => b.disabled = true);
   }
+  restoreInteraction(v, ui);
+  VIEW_SIGNATURES.set("day", viewSignature("day"));
+}
+function renderVoteResults() {
+  const root = $("#view-day");
+  if (currentView !== "day" || !$("#day-leader")) { renderAll(); return; }
+  const leader = GameCore.nominationLeader(S.day.nominations);
+  for (const n of S.day.nominations) {
+    const card = root.querySelector(`[data-nom="${CSS.escape(n.id)}"]`);
+    if (!card) { renderAll(); return; }
+    const pass = n.votes >= n.threshold;
+    const count = card.querySelector(".vote-count");
+    count.textContent = n.votes; count.classList.toggle("pass", pass);
+    const bar = card.querySelector(".vote-bar-fill");
+    bar.classList.toggle("pass", pass); bar.style.width = Math.min(100, n.votes / n.threshold * 100) + "%";
+    card.querySelector("strong").textContent = (S.players.find(p => p.id === n.nomineeId)?.name || n.nominee) + (leader.nominationId === n.id ? " ⚖" : "");
+    card.querySelector(".nom-voters").textContent = n.voters.length ? "👥 " + n.voters.map(id => S.players.find(p => p.id === id)?.name || "").filter(Boolean).join(", ") : "";
+  }
+  const leading = S.day.nominations.find(n => n.id === leader.nominationId);
+  $("#day-leader").textContent = S.day.execution ? tr("Exécution du jour effectuée.", "Today's execution is complete.") : leader.tied ? tr("Égalité en tête : personne au billot.", "Top vote tied: nobody on the block.") : leading ? tr("Au billot : ", "On the block: ") + (S.players.find(p => p.id === leading.nomineeId)?.name || leading.nominee) : tr("Personne au billot.", "Nobody on the block.");
+  VIEW_SIGNATURES.set("day", viewSignature("day"));
 }
 
 function openVoters(nomId) {
@@ -2074,33 +2187,59 @@ function openVoters(nomId) {
     const enabled = !nm.voters.includes(pid);
     if (enabled && !p.alive && p.ghostUsed) return toast("👻 " + tr("Vote déjà utilisé.", "Vote already spent."));
     pushHistory(); GameCore.setVoter(S, nomId, pid, enabled); nm.voteMode = "detailed";
-    save(); renderAll(); openVoters(nomId);
+    save(); renderVoteResults(); openVoters(nomId);
   });
 }
 let TIMER_HANDLE = null;
+let LAST_TIMER_SAVE = 0;
 function fmtTime(sec) { sec = Math.max(0, sec | 0); const m = (sec / 60) | 0, s = sec % 60; return m + ":" + String(s).padStart(2, "0"); }
 function timerTick() {
-  if (!S.timer.running) return;
-  S.timer.remaining -= 1;
-  if (S.timer.remaining <= 0) {
-    S.timer.remaining = 0; pauseTimer(); playBell(700, 1.0); toast("⏰ " + t("timeUp")); return;
+  if (!S.timer.running || READ_ONLY) return;
+  const result = SessionCore.syncTimer(S.timer);
+  paintTimer();
+  if (result.finished) {
+    if (TIMER_HANDLE) { clearInterval(TIMER_HANDLE); TIMER_HANDLE = null; }
+    save(); playBell(700, 1.0); toast("⏰ " + t("timeUp"));
+  } else if (Date.now() - LAST_TIMER_SAVE >= 10000) {
+    LAST_TIMER_SAVE = Date.now(); save();
   }
-  const d = $("#timer-display"); if (d) d.textContent = fmtTime(S.timer.remaining);
-  if (S.timer.remaining % 10 === 0) save(); // throttle : évite d'écrire tout l'état chaque seconde
+}
+function paintTimer() {
+  const value = fmtTime(SessionCore.timerRemaining(S.timer));
+  for (const selector of ["#timer-display", "#tbl-timer"]) {
+    const node = $(selector);
+    if (node && node.textContent !== value) node.textContent = value;
+  }
+  const button = $("#tm-start");
+  if (button) {
+    button.textContent = S.timer.running ? "⏸ " + t("pause") : "▶ " + t("start");
+    button.classList.toggle("gold", !S.timer.running);
+  }
+}
+function resumeTimerLoop() {
+  if (TIMER_HANDLE) { clearInterval(TIMER_HANDLE); TIMER_HANDLE = null; }
+  if (!S.timer.running || READ_ONLY) return;
+  timerTick();
+  if (S.timer.running) TIMER_HANDLE = setInterval(timerTick, 250);
 }
 function startTimer() {
-  if (S.timer.remaining <= 0) S.timer.remaining = S.timer.total;
-  S.timer.running = true; save();
-  if (TIMER_HANDLE) clearInterval(TIMER_HANDLE);
-  TIMER_HANDLE = setInterval(timerTick, 1000);
-  if (currentView === "day") renderDay();
+  SessionCore.startTimer(S.timer); LAST_TIMER_SAVE = Date.now(); save(); resumeTimerLoop(); paintTimer();
 }
-function pauseTimer() { S.timer.running = false; if (TIMER_HANDLE) { clearInterval(TIMER_HANDLE); TIMER_HANDLE = null; } save(); if (currentView === "day") renderDay(); }
+function pauseTimer() {
+  SessionCore.pauseTimer(S.timer);
+  if (TIMER_HANDLE) { clearInterval(TIMER_HANDLE); TIMER_HANDLE = null; }
+  save(); paintTimer();
+}
 function stopTimer() { pauseTimer(); }
-function resetTimer() { S.timer.remaining = S.timer.total; pauseTimer(); }
-function setTimer(sec) { S.timer.total = sec; S.timer.remaining = sec; S.timer.running = false; if (TIMER_HANDLE) { clearInterval(TIMER_HANDLE); TIMER_HANDLE = null; } save(); renderDay(); }
+function resetTimer() { setTimer(S.timer.total); }
+function setTimer(sec) {
+  if (!Number.isFinite(sec) || sec <= 0) return toast(tr("Durée invalide.", "Invalid duration."));
+  if (TIMER_HANDLE) { clearInterval(TIMER_HANDLE); TIMER_HANDLE = null; }
+  S.timer = { total: Math.round(sec), remaining: Math.round(sec), running: false, deadline: null };
+  save(); paintTimer();
+}
 function suggestTimer() {
-  const alive = S.players.filter(p => p.alive).length;
+  const alive = participantCounts().living;
   // Heuristique : jour plus long quand il reste beaucoup de vivants
   let sec;
   if (alive >= 13) sec = 600;
@@ -2115,15 +2254,17 @@ function suggestTimer() {
 function advancePhase() {
   if (S.phase === "night") endNight(); else startNightFromDay();
 }
-function startNightFromDay() {
+function startNightFromDay(reviewed = false) {
   if (S.phase !== "day") return toast(tr("La nuit est déjà en cours.", "Night is already in progress."));
+  if (reviewed !== true) return reviewPendingTransition("night", () => startNightFromDay(true), getNightSteps());
   pushHistory();
+  captureSnapshot();
   S.phase = "night";
   S.night.mode = "other";
   S.night.checked = {};
   S.night.suggestions = {}; S.night.focusKey = null;
   expireNightTokens(["Poisoned"]);
-  S.night.aliveAtDusk = S.players.filter(p => p.alive).map(p => p.id);
+  S.night.aliveAtDusk = activePlayers().filter(p => p.alive).map(p => p.id);
   stopTimer();
   playBell(330, 0.7); flashPhase("night"); buzz(20); updateAmbientPhase();
   logEvent(`${t("nightPhase")} — ${t("nightNum")} ${S.night.number}`, "🌙");
@@ -2173,7 +2314,7 @@ function adjVote(id, d) {
   const nm = S.day.nominations.find(x => x.id === id); if (!nm || S.day.execution || S.phase !== "day") return toast(tr("Vote clos.", "Voting closed."));
   if (nm.voters.length && !confirm(tr("Passer au comptage manuel ? Les votants détaillés seront retirés et leurs votes fantômes restitués. Gérez ensuite les votes fantômes manuellement.", "Switch to manual counting? Detailed voters will be removed and their ghost votes refunded. Track ghost votes manually afterwards."))) return;
   const votes = Math.max(0, (nm.votes || 0) + d);
-  pushHistory(); GameCore.clearNominationVotes(S, id); nm.votes = votes; nm.voteMode = "manual"; save(); renderAll();
+  pushHistory(); GameCore.clearNominationVotes(S, id); nm.votes = votes; nm.voteMode = "manual"; save(); renderVoteResults();
 }
 function execNom(id) {
   if (S.phase !== "day" || S.day.execution) return toast(tr("Une seule exécution par jour. Annulez d'abord l'exécution précédente.", "Only one execution per day. Undo the previous execution first."));
@@ -2220,7 +2361,7 @@ function targetCounts(n) {
 }
 function renderSetup() {
   const v = $("#view-setup");
-  const n = Math.max(5, S.players.length || 7);
+  const n = Math.max(5, participantCounts().basePlayers || 7);
   const tgt = targetCounts(n);
   const cur = bagTeamCounts();
   const teamKeys = ["townsfolk", "outsider", "minion", "demon"];
@@ -2265,7 +2406,8 @@ function renderSetup() {
     <h2>${t("tab.setup")}</h2>
     <div class="row" style="margin-bottom:6px">
       <label class="field" style="margin:0">${t("playersCount")}</label>
-      <input type="number" id="su-count" min="5" max="20" value="${S.players.length || n}" style="width:80px">
+      <input type="number" id="su-count" min="5" max="15" value="${participantCounts().basePlayers || n}" style="width:80px">
+      <span class="hint">${tr("Hors Voyageurs et Légendaires", "Excluding Travellers and Fabled")}</span>
       <span class="spacer"></span>
       <span class="bag-counter ${valid ? "ok" : "bad"}">${bagTotal}/${targetTotal} ${t("bagCount")}</span>
     </div>
@@ -2281,12 +2423,16 @@ function renderSetup() {
     ${picker}
   `;
   $("#su-count").onchange = (e) => {
-    const target = Math.max(5, Math.min(20, +e.target.value || 5));
-    if (target < S.players.length && !confirm(tr("Retirer les derniers joueurs ? Une copie sera conservée.", "Remove the last players? A safety copy will be kept."))) { renderSetup(); return; }
-    if (target < S.players.length) backupBefore(t("playersCount"));
+    const target = Math.max(5, Math.min(15, +e.target.value || 5));
+    if (target === participantCounts().basePlayers) { e.target.value = target; return; }
+    if (target < participantCounts().basePlayers && !confirm(tr("Retirer les derniers joueurs de base ? Les Voyageurs et Légendaires restent en place.", "Remove the last base players? Travellers and Fabled stay in place."))) { renderSetup(); return; }
+    if (target < participantCounts().basePlayers) backupBefore(t("playersCount"));
     pushHistory();
-    while (S.players.length < target) S.players.push(newPlayer());
-    while (S.players.length > target) S.players.pop();
+    while (participantCounts().basePlayers < target) S.players.push(newPlayer());
+    while (participantCounts().basePlayers > target) {
+      const p = activePlayers().filter(p => charById(p.roleId)?.team !== "traveler").at(-1);
+      S.players.splice(S.players.indexOf(p), 1);
+    }
     save(); renderSetup();
   };
   $$("[data-bag]").forEach(el => el.onclick = () => {
@@ -2299,6 +2445,7 @@ function renderSetup() {
   $("#su-clearbag").onclick = () => { S.bag = []; save(); renderSetup(); };
   $("#su-auto").onclick = () => autoFillBag(n);
   $("#su-deal").onclick = () => dealBag();
+  VIEW_SIGNATURES.set("setup", viewSignature("setup"));
 }
 function newPlayer(name) {
   return { id: uid(), name: name || `${t("players").slice(0, 6)} ${S.players.length + 1}`, roleId: null, alive: true, ghostUsed: false, align: null, statuses: { poisoned: false, drunk: false, protected: false }, reminders: [], claim: "" };
@@ -2401,6 +2548,7 @@ function renderReference() {
       card.style.display = txt.includes(q) ? "" : "none";
     });
   };
+  VIEW_SIGNATURES.set("reference", viewSignature("reference"));
 }
 
 /* =========================================================================
@@ -2432,6 +2580,7 @@ function renderScripts() {
   $$("[data-use]").forEach(b => b.onclick = () => activateScript(b.dataset.use));
   $$("[data-ref]").forEach(b => b.onclick = () => { referenceScriptId = b.dataset.ref; switchView("reference"); });
   $("#imp-file").onchange = importScript;
+  VIEW_SIGNATURES.set("scripts", viewSignature("scripts"));
 }
 function importScript(e) {
   const file = e.target.files[0]; if (!file) return;
@@ -2577,14 +2726,42 @@ function addFabledPrompt() {
 /* =========================================================================
    Modale & utilitaires
    ========================================================================= */
-function openModal(html) {
-  const m = $("#modal"); m.innerHTML = html;
+let MODAL_RETURN_FOCUS = null;
+let MODAL_CONTEXT = "";
+function openModal(html, key) {
+  const m = $("#modal");
+  const wasOpen = !$("#modal-overlay").classList.contains("hidden");
+  const context = wasOpen ? rememberInteraction(m) : null;
+  const previousTitle = MODAL_CONTEXT;
+  if (!wasOpen && !playerScreenActive()) MODAL_RETURN_FOCUS = document.activeElement;
+  m.innerHTML = html;
+  MODAL_CONTEXT = key || m.querySelector("h2,h3")?.textContent || "";
   $("#modal-overlay").classList.remove("hidden");
   document.body.classList.add("modal-open");
+  if (context && previousTitle === MODAL_CONTEXT) {
+    restoreInteraction(m, context);
+    if (context.focus && m.querySelector(context.focus)) return;
+  } else m.scrollTop = 0;
   const f = m.querySelector("input:not([type=hidden]), select, textarea, .btn.gold, .btn:not(.close-x)");
-  if (f) setTimeout(() => { try { f.focus({ preventScroll: true }); } catch (_) {} }, 30);
+  if (f) f.focus({ preventScroll: true });
 }
-function closeModal() { $("#modal-overlay").classList.add("hidden"); $("#modal").innerHTML = ""; document.body.classList.remove("modal-open"); $$("#circle .seat .token").forEach(el => el.style.outline = ""); }
+function closeModal() {
+  $("#modal-overlay").classList.add("hidden"); $("#modal").innerHTML = ""; MODAL_CONTEXT = "";
+  document.body.classList.remove("modal-open");
+  $$("#circle .seat .token").forEach(el => el.style.outline = "");
+  const previous = MODAL_RETURN_FOCUS; MODAL_RETURN_FOCUS = null;
+  if (!playerScreenActive() && previous?.isConnected && !previous.closest("[inert]")) previous.focus({ preventScroll: true });
+}
+function handleModalKeyboard(event) {
+  if (playerScreenActive() || $("#modal-overlay").classList.contains("hidden")) return;
+  if (event.key === "Escape") { event.preventDefault(); closeModal(); return; }
+  if (event.key !== "Tab") return;
+  const focusable = [...$("#modal").querySelectorAll("button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),a[href],summary,[tabindex='0']")].filter(el => el.getClientRects().length);
+  if (!focusable.length) { event.preventDefault(); return; }
+  const current = focusable.indexOf(document.activeElement);
+  if (event.shiftKey && current <= 0) { event.preventDefault(); focusable.at(-1).focus(); }
+  else if (!event.shiftKey && (current < 0 || current === focusable.length - 1)) { event.preventDefault(); focusable[0].focus(); }
+}
 window.closeModal = closeModal;
 function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
 function confirmAction(msg) { return (S.settings && !S.settings.confirmActions) ? true : confirm(msg); }
@@ -2663,47 +2840,29 @@ function highlightPlayer(id) {
 
 /* ---------- Mode Table (affichage public grand format) ---------- */
 function openTableMode() {
-  const ov = $("#table-overlay"); if (!ov) return;
-  const paint = () => {
-    const living = S.players.filter(p => p.alive).length;
-    const dead = S.players.length - living;
-    const isNight = S.phase === "night";
-    const num = isNight ? S.night.number : (S.day.number || 1);
-    ov.innerHTML = `
-      <div class="tbl-inner ${isNight ? "night" : "day"}">
-        <button class="tbl-close" id="tbl-close" aria-label="${t("close")}">×</button>
-        <div class="tbl-phase">${isNight ? "🌙" : "☀️"} ${isNight ? t("nightNum") : t("dayNum")} ${num}</div>
-        <div class="tbl-counts">
-          <div class="tbl-c living"><span class="tbl-n">${living}</span><span class="tbl-l">${t("livingC")}</span></div>
-          <div class="tbl-c dead"><span class="tbl-n">${dead}</span><span class="tbl-l">${t("deadC")}</span></div>
-          <div class="tbl-c maj"><span class="tbl-n">${Math.ceil(living / 2)}</span><span class="tbl-l">⚖️ ${t("majority")}</span></div>
-        </div>
-        <div class="tbl-timer" id="tbl-timer">${fmtTime(S.timer.remaining)}</div>
-        <div class="tbl-hint">${t("tableHint")}</div>
-      </div>`;
-    $("#tbl-close").onclick = closeTableMode;
-  };
-  paint();
-  ov.classList.remove("hidden");
-  buzz(10);
-  if (S._tblT) clearInterval(S._tblT);
-  S._tblT = setInterval(() => { const el = $("#tbl-timer"); if (el) el.textContent = fmtTime(S.timer.remaining); }, 500);
-  ov._repaint = paint;
+  const { living, dead, majority } = participantCounts();
+  const phase = S.phase === "night" ? "🌙 " + t("nightNum") + " " + S.night.number : "☀️ " + t("dayNum") + " " + S.day.number;
+  showPlayerScreen({ title: phase, lines: [
+    `${living} ${t("livingC")} · ${dead} ${t("deadC")}`,
+    `⚖️ ${t("majority")} : ${majority}`, fmtTime(SessionCore.timerRemaining(S.timer))
+  ], kind: "table" });
+  const timer = $("#xp-player-screen .xp-player-line:last-of-type");
+  if (timer) timer.id = "tbl-timer";
+  closeModal();
 }
 function closeTableMode() {
-  const ov = $("#table-overlay"); if (ov) ov.classList.add("hidden");
-  if (S._tblT) { clearInterval(S._tblT); S._tblT = null; }
+  if (playerScreenActive()) xpNeutralScreen();
 }
 
 /* ---------- Validateur de composition (rôles attribués vs table officielle) ---------- */
 function assignedTeamCounts() {
   const c = { townsfolk: 0, outsider: 0, minion: 0, demon: 0, traveler: 0, fabled: 0 };
-  S.players.forEach(p => { const ch = p.roleId ? charById(p.roleId) : null; if (ch && c[ch.team] != null) c[ch.team]++; });
+  S.players.filter(p => !p.exiled).forEach(p => { const ch = p.roleId ? charById(p.roleId) : null; if (ch && c[ch.team] != null) c[ch.team]++; });
   return c;
 }
 function openValidator() {
   const cur = assignedTeamCounts();
-  const nonTravelers = S.players.filter(p => { const ch = p.roleId ? charById(p.roleId) : null; return !ch || (ch.team !== "traveler" && ch.team !== "fabled"); });
+  const nonTravelers = activePlayers().filter(p => charById(p.roleId)?.team !== "traveler");
   const n = Math.max(5, Math.min(15, nonTravelers.length || 7));
   const base = GAME.setupTable[String(n)] || [0, 0, 0, 0];
   let [town, out, min, dem] = base;
@@ -2738,6 +2897,18 @@ function toggleManualStatus(p, key) {
   pushHistory();
   GameCore.setManualStatus(p, key, !p.manualStatuses[key]);
   if (p.statuses[key] && !p.manualStatuses[key]) toast(tr("Le rôle ou un jeton maintient cet effet. Retirez sa source pour le terminer.", "The character or a token still causes this effect. Remove its source to end it."));
+}
+function scheduleRoleAnnouncement(p) {
+  const previous = S.revealedRoles[p.id];
+  if (!previous) return;
+  const signature = roleRevealSignature(p);
+  for (const action of S.pendingActions) {
+    if (action.kind === "role" && action.playerId === p.id && action.signature !== signature && action.status === "open") action.status = "resolved";
+  }
+  if (previous === signature || S.pendingActions.some(a => a.kind === "role" && a.playerId === p.id && a.signature === signature && a.status === "open")) return;
+  S.pendingActions.push({ id: uid(), kind: "role", playerId: p.id, signature,
+    text: tr("Changement de personnage ou d'alignement à annoncer à ", "Character or alignment change to announce to ") + p.name,
+    status: "open", phase: S.phase, night: S.night.number, day: S.day.number });
 }
 function expiryName(value) {
   return value === "dawn" ? tr("aube suivante", "next dawn") : value === "dusk" ? tr("crépuscule suivant", "next dusk") : tr("retrait manuel", "manual removal");
@@ -2778,6 +2949,7 @@ function openReminderPicker(targetId, roleId, remIdx = 0, sourceId) {
   $("#rem-actor").onchange = refresh; refresh();
   const record = choiceOnly => {
     const source = S.players.find(p => p.id === $("#rem-actor").value);
+    const actorId = source?.id || null;
     const selectedEffect = $("#rem-effect").value;
     if (!choiceOnly && selectedEffect && source && (GameCore.isImpaired(source) || source.roleId === "lunatic" || (source.shownRoleId && source.roleId !== roleId))) return toast(t("impaired"));
     pushHistory();
@@ -2789,6 +2961,13 @@ function openReminderPicker(targetId, roleId, remIdx = 0, sourceId) {
       });
     }
     const line = loc(role.name) + " → " + target.name + " : " + loc(rem) + (choiceOnly ? " (" + tr("choix sans effet", "choice without effect") + ")" : "");
+    if (key === "Dead") {
+      const outstanding = S.pendingActions.filter(a => a.kind === "attack" && a.playerId === target.id && a.sourcePlayerId === actorId && a.night === S.night.number && a.status === "open");
+      if (choiceOnly || selectedEffect === "death") outstanding.forEach(a => { a.status = "resolved"; });
+      else if (!outstanding.length) S.pendingActions.push({ id: uid(), kind: "attack", playerId: target.id, sourcePlayerId: source?.id || null,
+        text: tr("Attaque à arbitrer : ", "Attack to adjudicate: ") + target.name + " (" + loc(role.name) + ")",
+        status: "open", phase: S.phase, night: S.night.number, day: S.day.number });
+    }
     logEvent(line, "🌙");
     if (source) { source.information.push({ id: uid(), phase: S.phase, night: S.night.number, day: S.day.number, text: line, ts: Date.now() }); }
     save(); closeModal(); renderAll(); toastUndo(line);
@@ -2822,6 +3001,7 @@ function renderSessionBanner() {
     if (!confirm(tr("Sauvegarder et recharger pour appliquer la mise à jour ? Faites-le entre deux parties.", "Save and reload to update? Prefer doing this between games."))) return;
     save(); backupBefore(tr("Avant mise à jour", "Before update")); OfflineSupport.applyUpdate();
   };
+  renderExerciseBanner(b);
 }
 function exitTraining() {
   if (!TRAINING) return;
@@ -2829,7 +3009,9 @@ function exitTraining() {
   location.href = "index.html";
 }
 function replaceGame(input, reason) {
-  const candidate = normalizeGame(JSON.parse(JSON.stringify(input)));
+  const archived = JSON.parse(JSON.stringify(input));
+  if (archived?.timer) { archived.timer.running = false; archived.timer.deadline = null; }
+  const candidate = normalizeGame(archived);
   const custom = candidate._custom || CUSTOM;
   if (!custom || typeof custom !== "object" || Array.isArray(custom)) throw new Error("Invalid script library");
   const validatedCustom = {};
@@ -2849,7 +3031,7 @@ function replaceGame(input, reason) {
   if (!confirm(reason + " ? " + tr("La partie actuelle sera sauvegardée avant remplacement.", "The current game will be backed up before replacement."))) return;
   backupBefore(reason);
   if (TIMER_HANDLE) { clearInterval(TIMER_HANDLE); TIMER_HANDLE = null; }
-  S = Object.assign(candidate, { lang: S.lang, settings: S.settings }); S.timer.running = false;
+  S = Object.assign(candidate, { lang: S.lang, settings: S.settings }); SessionCore.pauseTimer(S.timer);
   delete S._custom;
   S.history = []; S.redo = [];
   CUSTOM = validatedCustom;

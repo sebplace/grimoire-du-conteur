@@ -1,5 +1,6 @@
 /* Additive storyteller tools, using the grimoire's existing palette. */
 .xp-field { display: grid; gap: 6px; margin: 12px 0; min-width: 0; }
+.xp-field[hidden] { display: none; }
 .xp-field > input, .xp-field > select, .xp-field > textarea { width: 100%; min-width: 0; max-width: 100%; }
 .xp-field > textarea {
   resize: vertical; min-height: 100px; padding: 10px; border: 1px solid var(--line);
@@ -72,6 +73,25 @@ body.xp-screen-open > :not(#xp-player-screen) * { visibility: hidden !important;
 .xp-tools-sheet .xp-modal-content { display: grid; gap: 8px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .xp-tool-button { display: flex; align-items: center; gap: 10px; text-align: left; min-width: 0; min-height: 48px; white-space: normal; }
 .xp-tool-icon { flex: 0 0 auto; }
+.xp-tour-list { display: grid; gap: 8px; }
+.xp-tour-player { display: flex; justify-content: space-between; gap: 10px; text-align: left; min-width: 0; }
+.xp-tour-player small { color: var(--muted); }
+.xp-tour-player[aria-pressed=true], .xp-target-seat[aria-pressed=true] { border-color: var(--gold); box-shadow: inset 0 0 0 1px var(--gold); }
+.xp-target-ring {
+  position: relative; width: 100%; aspect-ratio: 1; margin: 18px 0;
+  border: 1px dashed var(--line); border-radius: 50%; background: var(--panel);
+}
+.xp-target-seat {
+  display: grid; gap: 3px; position: absolute; left: var(--seat-x); top: var(--seat-y);
+  transform: translate(-50%, -50%); width: 19%; max-width: 100px; padding: 7px 4px;
+  font-size: .8rem; overflow-wrap: anywhere; min-height: 48px; line-height: 1.2;
+}
+.xp-target-seat:active { transform: translate(-50%, -50%); }
+.xp-target-seat small { color: var(--muted); font-size: .7rem; }
+.xp-target-order { color: var(--gold-soft); min-height: 1em; }
+.xp-target-selection { padding-left: 24px; line-height: 1.6; overflow-wrap: anywhere; }
+.xp-target-many { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding: 12px; aspect-ratio: auto; border-radius: 18px; }
+.xp-target-many .xp-target-seat { position: static; transform: none; width: 100%; max-width: none; }
 
 @media (max-width: 700px) {
   #dock, #dock-backdrop { display: none !important; pointer-events: none !important; }
@@ -87,6 +107,11 @@ body.xp-screen-open > :not(#xp-player-screen) * { visibility: hidden !important;
   #modal:has(.xp-tools-sheet) {
     width: 100%; max-width: 100%; margin: 0; border-radius: 18px 18px 0 0;
     max-height: 88dvh; overflow-y: auto; padding-bottom: max(18px, env(safe-area-inset-bottom));
+  }
+  @media (max-width: 480px) {
+    .xp-target-ring { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding: 10px; aspect-ratio: auto; border-radius: 18px; }
+    .xp-target-seat, .xp-target-seat:active { position: static; transform: none; width: 100%; max-width: none; }
+    .xp-tour-player { flex-wrap: wrap; }
   }
 }
 @media (max-width: 380px) {

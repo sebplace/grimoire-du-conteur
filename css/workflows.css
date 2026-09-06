@@ -1,0 +1,38 @@
+.wf-modal, .wf-card, .wf-exercise-banner { min-width: 0; overflow-wrap: anywhere; }
+.wf-modal h4 { margin: 14px 0 8px; color: var(--gold-soft); }
+.wf-card {
+  margin: 12px 0; padding: 12px; border: 1px solid var(--line);
+  border-radius: 12px; background: var(--panel);
+}
+.wf-card p, .wf-exercise-banner p { white-space: pre-wrap; }
+.wf-field { display: grid; gap: 6px; margin: 12px 0; min-width: 0; }
+.wf-field input, .wf-field select, .wf-field textarea {
+  min-width: 0; max-width: 100%; width: 100%; padding: 9px;
+  color: var(--ink); background: var(--panel); border: 1px solid var(--line);
+  border-radius: 8px; font: inherit;
+}
+.wf-field textarea { min-height: 78px; resize: vertical; }
+.wf-modal button:focus-visible, .wf-field :focus-visible, .wf-exercise-banner button:focus-visible {
+  outline: 2px solid var(--gold); outline-offset: 3px;
+}
+.wf-modal .row { flex-wrap: wrap; }
+.wf-modal .btn, .wf-exercise-banner .btn { white-space: normal; }
+.wf-error { color: var(--blood-bright); padding: 10px; border: 1px solid currentColor; border-radius: 8px; }
+.wf-error[hidden] { display: none; }
+.wf-success { color: var(--gold-soft); font-weight: 700; }
+.wf-checks { padding-left: 18px; }
+.wf-checks li { margin: 6px 0; }
+.wf-exercise-banner {
+  flex: 1 1 100%; padding: 12px; margin-top: 8px; width: 100%;
+  border: 1px solid var(--gold); border-radius: 12px; background: var(--panel);
+}
+.wf-exercise-banner p { font-size: .88rem; margin: 8px 0; }
+.wf-comparison-selectors, .wf-diff-values { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.wf-diff-values > div { min-width: 0; padding: 8px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; white-space: pre-wrap; }
+.wf-diff-values strong { display: block; color: var(--gold-soft); margin-bottom: 5px; }
+.wf-private { color: var(--warn); font-size: .85rem; }
+@media (max-width: 600px) {
+  .wf-modal .btn, .wf-exercise-banner .btn { min-height: 44px; }
+  .wf-comparison-selectors, .wf-diff-values { grid-template-columns: 1fr; gap: 4px; }
+  .wf-modal .row > .btn { flex: 1 1 140px; }
+}

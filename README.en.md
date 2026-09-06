@@ -28,16 +28,19 @@ exceptions and game end. This is not a complete rules engine.
 | Tab | Contents |
 |---|---|
 | **Grimoire** | Circle or **GM list**, both private. Separate actual and shown characters, life/death, ghost votes, alignment, claims, sourced reminders with expiry, undo/redo. |
-| **Night** | **Full list** or **Guided** with saved focus, target choices confirmed in a dialog, information suggestions, three valid bluffs to show privately. |
-| **Day** | Nominations by player identity, stored threshold, voters and ghost votes tracked, timer, execution separate from death, Traveller exile, dawn report and advisory end checks. |
+| **Night** | **Full list** or **Guided** with saved focus, individual or paired targets, information suggestions, three valid private bluffs and pending-action review before transitions. |
+| **Day** | Nominations by player identity, stored threshold, voters and ghost votes tracked, deadline-based timer, execution separate from death, Traveller exile, dawn report and advisory end checks. |
 | **Setup** | Bag builder, supported modifiers, composition check and **Setup checks**. Exceptions still need review. |
 | **Characters** | Reference browsing independent of the active script, reworded abilities, search and jinxes. |
 | **Scripts** | Three included scripts, custom library and validated JSON import. Activation is separate, with confirmation and a backup. |
 
 **Tools**: on phones, a labelled bottom sheet replaces the side dock. It includes the
-per-player, per-phase **Information notebook**, **Private messages**, **Safety backups**,
-training, screen lock, public Table mode, log, snapshots, notes, guide and printing.
-The command palette remains available with Ctrl+K. Comfort settings depend on browser support.
+per-player, per-phase **Information notebook**, **Private messages**, **Private role
+distribution**, **Groups and bags**, **Guided exercises**, backups, public Table mode,
+log and capture comparison, plus screen lock, notes, guide and printing.
+The command palette remains available with Ctrl+K. Comfort settings depend on browser
+support. Views and dialogs preserve focus and scroll position; timer and vote updates
+avoid a full refresh.
 
 Included scripts: **Trouble Brewing**, **Sects & Violets**, **Bad Moon Rising** + a base of
 **143 roles** (FR/EN) for custom scripts. Gothic/clock theme, Cinzel font.
@@ -64,12 +67,23 @@ Included scripts: **Trouble Brewing**, **Sects & Violets**, **Bad Moon Rising** 
 - **Player screen**: only the selected number, two characters, alignment or text is shown,
   and recorded in the notebook. Bluffs display only with three distinct valid choices.
   Hiding information opens a neutral screen; only **Return to Storyteller** restores
-  the private interface.
+  the private interface. Table mode uses this same path for its public counts and timer.
+- **Private role distribution**: show each player's believed character after confirming.
+  Already shown / Not shown tracking is individual and invalidated by character changes.
+  After the neutral screen and Storyteller return, select and confirm the next player;
+  their character never appears automatically.
+- **Choose two targets**: select two distinct seats for Washerwoman, Librarian,
+  Investigator or Fortune Teller. Paired reminders and chosen information are saved
+  together in one action. Only this source's pair is replaced. Reminders are descriptive:
+  they do not automatically decide truth or apply an ability.
 - **Ability use**: manually track Available / Used / Used without effect, including
   while impaired. Changing the actual character resets this tracking.
 - **Setup**: check assignments, the Drunk's shown character, bluffs for at least seven
   non-Travellers, Fortune Teller's Red herring, Washerwoman's Townsfolk / Wrong pair,
   other setup instructions and jinxes. These checks do not certify every rule.
+- **Counts**: living/dead counts and the execution threshold include participating
+  Travellers, but exclude Fabled and exiled players. Base setup excludes Travellers,
+  with up to 15 base players; add Travellers separately.
 - **Nominations**: a living player nominates once per day; each non-Traveller can be
   nominated once per day, even if dead. The threshold is stored at the start of voting.
   Only the highest qualifying, untied total puts someone on the block. Removing a
@@ -81,6 +95,13 @@ Included scripts: **Trouble Brewing**, **Sects & Violets**, **Bad Moon Rising** 
   nomination is tracked across the game, not reset daily. An end suggestion never
   declares a winner by itself: review Demon succession, Scarlet Woman, Mastermind and
   alternative conditions before confirming the winner.
+- **Pending actions**: before a transition, review relevant unchecked night steps,
+  recorded but unadjudicated attacks, unannounced character changes and an execution
+  candidate. Resolve with a reason, or continue anyway with a reason.
+  This applies no effects or deaths; it is not a rigid rules lock.
+- **Timer**: a timestamped deadline accounts for elapsed time in the background and
+  after refresh. A legacy timer without a deadline resumes paused. Importing a game
+  or undoing an action also pauses the timer.
 
 ## Backups, scripts and offline use
 
@@ -95,6 +116,15 @@ script definitions.
 Current-game undo history is limited to **50 steps** and **250,000 characters**, so
 it may retain fewer than 50 steps. This bounds undo history, not current gameplay
 state, the log or custom definitions.
+
+**Captures** are frozen states taken before every night-to-day and day-to-night
+transition, or manually. They retain actual and shown characters, alignment, statuses,
+sourced reminders, ghost votes, exile, ability use and nominations. **Compare captures**
+is private and read-only: it compares two stored captures, or a capture and current
+state frozen when opened. Selectors follow chronological order. Incomplete older
+captures are marked partial without inventing missing fields. Retention is limited
+to **40 captures and 500,000 characters**, so fewer may remain; captures do not replace
+a safety export.
 
 Only one tab edits the real game. Protection uses `navigator.locks` when available,
 compares the stored save and watches storage changes. On a conflict, export your state,
@@ -111,6 +141,18 @@ The banner shows the version; **Update available** applies an update only when y
 choose, preferably between games. PNG icons are provided for the PWA. Direct
 installation depends on the browser; on iOS use Safari → Share → Add to Home Screen.
 
+## Reuse a preparation
+
+**Tools → Groups and bags** separates two template types. A **group** keeps only names
+and seating order, never characters, effects or notes. Loading it confirms and backs
+up replacing the game with fresh players while keeping your preferences and active script. A **bag**
+keeps character IDs and its script, including a custom definition when needed,
+but no player assignments. Loading it replaces only the Setup bag; it requires the
+matching script and does not activate it or deal characters automatically. Training
+templates remain separate from real-game templates.
+The library is limited to **100 templates and 4 MB**; exceeding either limit shows an
+error without automatically deleting older templates.
+
 ## Training without touching your real game
 
 The button in [guide section 14](guide.html?lang=en#testgame) opens fresh seven-player
@@ -123,6 +165,12 @@ and an end decision. Converting the demo's Chef to the Drunk makes its distribut
 invalid: this is an interface exercise, not a legal setup to play unchanged.
 Completing the walkthrough certifies neither every feature nor your rules readiness.
 
+**Tools → Guided exercises** offers six isolated objectives: tied votes, a dead
+player's ghost vote, drunk Monk, Lunatic, surviving execution and paired targets.
+Each exercise shows instructions, an expected outcome and a targeted result check,
+with an option to restart. These checks certify neither every rule nor the accuracy
+of information chosen by the Storyteller.
+
 ## Run locally
 
 The app loads its data via `fetch()`, so it needs a small HTTP server
@@ -132,6 +180,19 @@ The app loads its data via `fetch()`, so it needs a small HTTP server
 python -m http.server 8000   # or: npx serve .
 ```
 Then open http://localhost:8000
+
+## Development checks
+
+From the project folder, Node's built-in runner executes the `*.test.cjs` tests:
+
+```powershell
+node --test
+```
+
+Suites cover `game-core`, `session-core`, persistence, offline support, app integration,
+`workflows` and the v26 experience. `tests\browser-check.js` and
+`tests\browser-data-check.js` are scenarios for a Playwright tool providing `page`,
+not standalone Node commands. Their targeted checks are not exhaustive game-rules validation.
 
 ## Deployment
 
@@ -151,9 +212,12 @@ blood-clocktower-mj/
 ├─ css/theme.css
 ├─ js/app.js
 ├─ js/game-core.js        # game state and targeted checks
+├─ js/session-core.js     # timer, participant counts and captures
 ├─ js/experience.js       # Storyteller workflows and private screens
+├─ js/workflows.js        # templates, exercises and pending actions
 ├─ js/persistence.js      # backups and storage protection
 ├─ js/offline.js          # cache status and updates
+├─ tests/                 # Node tests and Playwright tool scenarios
 ├─ data/
 │  ├─ game.json          # teams, setup table, night steps
 │  ├─ all-roles.json     # base of 143 roles (FR/EN + jinxes)

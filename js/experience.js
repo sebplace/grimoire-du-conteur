@@ -53,7 +53,27 @@ const EXPERIENCE_TEXT = {
     "xp.poisoned": "Empoisonné", "xp.drunk": "Ivre", "xp.protected": "Protégé",
     "xp.guided": "Guidé", "xp.full": "Tout voir", "xp.previous": "Précédent",
     "xp.next": "Suivant", "xp.step": "Étape", "xp.noSteps": "Aucune étape de nuit.",
-    "xp.tools": "Outils du Conteur"
+    "xp.tools": "Outils du Conteur",
+    roleDistribution: "Distribution privée des rôles", multiTargetPicker: "Choisir deux cibles",
+    roleTour: "Distribution privée des rôles", multiTargets: "Choisir deux cibles",
+    "xp.roleAcknowledged": "Personnage actuel montré au joueur.",
+    "xp.tourHelp": "Sélectionnez un joueur, confirmez l’affichage, puis masquez l’écran avant de reprendre l’appareil. Le retour propose le prochain joueur sans afficher son personnage.",
+    "xp.revealed": "Déjà montré", "xp.notRevealed": "À montrer", "xp.tourDone": "Tous les personnages actuels ont été montrés.",
+    "xp.showCharacter": "Montrer à ce joueur", "xp.yourCharacter": "Votre personnage",
+    "xp.invalidShown": "Choisissez un personnage montré valide dans la fiche du joueur.",
+    "xp.saveFailed": "Enregistrement impossible. Aucune nouvelle information n’a été affichée.",
+    "xp.source": "Joueur source", "xp.targetKind": "Type de choix", "xp.customTargets": "Choix libre",
+    "xp.targetHelp": "Touchez exactement deux joueurs dans l’ordre des sièges. Les rappels sont descriptifs : aucune vérité, capacité ou transition n’est décidée automatiquement.",
+    "xp.targetImpaired": "Source ivre ou empoisonnée : aucune capacité n’est appliquée. Ces rappels sont uniquement descriptifs ; choisissez vous-même l’information.",
+    "xp.noSource": "Aucune source compatible. Utilisez Choix libre ou vérifiez les personnages montrés.",
+    "xp.targetOne": "Première cible", "xp.targetTwo": "Seconde cible", "xp.seat": "Siège",
+    "xp.targetOrder": "Ordre de sélection", "xp.result": "Réponse choisie par le Conteur",
+    "xp.yes": "Oui", "xp.no": "Non", "xp.noInfo": "Aucune information",
+    "xp.targetNote": "Note privée facultative", "xp.saveTargets": "Enregistrer le choix",
+    "xp.showTargets": "Enregistrer et montrer la réponse", "xp.targetsSaved": "Choix enregistré dans le carnet de la source.",
+    "xp.invalidTargets": "Choisissez une source compatible et exactement deux joueurs distincts encore participants.",
+    "xp.pairHelp": "La première cible reçoit le rappel indiqué, la seconde Erroné. Seule la paire de cette source est remplacée.",
+    "xp.markerTownsfolk": "Villageois", "xp.markerOutsider": "Marginal", "xp.markerMinion": "Sbire", "xp.markerWrong": "Erroné"
   },
   en: {
     setupChecklist: "Setup checks", privateMessage: "Private message",
@@ -107,7 +127,27 @@ const EXPERIENCE_TEXT = {
     "xp.poisoned": "Poisoned", "xp.drunk": "Drunk", "xp.protected": "Protected",
     "xp.guided": "Guided", "xp.full": "Full list", "xp.previous": "Previous",
     "xp.next": "Next", "xp.step": "Step", "xp.noSteps": "No night steps.",
-    "xp.tools": "Storyteller tools"
+    "xp.tools": "Storyteller tools",
+    roleDistribution: "Private role distribution", multiTargetPicker: "Choose two targets",
+    roleTour: "Private role distribution", multiTargets: "Choose two targets",
+    "xp.roleAcknowledged": "Current character shown to the player.",
+    "xp.tourHelp": "Select a player, confirm the display, then hide the screen before taking the device back. Returning suggests the next player without showing their character.",
+    "xp.revealed": "Already shown", "xp.notRevealed": "Not shown", "xp.tourDone": "All current characters have been shown.",
+    "xp.showCharacter": "Show to this player", "xp.yourCharacter": "Your character",
+    "xp.invalidShown": "Choose a valid shown character in the player card first.",
+    "xp.saveFailed": "Unable to save. No new information was displayed.",
+    "xp.source": "Source player", "xp.targetKind": "Choice type", "xp.customTargets": "Custom choice",
+    "xp.targetHelp": "Select exactly two players in seating order. Reminders are descriptive: no truth, ability or phase transition is decided automatically.",
+    "xp.targetImpaired": "Drunk or poisoned source: no ability is applied. These reminders are descriptive only; choose the information yourself.",
+    "xp.noSource": "No compatible source. Use Custom choice or check the shown characters.",
+    "xp.targetOne": "First target", "xp.targetTwo": "Second target", "xp.seat": "Seat",
+    "xp.targetOrder": "Selection order", "xp.result": "Storyteller-chosen answer",
+    "xp.yes": "Yes", "xp.no": "No", "xp.noInfo": "No information",
+    "xp.targetNote": "Optional private note", "xp.saveTargets": "Save choice",
+    "xp.showTargets": "Save and show answer", "xp.targetsSaved": "Choice recorded in the source’s notebook.",
+    "xp.invalidTargets": "Choose a compatible source and exactly two distinct players still participating.",
+    "xp.pairHelp": "The first target receives the named reminder, the second Wrong. Only this source’s pair is replaced.",
+    "xp.markerTownsfolk": "Townsfolk", "xp.markerOutsider": "Outsider", "xp.markerMinion": "Minion", "xp.markerWrong": "Wrong"
   }
 };
 
@@ -124,6 +164,7 @@ function xpNode(tag, className, text) {
 function xpButton(label, action, className = "btn") {
   const button = xpNode("button", className, label);
   button.type = "button";
+  button.dataset.xpFocus = "button:" + label;
   button.addEventListener("click", action);
   return button;
 }
@@ -190,8 +231,9 @@ function xpProtectBackground() {
   }
 }
 
-function showPlayerScreen({ title, lines, playerId, kind } = {}) {
+function showPlayerScreen({ title, lines, playerId, kind, onReturn, onHide } = {}) {
   if (!experienceInitialized) initExperience();
+  if (experienceScreen?.neutral) return false;
   // Only caller-supplied scalar text enters this surface; never copy grimoire markup.
   const safeText = value => typeof value === "string" || typeof value === "number" ? String(value) : "";
   const safeLines = Array.isArray(lines) ? lines.map(safeText).filter(Boolean) : [];
@@ -203,6 +245,7 @@ function showPlayerScreen({ title, lines, playerId, kind } = {}) {
     root.setAttribute("aria-labelledby", "xp-player-title");
     experienceScreen = {
       root, background: new Map(), focus: document.activeElement,
+      neutral: false, onReturn: null, onHide: null,
       scrollX: window.scrollX, scrollY: window.scrollY,
       bodyClass: document.body.classList.contains("xp-screen-open"),
       htmlClass: document.documentElement.classList.contains("xp-screen-open")
@@ -214,6 +257,8 @@ function showPlayerScreen({ title, lines, playerId, kind } = {}) {
     experienceScreen.observer = new MutationObserver(xpProtectBackground);
     experienceScreen.observer.observe(document.body, { childList: true });
   }
+  if (typeof onReturn === "function") experienceScreen.onReturn = onReturn;
+  if (typeof onHide === "function") experienceScreen.onHide = onHide;
   const root = experienceScreen.root;
   root.replaceChildren();
   const panel = xpNode("div", "xp-player-content");
@@ -226,10 +271,20 @@ function showPlayerScreen({ title, lines, playerId, kind } = {}) {
   root.appendChild(panel);
   hide.focus({ preventScroll: true });
   if (document.hidden) xpNeutralScreen();
+  return experienceScreen?.neutral === false;
+}
+
+function xpScreenCallback(state, name) {
+  const callback = state[name];
+  state[name] = null;
+  if (typeof callback !== "function") return;
+  try { callback(); } catch (error) { console.error("Player screen callback failed", error); }
 }
 
 function xpNeutralScreen() {
-  if (!experienceScreen) return;
+  if (!experienceScreen || experienceScreen.neutral) return;
+  const state = experienceScreen;
+  state.neutral = true;
   const panel = xpNode("div", "xp-player-content");
   const heading = xpNode("h1", "", t("xp.neutral"));
   heading.id = "xp-player-title";
@@ -238,11 +293,12 @@ function xpNeutralScreen() {
   panel.appendChild(back);
   experienceScreen.root.replaceChildren(panel);
   back.focus({ preventScroll: true });
+  xpScreenCallback(state, "onHide");
 }
 
 function xpClosePlayerScreen() {
   const state = experienceScreen;
-  if (!state) return;
+  if (!state || !state.neutral) return;
   state.observer.disconnect();
   for (const [element, original] of state.background) {
     for (const [attribute, value] of [["inert", original.inert], ["aria-hidden", original.aria]]) {
@@ -257,6 +313,7 @@ function xpClosePlayerScreen() {
   window.scrollTo(state.scrollX, state.scrollY);
   const focus = state.focus?.isConnected ? state.focus : document.getElementById("btn-tools");
   focus?.focus({ preventScroll: true });
+  xpScreenCallback(state, "onReturn");
 }
 
 function xpBluffsValid() {
@@ -277,12 +334,48 @@ function showBluffsToPlayer() {
   showPlayerScreen({ title: t("xp.bluffs"), lines: S.bluffs.map(id => loc(charById(id).name)), kind: "bluffs" });
 }
 
-function xpModal(title) {
+function xpCaptureModalPosition(root) {
+  if (!root) return null;
+  const modal = root.closest("#modal");
+  const active = root.contains(document.activeElement) ? document.activeElement : null;
+  return {
+    top: modal?.scrollTop || 0, left: modal?.scrollLeft || 0,
+    focus: active?.dataset.xpFocus || null,
+    selectionStart: active?.selectionStart, selectionEnd: active?.selectionEnd
+  };
+}
+
+function xpRestoreModalPosition(root, position, fallback) {
+  if (!root?.isConnected || playerScreenActive() || !position) return;
+  const target = [...root.querySelectorAll("[data-xp-focus]")].find(el =>
+    el.dataset.xpFocus === position.focus && !el.disabled) || fallback;
+  target?.focus({ preventScroll: true });
+  if (target && typeof position.selectionStart === "number" && typeof target.setSelectionRange === "function") {
+    try { target.setSelectionRange(position.selectionStart, position.selectionEnd); } catch (_) {}
+  }
+  const modal = root.closest("#modal");
+  if (modal) { modal.scrollTop = position.top; modal.scrollLeft = position.left; }
+}
+
+function xpModal(title, key = title) {
   if (playerScreenActive()) return null;
+  const old = document.querySelector("#modal .xp-modal");
+  const position = old?.dataset.xpModal === key ? xpCaptureModalPosition(old) : null;
+  const opener = old?.xpOpener || document.activeElement;
   closeModal();
   openModal(`<div class="xp-modal"><h2>${escapeHtml(title)}</h2><div class="xp-modal-content"></div><div class="modal-actions xp-modal-actions"></div></div>`);
   const root = document.querySelector("#modal .xp-modal");
-  root.querySelector(".xp-modal-actions").appendChild(xpButton(t("xp.close"), closeModal, "btn ghost"));
+  root.dataset.xpModal = key;
+  root.xpOpener = opener;
+  const close = () => { closeModal(); if (opener?.isConnected) opener.focus({ preventScroll: true }); };
+  root.querySelector(".xp-modal-actions").appendChild(xpButton(t("xp.close"), close, "btn ghost"));
+  root.addEventListener("keydown", event => {
+    if (event.key === "Escape") { event.stopPropagation(); close(); }
+  });
+  if (position) {
+    queueMicrotask(() => xpRestoreModalPosition(root, position));
+    setTimeout(() => xpRestoreModalPosition(root, position), 45);
+  }
   return root;
 }
 
@@ -290,6 +383,7 @@ function xpField(parent, labelText, input) {
   const field = xpNode("div", "xp-field");
   const label = xpNode("label", "", labelText);
   input.id = input.id || "xp-field-" + uid();
+  input.dataset.xpFocus = "field:" + labelText;
   label.htmlFor = input.id;
   field.append(label, input);
   parent.appendChild(field);
@@ -319,6 +413,285 @@ function xpInformationEntry(text, overrides = {}) {
     id: uid(), night: S.night.number, day: S.day.number,
     phase: S.phase, text, ts: Date.now()
   }, overrides);
+}
+
+function xpParticipatingPlayers() {
+  return S.players.filter(p => !p.exiled && charById(p.roleId)?.team !== "fabled");
+}
+
+function xpValidShownRole(p) {
+  const role = charById(GameCore.shownRoleId(p));
+  if (!role || !charById(p.roleId)) return null;
+  if (p.roleId === "drunk" && (!p.shownRoleId || role.team !== "townsfolk")) return null;
+  if (p.roleId === "lunatic" && (!p.shownRoleId || role.team !== "demon")) return null;
+  return role;
+}
+
+function roleRevealSignature(p) {
+  return JSON.stringify([p.roleId, p.shownRoleId, GameCore.effectiveAlignment(p, charById)]);
+}
+
+function markRoleRevealed(p) {
+  if (playerScreenActive() || document.hidden) return false;
+  if (!S.players.includes(p) || !xpParticipatingPlayers().includes(p) || !xpValidShownRole(p)) return false;
+  const original = S.revealedRoles;
+  const originalPending = S.pendingActions;
+  const hadRevealed = Object.prototype.hasOwnProperty.call(S, "revealedRoles");
+  S.revealedRoles = { ...original, [p.id]: roleRevealSignature(p) };
+  if (Array.isArray(originalPending)) {
+    S.pendingActions = originalPending.map(action =>
+      action?.kind === "role" && action.playerId === p.id && action.status === "open" ?
+        { ...action, status: "resolved", resolvedAt: Date.now(), resolutionReason: t("xp.roleAcknowledged") } : action);
+  }
+  try {
+    if (save() === false) throw new Error("Save rejected");
+    return true;
+  } catch (_) {
+    if (hadRevealed) S.revealedRoles = original;
+    else delete S.revealedRoles;
+    if (Array.isArray(originalPending)) S.pendingActions = originalPending;
+    toast(t("xp.saveFailed"));
+    return false;
+  }
+}
+
+function openRoleDistributionTour(preferredId) {
+  if (playerScreenActive()) return;
+  const participants = xpParticipatingPlayers();
+  if (!participants.length) return toast(t("xp.noPlayers"));
+  const game = S;
+  const revealed = p => S.revealedRoles?.[p.id] === roleRevealSignature(p);
+  let selectedId = participants.some(p => p.id === preferredId) ? preferredId :
+    (participants.find(p => !revealed(p)) || participants[0]).id;
+  const root = xpModal(t("roleDistribution"), "role-distribution");
+  const body = root.querySelector(".xp-modal-content");
+  body.appendChild(xpNode("p", "hint", t("xp.tourHelp")));
+  const progress = xpNode("p", "xp-check-count");
+  const list = xpNode("div", "xp-tour-list");
+  const detail = xpNode("p", "hint");
+  body.append(progress, list, detail);
+  const show = xpButton(t("xp.showCharacter"), () => {
+    const p = S.players.find(player => player.id === selectedId);
+    if (S !== game || !p || !xpParticipatingPlayers().includes(p)) return toast(t("xp.invalidShown"));
+    const role = xpValidShownRole(p);
+    if (!role) return toast(t("xp.invalidShown"));
+    if (document.hidden || playerScreenActive()) return;
+    const alignment = p.roleId === "lunatic" ? "evil" : GameCore.effectiveAlignment(p, charById);
+    const lines = [loc(role.name), loc(role.ability), t("xp." + alignment)].filter(Boolean);
+    if (!markRoleRevealed(p)) return;
+    showPlayerScreen({
+      title: `${p.name} · ${t("xp.yourCharacter")}`, lines, playerId: p.id, kind: "role",
+      onReturn: () => {
+        if (S !== game || !S.players.includes(p) || !xpParticipatingPlayers().includes(p)) return;
+        const next = xpParticipatingPlayers().find(player => !revealed(player));
+        openRoleDistributionTour(next?.id || p.id);
+      }
+    });
+    closeModal();
+  }, "btn gold");
+  root.querySelector(".xp-modal-actions").prepend(show);
+  const render = () => {
+    const position = xpCaptureModalPosition(root);
+    list.replaceChildren();
+    for (const p of participants) {
+      const button = xpButton("", () => { selectedId = p.id; render(); }, "btn xp-tour-player");
+      button.dataset.xpFocus = "tour:" + p.id;
+      button.setAttribute("aria-pressed", String(p.id === selectedId));
+      button.append(xpNode("strong", "", p.name),
+        xpNode("small", "", t(revealed(p) ? "xp.revealed" : "xp.notRevealed")));
+      list.appendChild(button);
+    }
+    const count = participants.filter(revealed).length;
+    progress.textContent = `${t("xp.revealed")} : ${count}/${participants.length}`;
+    if (count === participants.length) progress.textContent += " · " + t("xp.tourDone");
+    const selected = participants.find(p => p.id === selectedId);
+    const valid = selected && xpValidShownRole(selected);
+    detail.textContent = valid ? `${selected.name} · ${t(revealed(selected) ? "xp.revealed" : "xp.notRevealed")}` : t("xp.invalidShown");
+    show.disabled = !valid;
+    xpRestoreModalPosition(root, position);
+  };
+  render();
+}
+
+const XP_TARGET_KINDS = ["fortuneteller", "washerwoman", "librarian", "investigator", "custom"];
+const XP_TARGET_MARKERS = { washerwoman: "Townsfolk", librarian: "Outsider", investigator: "Minion" };
+
+function xpBuildTargetPlan(sourceId, kind, targetIds, outcome = "none", note = "") {
+  const invalid = () => { throw new Error(t("xp.invalidTargets")); };
+  if (!XP_TARGET_KINDS.includes(kind) || !Array.isArray(targetIds) ||
+      targetIds.length !== 2 || new Set(targetIds).size !== 2 ||
+      !["none", "yes", "no"].includes(outcome) || typeof note !== "string") invalid();
+  const participating = xpParticipatingPlayers();
+  const source = participating.find(p => p.id === sourceId);
+  const targets = targetIds.map(id => participating.find(p => p.id === id));
+  if (!source || targets.some(p => !p) ||
+      (kind !== "custom" && xpValidShownRole(source)?.id !== kind)) invalid();
+  const originals = S.players;
+  const players = JSON.parse(JSON.stringify(originals));
+  players.forEach(p => GameCore.normalizePlayer(p));
+  const draftSource = players.find(p => p.id === sourceId);
+  const impaired = GameCore.isImpaired(draftSource);
+  const marker = XP_TARGET_MARKERS[kind];
+  if (marker) {
+    // Work on a detached graph: validation or a second-token failure cannot leave half a pair.
+    for (const player of players) {
+      player.reminders = player.reminders.filter(r => !(r.sourcePlayerId === sourceId &&
+        r.sourceRoleId === kind && [marker, "Wrong"].includes(r.key) && !r.effect));
+    }
+    [marker, "Wrong"].forEach((key, index) => {
+      GameCore.addReminder(players, targetIds[index], {
+        label: t("xp.marker" + key), key, sourcePlayerId: sourceId, sourceRoleId: kind,
+        effect: null, expires: "manual"
+      });
+    });
+  }
+  const lines = targets.map((p, index) =>
+    `${t(index ? "xp.targetTwo" : "xp.targetOne")} : ${p.name}`);
+  if (kind === "fortuneteller") lines.push(`${t("xp.result")} : ${t(outcome === "none" ? "xp.noInfo" : "xp." + outcome)}`);
+  const notebook = marker ? targets.map((p, index) =>
+    `${index + 1}. ${t("xp.marker" + (index ? "Wrong" : marker))} : ${p.name}`) : lines.slice();
+  if (note.trim()) notebook.push(note);
+  draftSource.information.push(xpInformationEntry(notebook.join("\n")));
+  return { state: S, originals, players, sourceId, kind, outcome, lines, impaired };
+}
+
+function xpCommitTargetPlan(plan) {
+  if (S !== plan.state || S.players !== plan.originals) throw new Error(t("xp.invalidTargets"));
+  const state = S;
+  const prior = {};
+  for (const key of ["history", "redo"]) {
+    prior[key] = { owned: Object.prototype.hasOwnProperty.call(state, key),
+      value: Array.isArray(state[key]) ? state[key].slice() : state[key] };
+  }
+  try {
+    pushHistory();
+    state.players = plan.players;
+    if (save() === false) throw new Error("Save rejected");
+  } catch (error) {
+    state.players = plan.originals;
+    for (const key of ["history", "redo"]) {
+      if (prior[key].owned) state[key] = prior[key].value;
+      else delete state[key];
+    }
+    throw error;
+  }
+  return true;
+}
+
+function openMultiTargetPicker(sourceId, kind) {
+  if (playerScreenActive()) return;
+  const participants = xpParticipatingPlayers();
+  if (!participants.length) return toast(t("xp.noPlayers"));
+  const initialSource = participants.find(p => p.id === sourceId) ||
+    participants.find(p => XP_TARGET_KINDS.includes(xpValidShownRole(p)?.id)) || participants[0];
+  const initialKind = XP_TARGET_KINDS.includes(kind) ? kind :
+    XP_TARGET_KINDS.includes(xpValidShownRole(initialSource)?.id) ? xpValidShownRole(initialSource).id : "custom";
+  const game = S;
+  const root = xpModal(t("multiTargetPicker"), "multi-target-picker");
+  const body = root.querySelector(".xp-modal-content");
+  body.appendChild(xpNode("p", "hint", t("xp.targetHelp")));
+  const types = xpField(body, t("xp.targetKind"), xpSelect(XP_TARGET_KINDS
+    .filter(key => key === "custom" || charById(key))
+    .map(key => [key, key === "custom" ? t("xp.customTargets") : loc(charById(key).name)]), initialKind));
+  const sources = xpField(body, t("xp.source"), xpSelect([]));
+  const warning = xpNode("p", "xp-warning");
+  warning.setAttribute("role", "status");
+  body.appendChild(warning);
+  const ring = xpNode("div", "xp-target-ring");
+  ring.setAttribute("role", "group");
+  ring.setAttribute("aria-label", t("xp.targetOrder"));
+  if (participants.length > 12) ring.classList.add("xp-target-many");
+  body.appendChild(ring);
+  const selection = xpNode("ol", "xp-target-selection");
+  selection.setAttribute("aria-live", "polite");
+  body.appendChild(selection);
+  const result = xpField(body, t("xp.result"), xpSelect([
+    ["none", t("xp.noInfo")], ["yes", t("xp.yes")], ["no", t("xp.no")]
+  ], "none"));
+  const note = xpField(body, t("xp.targetNote"), xpNode("textarea"));
+  note.rows = 2;
+  let selected = [];
+  const selectButtons = new Map();
+  const commit = display => {
+    if (S !== game) return toast(t("xp.invalidTargets"));
+    let plan;
+    try { plan = xpBuildTargetPlan(sources.value, types.value, selected, result.value, note.value); }
+    catch (_) { return toast(t("xp.invalidTargets")); }
+    if (display && (plan.kind !== "fortuneteller" || plan.outcome === "none" || document.hidden)) return;
+    try { xpCommitTargetPlan(plan); }
+    catch (_) { return toast(t("xp.saveFailed")); }
+    if (display) {
+      showPlayerScreen({ title: t("xp.private"), lines: plan.lines, playerId: plan.sourceId, kind: "targets" });
+      closeModal();
+    } else {
+      toast(t("xp.targetsSaved"));
+    }
+    renderGrimoire();
+  };
+  const saveChoice = xpButton(t("xp.saveTargets"), () => commit(false), "btn gold");
+  const showChoice = xpButton(t("xp.showTargets"), () => commit(true));
+  root.querySelector(".xp-modal-actions").prepend(saveChoice, showChoice);
+  const update = () => {
+    selection.replaceChildren();
+    [0, 1].forEach(index => {
+      const p = S.players.find(player => player.id === selected[index]);
+      const marker = XP_TARGET_MARKERS[types.value];
+      const label = marker ? t("xp.marker" + (index ? "Wrong" : marker)) : t(index ? "xp.targetTwo" : "xp.targetOne");
+      selection.appendChild(xpNode("li", "", `${label} : ${p?.name || t("xp.choose")}`));
+    });
+    for (const [id, button] of selectButtons) {
+      const order = selected.indexOf(id);
+      button.setAttribute("aria-pressed", String(order >= 0));
+      button.querySelector(".xp-target-order").textContent = order >= 0 ? String(order + 1) : "";
+    }
+    const source = S.players.find(p => p.id === sources.value);
+    const impaired = source && (source.roleId === "drunk" || source.statuses?.drunk || source.statuses?.poisoned);
+    warning.textContent = !source ? t("xp.noSource") : impaired ? t("xp.targetImpaired") :
+      XP_TARGET_MARKERS[types.value] ? t("xp.pairHelp") : t("xp.targetHelp");
+    result.closest(".xp-field").hidden = types.value !== "fortuneteller";
+    showChoice.hidden = types.value !== "fortuneteller";
+    saveChoice.disabled = !source || selected.length !== 2;
+    showChoice.disabled = saveChoice.disabled || result.value === "none";
+  };
+  const populateSources = preferred => {
+    const candidates = xpParticipatingPlayers().filter(p =>
+      types.value === "custom" || XP_TARGET_KINDS.includes(xpValidShownRole(p)?.id));
+    sources.replaceChildren();
+    const placeholder = xpNode("option", "", t("xp.choose")); placeholder.value = ""; sources.appendChild(placeholder);
+    for (const p of candidates) {
+      const option = xpNode("option", "", p.name); option.value = p.id; sources.appendChild(option);
+    }
+    const compatible = candidates.filter(p => types.value === "custom" || xpValidShownRole(p)?.id === types.value);
+    sources.value = (compatible.find(p => p.id === preferred) || compatible[0])?.id || "";
+    selected = [];
+    result.value = "none";
+    update();
+  };
+  participants.forEach((p, index) => {
+    const button = xpButton("", () => {
+      const position = selected.indexOf(p.id);
+      if (position >= 0) selected.splice(position, 1);
+      else if (selected.length < 2) selected.push(p.id);
+      else return toast(t("xp.invalidTargets"));
+      update();
+    }, "btn xp-target-seat");
+    button.dataset.xpFocus = "target:" + p.id;
+    const angle = 2 * Math.PI * index / participants.length - Math.PI / 2;
+    button.style.setProperty("--seat-x", `${50 + 40 * Math.cos(angle)}%`);
+    button.style.setProperty("--seat-y", `${50 + 40 * Math.sin(angle)}%`);
+    button.append(xpNode("small", "", `${t("xp.seat")} ${S.players.indexOf(p) + 1}`),
+      xpNode("span", "xp-target-name", p.name), xpNode("strong", "xp-target-order"));
+    ring.appendChild(button);
+    selectButtons.set(p.id, button);
+  });
+  types.addEventListener("change", () => populateSources(sources.value));
+  sources.addEventListener("change", () => {
+    const source = S.players.find(p => p.id === sources.value);
+    if (types.value !== "custom" && source) types.value = xpValidShownRole(source)?.id || "";
+    selected = []; result.value = "none"; update();
+  });
+  result.addEventListener("change", update);
+  populateSources(initialSource.id);
 }
 
 function openMessageComposer(pid) {
@@ -386,17 +759,20 @@ function openMessageComposer(pid) {
 function openNotebook(pid) {
   if (playerScreenActive()) return;
   if (!S.players.length) return toast(t("xp.noPlayers"));
-  const root = xpModal(t("xp.notebook"));
+  const root = xpModal(t("xp.notebook"), "notebook");
   const body = root.querySelector(".xp-modal-content");
   body.appendChild(xpNode("p", "hint", t("xp.notebookHelp")));
   const players = xpPlayerSelect(body, pid);
   const content = xpNode("div", "xp-notebook");
   body.appendChild(content);
-  const render = () => {
+  const render = restore => {
+    const position = restore || xpCaptureModalPosition(root);
     content.replaceChildren();
     const p = S.players.find(player => player.id === players.value);
     if (!p) return;
-    content.appendChild(xpButton(t("xp.add"), () => edit(p, null), "btn gold"));
+    const add = xpButton(t("xp.add"), () => edit(p, null), "btn gold");
+    add.dataset.xpFocus = "notebook:add";
+    content.appendChild(add);
     const entries = (Array.isArray(p.information) ? p.information : []).map((entry, index) => ({ entry, index }))
       .sort((a, b) => (Number(a.entry.ts) || 0) - (Number(b.entry.ts) || 0) || a.index - b.index);
     if (!entries.length) content.appendChild(xpNode("p", "hint", t("xp.emptyNotebook")));
@@ -406,24 +782,32 @@ function openNotebook(pid) {
         `${t("xp.night")} ${entry.night ?? "—"} · ${t("xp.day")} ${entry.day ?? "—"} · ${t(entry.phase === "day" ? "xp.day" : "xp.night")}`));
       row.appendChild(xpNode("p", "xp-note-text", entry.text ?? ""));
       const actions = xpNode("div", "row");
-      actions.appendChild(xpButton(t("xp.edit"), () => edit(p, entry), "btn small"));
-      actions.appendChild(xpButton(t("xp.delete"), () => {
+      const editButton = xpButton(t("xp.edit"), () => edit(p, entry), "btn small");
+      editButton.dataset.xpFocus = "notebook:edit:" + entry.id;
+      actions.appendChild(editButton);
+      const deleteButton = xpButton(t("xp.delete"), () => {
+        const listPosition = xpCaptureModalPosition(root);
+        const confirm = xpButton(t("xp.confirmDelete"), () => {
+          pushHistory();
+          p.information = p.information.filter(item => item !== entry);
+          save();
+          render(listPosition);
+          renderGrimoire();
+        }, "btn small");
         actions.replaceChildren(
-          xpButton(t("xp.confirmDelete"), () => {
-            pushHistory();
-            p.information = p.information.filter(item => item !== entry);
-            save();
-            render();
-            renderGrimoire();
-          }, "btn small"),
-          xpButton(t("xp.cancel"), render, "btn small ghost")
+          confirm, xpButton(t("xp.cancel"), () => render(listPosition), "btn small ghost")
         );
-      }, "btn small ghost"));
+        confirm.focus({ preventScroll: true });
+      }, "btn small ghost");
+      deleteButton.dataset.xpFocus = "notebook:delete:" + entry.id;
+      actions.appendChild(deleteButton);
       row.appendChild(actions);
       content.appendChild(row);
     }
+    xpRestoreModalPosition(root, position, position?.focus ? add : null);
   };
   const edit = (p, entry) => {
+    const listPosition = xpCaptureModalPosition(root);
     content.replaceChildren();
     players.disabled = true;
     const form = xpNode("form", "xp-note-editor");
@@ -442,7 +826,7 @@ function openNotebook(pid) {
     };
     const night = number(t("xp.night"), entry?.night ?? S.night.number);
     const day = number(t("xp.day"), entry?.day ?? S.day.number);
-    const cancel = () => { players.disabled = false; render(); };
+    const cancel = () => { players.disabled = false; render(listPosition); };
     const actions = xpNode("div", "row");
     const saveButton = xpButton(t("xp.save"), () => {}, "btn gold");
     saveButton.type = "submit";
@@ -466,7 +850,7 @@ function openNotebook(pid) {
     });
     text.focus();
   };
-  players.addEventListener("change", render);
+  players.addEventListener("change", () => render());
   render();
   players.focus();
 }

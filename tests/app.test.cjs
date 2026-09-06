@@ -6,13 +6,14 @@ const vm = require("node:vm");
 const root = path.join(__dirname, "..");
 const GameCore = require("../js/game-core.js");
 const GamePersistence = require("../js/persistence.js");
+const SessionCore = require("../js/session-core.js");
 function store() {
   const entries = new Map();
   return { getItem: k => entries.get(k) ?? null, setItem: (k, v) => entries.set(k, v), removeItem: k => entries.delete(k) };
 }
 function app() {
   const context = vm.createContext({
-    console, GameCore, GamePersistence, setTimeout, clearTimeout, setInterval, clearInterval,
+    console, GameCore, GamePersistence, SessionCore, setTimeout, clearTimeout, setInterval, clearInterval,
     localStorage: store(), sessionStorage: store(), navigator: { userAgent: "" },
     window: { addEventListener() {}, matchMedia: () => ({ matches: false }) },
     document: {}, confirm: () => true, URLSearchParams,
@@ -29,7 +30,8 @@ function app() {
     DATA.scripts.forEach(([id,data])=>registerScript(id,data));
     PERSISTENCE = new GamePersistence(localStorage,STORE_KEY); PERSISTENCE.read();
     renderAll = () => {}; renderGrimoire = () => {}; closeModal = () => {}; toast = () => {}; switchView = view => currentView = view;
-    flashPhase = () => {}; buzz = () => {}; playBell = () => {}; updateAmbientPhase = () => {};`, context);
+    flashPhase = () => {}; buzz = () => {}; playBell = () => {}; updateAmbientPhase = () => {};
+    paintTimer = () => {}; reviewPendingTransition = (next, commit) => commit();`, context);
   return code => vm.runInContext(code, context);
 }
 test("actual Drunk counts as Outsider while shown role remains Chef", () => {
@@ -121,4 +123,37 @@ test("undo after restore preserves scripts imported after that restore", () => {
   assert.equal(run(`S.players[0].alive`), true);
   assert.equal(run(`!!CUSTOM["custom-keep-library"]`), true);
   assert.equal(run(`!!JSON.parse(localStorage.getItem(STORE_KEY))._custom["custom-keep-library"]`), true);
+});
+test("shared participant counts exclude Fabled and exiled seats but include Travellers", () => {
+  const run = app();
+  run(`S.players=["chef","imp",DATA.master.roles.find(r=>r.team==="traveler").id,DATA.master.roles.find(r=>r.team==="fabled").id,"monk"].map((role,i)=>{const p=newPlayer("P"+i);p.roleId=role;return p;}); S.players[4].exiled=true;`);
+  assert.equal(run(`participantCounts().living`), 3);
+  assert.equal(run(`participantCounts().total`), 3);
+  assert.equal(run(`participantCounts().basePlayers`), 2);
+  assert.equal(run(`participantCounts().majority`), 2);
+});
+test("deadline timer resynchronizes after missed callbacks without rebuilding a view", () => {
+  const run = app();
+  run(`S.timer={total:300,remaining:300,running:true,deadline:Date.now()+30000}; timerTick();`);
+  assert.ok(run(`S.timer.remaining <=30 && S.timer.remaining>=29`));
+  assert.equal(run(`S.timer.running`), true);
+  run(`S.timer.deadline=Date.now()-1000;timerTick();`);
+  assert.equal(run(`S.timer.remaining`), 0);
+  assert.equal(run(`S.timer.running`), false);
+  assert.equal(run(`S.timer.deadline`), null);
+});
+test("full captures preserve exact phase and richer player state", () => {
+  const run = app();
+  run(`S.players=[newPlayer("A")];GameCore.setRole(S.players[0],"drunk","chef");S.players[0].ghostUsed=true;S.night.number=2;captureSnapshot();`);
+  assert.equal(run(`S.snapshots[0].night`), 2);
+  assert.equal(run(`S.snapshots[0].players[0].shownRoleId`), "chef");
+  assert.equal(run(`S.snapshots[0].players[0].ghostUsed`), true);
+  assert.equal(run(`S.snapshots[0].version`), 2);
+});
+test("historical restore preserves captured timer duration rather than archive elapsed time", () => {
+  const run = app();
+  run(`replaceGame({...defaultState(),timer:{total:300,remaining:120,running:true,deadline:Date.now()-100000}},"restore");`);
+  assert.equal(run(`S.timer.remaining`), 120);
+  assert.equal(run(`S.timer.running`), false);
+  assert.equal(run(`S.timer.deadline`), null);
 });
