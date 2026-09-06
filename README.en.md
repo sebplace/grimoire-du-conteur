@@ -34,6 +34,17 @@ exceptions and game end. This is not a complete rules engine.
 | **Characters** | Reference browsing independent of the active script, reworded abilities, search and jinxes. |
 | **Scripts** | Three included scripts, custom library and validated JSON import. Activation is separate, with confirmation and a backup. |
 
+**Essential / Full**: **Full** remains the default to preserve the familiar interface.
+Use the global control or Settings to choose **Essential**: Grimoire, Night, Day,
+Messages and **More tools** remain prominent. Enabling it selects guided night,
+but **Full list** can still be selected. Expand **All tools** for advanced features,
+including Setup, Characters and Scripts. No state or tool is removed; favourites are preserved.
+
+**Play / Placement**: **Play: seats locked** is the default, preventing seat reordering
+and shuffling (`seatPlacement: false`). Enable **Placement: move seats** in the grimoire
+to arrange the table. Seating changes are undoable. Return to Play afterwards:
+taps, long-press, player cards and reminder dragging remain available without moving seats.
+
 **Tools**: on phones, a labelled bottom sheet replaces the side dock. It includes the
 per-player, per-phase **Information notebook**, **Private messages**, **Private role
 distribution**, **Groups and bags**, **Guided exercises**, backups, public Table mode,
@@ -100,6 +111,13 @@ Included scripts: **Trouble Brewing**, **Sects & Violets**, **Bad Moon Rising** 
   they do not automatically decide truth or apply an ability.
 - **Ability use**: manually track Available / Used / Used without effect, including
   while impaired. Changing the actual character resets this tracking.
+- **App assistance**: expand this section on a reference card, player card or night
+  step. It distinguishes scheduled wakes in the data, reminders, targets, two-target
+  choices and advisory calculations or manual information. Zero night values mean no
+  scheduled wake, not an unusable character. A player card may describe the shown
+  character without granting its actual ability. A custom variant of a standard ID
+  warns that assistance still relies on the standard character. Rules remain the
+  Storyteller's responsibility.
 - **Setup**: check assignments, the Drunk's shown character, bluffs for at least seven
   non-Travellers, Fortune Teller's Red herring, Washerwoman's Townsfolk / Wrong pair,
   other setup instructions and jinxes. These checks do not certify every rule.
@@ -159,6 +177,13 @@ Current-game undo history is limited to **50 steps** and **250,000 characters**,
 it may retain fewer than 50 steps. This bounds undo history, not current gameplay
 state, the log or custom definitions.
 
+The main **Undo / Redo** buttons describe the next action and open a private
+**current state → restored state** preview requiring confirmation. Incomplete older
+histories are flagged; labels do not reproduce private note bodies. If the game or
+history entry changes, reopen the preview rather than applying a stale state.
+**Ctrl+Z / Ctrl+Y** and a notification's Undo button remain immediate, with descriptive
+feedback. Undo and redo pause the timer; preferences and local reports are not restored.
+
 **Captures** are frozen states taken before every night-to-day and day-to-night
 transition, or manually. They retain actual and shown characters, alignment, statuses,
 sourced reminders, ghost votes, exile, ability use and nominations. **Compare captures**
@@ -182,6 +207,31 @@ Wait for **Ready offline**, after all required files are cached, before disconne
 The banner shows the version; **Update available** applies an update only when you
 choose, preferably between games. PNG icons are provided for the PWA. Direct
 installation depends on the browser; on iOS use Safari → Share → Add to Home Screen.
+
+## Rescue sheet and local feedback
+
+**Tools → Print** opens the **Storyteller rescue sheet**, a frozen confidential in-app
+preview, without automatically opening printing. It includes seating order, actual/shown
+characters, alignment, life, ghost votes, exile, sourced effects and deadlines, manual
+statuses, bluffs, night progress, nominations, execution and pending actions.
+General notes and private notebooks are excluded by default; including them requires
+the explicit checkbox. **Explicitly refresh capture** takes the current state again.
+**Print this confidential capture** isolates the A4 sheet, not the game window.
+Keep it for the Storyteller and record later changes by hand; it is not a restorable JSON backup.
+
+**Tools → Report a difficulty** keeps a local library separate from games and their
+exports. Nothing is sent. Choose Usability, Rule guidance, Bug or Idea, describe what
+happened and optionally the expected outcome. Training has its own session library.
+Limits: **100 reports, 2,000 characters per text field and 250,000 bytes** overall;
+exceeding a limit shows an error without truncating text or automatically dropping entries.
+
+Diagnostics are restricted to app version, browser family, window dimensions,
+online/offline-ready state, language, standalone mode, Essential and Placement.
+They include no URL, raw user agent, console, game dump, player name, character or note.
+They remain frozen when a report is created. **Technical diagnostics only** also excludes
+free text, category, identifiers and report dates. JSON/text exports show their exact
+contents and require confirmed review; free text is excluded by default.
+Your own words may contain secrets: review before downloading and again before sharing manually.
 
 ## Reuse a preparation
 
@@ -225,14 +275,15 @@ Then open http://localhost:8000
 
 ## Development checks
 
-From the project folder, Node's built-in runner executes the `*.test.cjs` tests:
+From the project folder, Node's built-in runner executes the `tests\*.test.cjs` tests:
 
 ```powershell
 node --test "tests\*.test.cjs"
 ```
 
 Suites cover `game-core`, `session-core`, persistence, offline support, app integration,
-`workflows`, the v26 experience, `voting-core`, `shortcuts` and `presentation`. `tests\browser-*.js`
+`workflows`, the v26 experience, `voting-core`, `shortcuts`, `presentation`,
+`usability-core`, `rescue-sheet` and `feedback`. `tests\browser-*.js`
 are scenarios for a Playwright tool providing `page`,
 not standalone Node commands. Their targeted checks are not exhaustive game-rules validation.
 
@@ -261,6 +312,10 @@ blood-clocktower-mj/
 ├─ js/round-ui.js         # guided voting and effect deadlines
 ├─ js/shortcuts.js        # phase favourites and factual links
 ├─ js/presentation.js     # communication cards and selected debrief
+├─ js/usability-core.js   # history descriptions and per-role assistance
+├─ js/usability.js        # interface modes, seating and undo preview
+├─ js/rescue-sheet.js     # confidential capture and A4 printing
+├─ js/feedback.js         # local reports and limited diagnostics
 ├─ js/persistence.js      # backups and storage protection
 ├─ js/offline.js          # cache status and updates
 ├─ tests/                 # Node tests and Playwright tool scenarios

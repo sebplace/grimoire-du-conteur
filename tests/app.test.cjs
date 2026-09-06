@@ -27,6 +27,8 @@ function app() {
   const source = fs.readFileSync(path.join(root, "js", "app.js"), "utf8");
   vm.runInContext(source.slice(0, source.lastIndexOf("boot().catch")), context);
   vm.runInContext(fs.readFileSync(path.join(root, "js", "round-ui.js"), "utf8"), context);
+  vm.runInContext(fs.readFileSync(path.join(root, "js", "usability-core.js"), "utf8"), context);
+  vm.runInContext(fs.readFileSync(path.join(root, "js", "usability.js"), "utf8"), context);
   vm.runInContext(`S = defaultState(); GAME = DATA.game; MASTER = {rolesById:Object.fromEntries(DATA.master.roles.map(r=>[r.id,r])),jinxes:{}};
     DATA.scripts.forEach(([id,data])=>registerScript(id,data));
     PERSISTENCE = new GamePersistence(localStorage,STORE_KEY); PERSISTENCE.read();
@@ -178,4 +180,20 @@ test("precise deadlines survive day-night expiry and keep reviews are phase-spec
   assert.equal(run(`getScheduledEffectActions("day").length`), 0);
   run(`S.phase="day";S.day.number=2;`);
   assert.equal(run(`getScheduledEffectActions("night").length`), 1);
+});
+test("seat movement is locked by default and a deliberate placement move is undoable", () => {
+  const run = app();
+  run(`S.players=[newPlayer("Alice"),newPlayer("Bob"),newPlayer("Cara")];const order=S.players.map(p=>p.id);reorderPlayer(0,2);`);
+  assert.equal(run(`S.players.map(p=>p.id).join()===order.join()`), true);
+  run(`S.settings.seatPlacement=true;reorderPlayer(0,2);`);
+  assert.equal(run(`S.players[2].name`), "Alice");
+  assert.equal(run(`S.history.length`), 1);
+  run(`undo();`);
+  assert.equal(run(`S.players[0].name`), "Alice");
+});
+test("seat lock does not affect moving reminders", () => {
+  const run = app();
+  run(`S.players=[newPlayer("A"),newPlayer("B")];GameCore.addReminder(S.players,S.players[0].id,{label:"Reminder",effect:null});GameCore.moveReminder(S.players,S.players[0].id,0,S.players[1].id);`);
+  assert.equal(run(`S.settings.seatPlacement`), false);
+  assert.equal(run(`S.players[1].reminders.length`), 1);
 });

@@ -1076,11 +1076,20 @@ function enhanceNightView(steps) {
   update();
 }
 
-function openMobileTools() {
+function openMobileTools(showAll = false) {
   if (playerScreenActive()) return;
   const root = xpModal(t("xp.tools"));
   root.classList.add("xp-tools-sheet");
   const body = root.querySelector(".xp-modal-content");
+  let advanced = null;
+  if (S.settings.essentialMode) {
+    advanced = xpNode("details", "xp-advanced-tools"); advanced.open = showAll === true;
+    advanced.appendChild(xpNode("summary", "", t("advancedTools")));
+    advanced.appendChild(xpNode("div"));
+    for (const view of PALETTE_VIEWS.filter(item => !["grimoire", "night", "day"].includes(item.view))) {
+      advanced.querySelector("div").appendChild(xpButton(view.icon + " " + t(view.key), () => { closeModal(); switchView(view.view); }, "btn xp-tool-button"));
+    }
+  }
   for (const tool of DOCK_TOOLS) {
     const button = xpButton("", () => {
       closeModal();
@@ -1089,6 +1098,8 @@ function openMobileTools() {
     const icon = xpNode("span", "xp-tool-icon", tool.icon || "");
     icon.setAttribute("aria-hidden", "true");
     button.append(icon, xpNode("span", "", tool.key ? t(tool.key) : loc(tool.name)));
-    body.appendChild(button);
+    if (advanced && !isEssentialTool(tool)) advanced.querySelector("div").appendChild(button);
+    else body.appendChild(button);
   }
+  if (advanced) body.appendChild(advanced);
 }

@@ -34,6 +34,19 @@ les exceptions et la fin de partie. Ce n'est pas un moteur complet des règles.
 | **Personnages** | Référence consultable indépendamment du script actif, capacités reformulées, recherche et jinx. |
 | **Scripts** | Trois scripts inclus, bibliothèque personnalisée et import JSON validé. Activer un script est une action séparée, avec confirmation et sauvegarde. |
 
+**Essentiel / Complet** : le mode **Complet** reste le choix par défaut pour conserver
+l'interface habituelle. Le contrôle global ou Réglages permet de passer à **Essentiel** :
+Grimoire, Nuit, Jour, Messages et **Plus d'outils** restent au premier plan.
+L'activation choisit la nuit guidée, mais **Tout voir** reste sélectionnable.
+Dépliez **Tous les outils** pour les fonctions avancées, dont Setup, Personnages et
+Scripts. Aucun état ni outil n'est supprimé ; vos favoris sont conservés.
+
+**Partie / Placement** : par défaut, **Partie : sièges verrouillés** empêche le
+réordonnancement et le mélange des sièges (`seatPlacement: false`). Activez
+**Placement : déplacer les sièges** dans le grimoire pour organiser la table.
+Les changements d'ordre sont annulables. Revenez en Partie ensuite : toucher,
+appui long, fiches et déplacement des rappels restent disponibles, sans déplacer les sièges.
+
 **Outils** : sur téléphone, un panneau inférieur avec libellés remplace le dock latéral.
 Il donne accès notamment au **Carnet d'informations** par joueur et par phase, aux
 **Messages privés**, à la **Distribution privée des rôles**, aux **Groupes et sacs**,
@@ -104,6 +117,13 @@ Scripts inclus : **Trouble Brewing**, **Sects & Violets**, **Bad Moon Rising** +
   Les rappels sont descriptifs : ni vérité ni capacité ne sont décidées automatiquement.
 - **Capacité** : suivi manuel Disponible / Utilisée / Utilisée sans effet, y compris
   lorsque le joueur est affecté. Changer son rôle réel réinitialise ce suivi.
+- **Aide proposée par l'app** : dépliez cette rubrique sur une carte de référence,
+  une fiche joueur ou une étape de nuit. Elle distingue réveils prévus dans les données,
+  rappels, cibles, choix de deux cibles et calcul indicatif ou information manuelle.
+  Des valeurs de nuit à zéro signifient aucun réveil programmé, pas un rôle inutilisable.
+  Sur la fiche, le contexte peut être celui du personnage montré, sans lui accorder sa
+  capacité réelle. Une variante personnalisée d'un identifiant standard avertit que
+  les aides restent fondées sur le rôle standard. Le Conteur arbitre toujours les règles.
 - **Préparation** : vérifiez attribution, personnage montré à l'Ivrogne, bluffs pour au
   moins sept joueurs hors Voyageurs, Leurre de la Voyante, paire Villageois / Erroné
   de la Lavandière, autres instructions et jinx. Ces contrôles ne certifient pas toutes les règles.
@@ -167,6 +187,14 @@ L'historique d'annulation de la partie courante est limité à **50 étapes** et
 **250 000 caractères** ; il peut donc conserver moins de 50 étapes. Cette limite concerne
 l'annulation, pas l'état de jeu actuel, le journal ou les définitions personnalisées.
 
+Les boutons principaux **Annuler / Rétablir** décrivent la prochaine action et ouvrent
+un aperçu privé **état actuel → état restauré**, à confirmer. Les historiques anciens
+incomplets sont signalés ; les libellés ne reproduisent pas le corps des notes privées.
+Si la partie ou l'étape d'historique change, rouvrez l'aperçu au lieu d'appliquer un état
+périmé. **Ctrl+Z / Ctrl+Y** et le bouton Annuler d'une notification gardent leur action
+immédiate, avec un retour descriptif. Annuler ou rétablir met le minuteur en pause ;
+les préférences et les signalements locaux ne sont pas restaurés.
+
 Les **captures** sont des états figés pris avant chaque passage nuit/jour et jour/nuit,
 ou manuellement. Elles conservent personnages réels et montrés, alignement, statuts,
 rappels avec source, vote fantôme, exil, usage de capacité et nominations.
@@ -191,6 +219,34 @@ couper la connexion. Le bandeau indique la version ; **Mise à jour disponible**
 l'applique qu'à votre demande, de préférence entre deux parties. Les icônes PNG sont
 fournies pour la PWA. L'installation directe dépend du navigateur ; sur iOS, utilisez
 Safari → Partager → Sur l'écran d'accueil.
+
+## Fiche de secours et retours locaux
+
+**Outils → Imprimer** ouvre la **Fiche de secours du Conteur**, un aperçu confidentiel
+figé dans l'app, sans ouvrir automatiquement l'impression. Elle reprend ordre des
+sièges, rôles réels/montrés, alignement, vie, votes fantômes, exils, effets sourcés et
+échéances, états manuels, bluffs, progression de nuit, nominations, exécution et actions
+à revoir. Notes générales et carnets privés sont exclus par défaut ; leur inclusion
+nécessite de cocher l'option explicite. **Actualiser explicitement la capture** reprend
+l'état courant. **Imprimer cette capture confidentielle** isole la fiche au format A4,
+pas la fenêtre de jeu. Gardez ce document réservé au MJ et notez les changements
+ultérieurs à la main ; ce n'est pas une sauvegarde JSON restaurable.
+
+**Outils → Signaler une difficulté** conserve une bibliothèque locale séparée de la
+partie et de ses exports. Rien n'est envoyé. Choisissez Utilisation, Aide aux règles,
+Anomalie ou Idée, décrivez le constat et, si utile, le résultat attendu. L'entraînement
+a sa propre bibliothèque en session. Limites : **100 signalements, 2 000 caractères
+par champ de texte et 250 000 octets** au total ; un dépassement affiche une erreur
+sans tronquer les textes ni supprimer automatiquement des entrées.
+
+Le diagnostic est limité à la version de l'app, famille de navigateur, dimensions
+de la fenêtre, états réseau/hors-ligne prêt, langue, affichage autonome, Essentiel et Placement.
+Il n'inclut ni URL, agent utilisateur brut, console, copie de partie, nom, rôle ou note.
+Il reste figé à la création du signalement. **Diagnostic technique seul** exclut aussi
+texte libre, catégorie, identifiants et dates du signalement. Les exports JSON/texte
+présentent leur contenu exact et demandent une relecture confirmée ; le texte libre
+est exclu par défaut. Vos propres mots peuvent contenir des secrets : relisez avant
+de télécharger, puis avant tout partage manuel.
 
 ## Réutiliser une préparation
 
@@ -237,14 +293,15 @@ Puis ouvrez http://localhost:8000
 
 ## Vérifications de développement
 
-Depuis le dossier du projet, le lanceur intégré de Node exécute les tests `*.test.cjs` :
+Depuis le dossier du projet, le lanceur intégré de Node exécute les tests `tests\*.test.cjs` :
 
 ```powershell
 node --test "tests\*.test.cjs"
 ```
 
 Les suites couvrent notamment `game-core`, `session-core`, la persistance, le hors ligne,
-l'intégration de l'app, `workflows`, l'expérience v26, `voting-core`, `shortcuts` et `presentation`. Les fichiers
+l'intégration de l'app, `workflows`, l'expérience v26, `voting-core`, `shortcuts`,
+`presentation`, `usability-core`, `rescue-sheet` et `feedback`. Les fichiers
 `tests\browser-*.js` sont des scénarios pour un outil
 Playwright fournissant `page`, pas des commandes Node autonomes. Leurs contrôles
 ciblés ne constituent pas une validation exhaustive des règles du jeu.
@@ -274,6 +331,10 @@ blood-clocktower-mj/
 ├─ js/round-ui.js         # vote guidé et échéances des effets
 ├─ js/shortcuts.js        # favoris par phase et liens factuels
 ├─ js/presentation.js     # cartes de communication et débrief choisi
+├─ js/usability-core.js   # descriptions d'historique et aides par rôle
+├─ js/usability.js        # modes d'interface, placement et aperçu d'annulation
+├─ js/rescue-sheet.js     # capture confidentielle et impression A4
+├─ js/feedback.js         # signalements locaux et diagnostics limités
 ├─ js/persistence.js      # sauvegardes et protection du stockage
 ├─ js/offline.js          # état du cache et mises à jour
 ├─ tests/                 # tests Node et scénarios pour outil Playwright

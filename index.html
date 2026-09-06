@@ -14,6 +14,9 @@
   <link rel="stylesheet" href="css/round-ui.css" />
   <link rel="stylesheet" href="css/shortcuts.css" />
   <link rel="stylesheet" href="css/presentation.css" />
+  <link rel="stylesheet" href="css/usability.css" />
+  <link rel="stylesheet" href="css/rescue-sheet.css" />
+  <link rel="stylesheet" href="css/feedback.css" />
 </head>
 <body>
   <div id="particles" aria-hidden="true"></div>
@@ -40,6 +43,7 @@
     <button class="tab active" data-view="grimoire" data-i18n="tab.grimoire">Grimoire</button>
     <button class="tab" data-view="night" data-i18n="tab.night">Nuit</button>
     <button class="tab" data-view="day" data-i18n="tab.day">Jour</button>
+    <button class="tab essential-message-tab" id="btn-messages">Messages</button>
     <button class="tab" data-view="setup" data-i18n="tab.setup">Setup</button>
     <button class="tab" data-view="reference" data-i18n="tab.reference">Personnages</button>
     <button class="tab" data-view="scripts" data-i18n="tab.scripts">Scripts</button>
@@ -47,6 +51,7 @@
   </nav>
 
   <div id="statusbar" class="statusbar"></div>
+  <div id="interface-controls"></div>
   <div id="favourites-bar"></div>
   <div id="session-banner" class="session-banner"></div>
   <div id="storage-warning" class="storage-warning hidden" role="alert"></div>
@@ -83,6 +88,10 @@
   <script src="js/round-ui.js"></script>
   <script src="js/shortcuts.js"></script>
   <script src="js/presentation.js"></script>
+  <script src="js/usability-core.js"></script>
+  <script src="js/usability.js"></script>
+  <script src="js/rescue-sheet.js"></script>
+  <script src="js/feedback.js"></script>
   <script src="js/offline.js"></script>
   <script src="js/app.js"></script>
 </body>

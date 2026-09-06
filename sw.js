@@ -1,6 +1,6 @@
 /* Service worker — Grimoire du Conteur (cache pour usage hors-ligne) */
 const CACHE_PREFIX = "grimoire-mj-";
-const CACHE = `${CACHE_PREFIX}v27`;
+const CACHE = `${CACHE_PREFIX}v28`;
 const SCOPE = new URL(self.registration.scope);
 const ASSETS = [
   "./",
@@ -12,6 +12,9 @@ const ASSETS = [
   "css/round-ui.css",
   "css/shortcuts.css",
   "css/presentation.css",
+  "css/usability.css",
+  "css/rescue-sheet.css",
+  "css/feedback.css",
   "js/game-core.js",
   "js/voting-core.js",
   "js/session-core.js",
@@ -21,6 +24,10 @@ const ASSETS = [
   "js/round-ui.js",
   "js/shortcuts.js",
   "js/presentation.js",
+  "js/usability-core.js",
+  "js/usability.js",
+  "js/rescue-sheet.js",
+  "js/feedback.js",
   "js/offline.js",
   "js/app.js",
   "data/game.json",

@@ -1,0 +1,27 @@
+#interface-controls { display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding:4px 16px; color:var(--muted); }
+.interface-hint { font-size:.78rem; }
+.essential-message-tab { display:none; }
+.essential-mode .essential-message-tab { display:block; }
+.essential-mode .tab[data-view="setup"], .essential-mode .tab[data-view="reference"], .essential-mode .tab[data-view="scripts"] { display:none; }
+.essential-mode #g-shuffle, .essential-mode #g-clear, .essential-mode #g-zoomin, .essential-mode #g-zoomout, .essential-mode #g-checklist { display:none; }
+.essential-mode .nreorder { display:none; }
+.essential-mode .advanced-toolbar-control { display:none; }
+.seat-mode { max-width:100%; white-space:normal; }
+.seat-placement #g-placement { border-color:var(--gold); color:var(--gold-soft); }
+#g-undo, #g-redo { max-width:24rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.history-preview article { border:1px solid var(--line); border-radius:10px; padding:10px; margin:8px 0; overflow-wrap:anywhere; }
+.history-preview article > div { margin-top:6px; white-space:pre-wrap; color:var(--muted); }
+.role-assistance { margin:8px 0; font-size:.82rem; }
+.role-assistance summary { cursor:pointer; color:var(--gold-soft); }
+.role-assistance dl { margin:8px 0; }
+.role-assistance dl > div { display:grid; grid-template-columns:minmax(100px,1fr) 1fr; gap:8px; border-bottom:1px solid var(--line); padding:6px 0; }
+.role-assistance dd { margin:0; color:var(--muted); }
+.xp-advanced-tools { grid-column:1/-1; }
+.xp-advanced-tools summary { padding:10px; cursor:pointer; color:var(--gold-soft); }
+.xp-advanced-tools > div { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+@media (max-width:700px) {
+  #interface-controls { padding:4px 12px; }
+  #g-undo, #g-redo { max-width:100%; }
+  .xp-advanced-tools > div { grid-template-columns:1fr; }
+}
+@media print { #interface-controls { display:none; } }

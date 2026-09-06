@@ -38,6 +38,8 @@ function app() {
   });
   vm.runInContext(fs.readFileSync(path.join(root, "js", "workflows.js"), "utf8"), context);
   vm.runInContext(fs.readFileSync(path.join(root, "js", "round-ui.js"), "utf8"), context);
+  vm.runInContext(fs.readFileSync(path.join(root, "js", "usability-core.js"), "utf8"), context);
+  vm.runInContext(fs.readFileSync(path.join(root, "js", "usability.js"), "utf8"), context);
   if (fs.existsSync(path.join(root, "js", "session-core.js"))) vm.runInContext(fs.readFileSync(path.join(root, "js", "session-core.js"), "utf8"), context);
   const source = fs.readFileSync(path.join(root, "js", "app.js"), "utf8");
   vm.runInContext(source.slice(0, source.lastIndexOf("boot().catch")), context);

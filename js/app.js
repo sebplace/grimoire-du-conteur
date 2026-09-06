@@ -251,7 +251,7 @@ function defaultState() {
     phase: "night",
     sound: true,
     timer: { total: 300, remaining: 300, running: false, deadline: null },
-    settings: { keepAwake: true, volume: 0.6, accent: "purple", haptics: true, confirmActions: true, dockOpen: false },
+    settings: { keepAwake: true, volume: 0.6, accent: "purple", haptics: true, confirmActions: true, dockOpen: false, essentialMode: false, seatPlacement: false },
     log: [],
     history: [],
     bag: [], bluffs: [], setupChecks: {}, winner: null, schemaVersion: 4,
@@ -367,7 +367,13 @@ function toast(msg, action) {
   document.body.appendChild(el);
   setTimeout(() => el.remove(), action ? 3200 : 1600);
 }
-function toastUndo(msg) { toast(msg, { label: "↶ " + t("undo"), fn: undo }); }
+function toastUndo(msg) {
+  const target = S.history?.at(-1), game = S;
+  toast(msg, { label: "↶ " + historyActionLabel("undo"), fn: () => {
+    if (S === game && target && S.history?.at(-1) === target) undo();
+    else openHistoryPreview("undo");
+  } });
+}
 
 /* ---------- Chargement des données ---------- */
 async function fetchJSON(url) {
@@ -400,6 +406,9 @@ async function boot() {
   initRoundUI();
   initShortcuts();
   initPresentation();
+  initUsability();
+  initRescueSheet();
+  initFeedback();
   wireChrome();
   initParticles();
   applyLang();
@@ -443,7 +452,8 @@ function wireChrome() {
   $("#lang-en").onclick = () => setLang("en");
   $$(".tab[data-view]").forEach(tab => tab.onclick = () => switchView(tab.dataset.view));
   $("#btn-tools").onclick = openMobileTools;
-  $("#btn-menu").onclick = () => switchView("scripts");
+  $("#btn-messages").onclick = () => openMessageComposer();
+  $("#btn-menu").onclick = () => S.settings.essentialMode ? openMobileTools() : switchView("scripts");
   $("#modal-overlay").onclick = (e) => { if (e.target.id === "modal-overlay") closeModal(); };
   document.addEventListener("keydown", handleModalKeyboard);
   const sb = $("#btn-sound");
@@ -464,17 +474,25 @@ function wireChrome() {
   if (S.settings.ambient) setTimeout(startAmbient, 500);
   initWakeLock();
   document.addEventListener("keydown", handleShortcuts);
+  document.addEventListener("pointermove", event => {
+    if (DRAG && !S.settings.seatPlacement && Math.hypot(event.clientX - DRAG.x0, event.clientY - DRAG.y0) > 8) {
+      DRAG.moved = true; clearTimeout(LONGPRESS);
+    }
+  });
+  for (const eventName of ["pointerup", "pointercancel"]) document.addEventListener(eventName, () => {
+    if (!S.settings.seatPlacement) { clearTimeout(LONGPRESS); DRAG = null; }
+  });
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") { requestWakeLock(); if (!READ_ONLY && S.timer.running) timerTick(); }
   });
   // Balayage entre onglets (mobile)
   const app = $("#app"); let sx = 0, sy = 0, st0 = 0;
-  const TABS = ["grimoire", "night", "day", "setup", "reference", "scripts"];
   app.addEventListener("touchstart", (e) => { if (e.touches.length !== 1) return; sx = e.touches[0].clientX; sy = e.touches[0].clientY; st0 = Date.now(); }, { passive: true });
   app.addEventListener("touchend", (e) => {
     if (!e.changedTouches.length || e.target.closest(".seat, button, input, select, textarea, .badge, .chip, .ntarget") || document.body.classList.contains("modal-open")) return;
     const dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy;
     if (Date.now() - st0 < 500 && Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 2) {
+      const TABS = S.settings.essentialMode ? ["grimoire", "night", "day"] : ["grimoire", "night", "day", "setup", "reference", "scripts"];
       const i = TABS.indexOf(currentView);
       if (dx < 0 && i < TABS.length - 1) switchView(TABS[i + 1]);
       else if (dx > 0 && i > 0) switchView(TABS[i - 1]);
@@ -499,6 +517,9 @@ function handleShortcuts(e) {
 }
 function applyTheme() { document.body.classList.toggle("bright", !!(S.settings && S.settings.bright)); document.body.classList.toggle("hc", !!(S.settings && S.settings.contrast)); }
 const DOCK_TOOLS = [
+  { icon: "◐", key: "interfaceMode", fn: () => openInterfaceMode() },
+  { icon: "✎", key: "feedback", fn: () => openFeedback() },
+  { icon: "↶", key: "historyPreview", fn: () => openHistoryPreview() },
   { icon: "⚖", key: "guidedVote", fn: () => openGuidedVote() },
   { icon: "★", key: "favourites", fn: () => openFavourites() },
   { icon: "⌛", key: "scheduledEffects", fn: () => openScheduledEffects() },
@@ -536,10 +557,11 @@ function buildDock() {
   const open = !!(S.settings && S.settings.dockOpen);
   d.classList.toggle("open", open);
   document.body.classList.toggle("dock-open", open);
-  const items = DOCK_TOOLS.map(it => `<button class="dock-btn" data-tool="${it.key}" title="${t(it.key)}"><span class="di">${it.icon}</span><span class="dl">${t(it.key)}</span></button>`).join("");
-  d.innerHTML = `<button class="dock-toggle" id="dock-toggle" title="${t("tools")}" aria-label="${t("tools")}">${open ? "›" : "‹"}</button><div class="dock-items">${items}</div>`;
+  const items = DOCK_TOOLS.filter(it => !S.settings.essentialMode || isEssentialTool(it)).map(it => `<button class="dock-btn" data-tool="${it.key}" title="${t(it.key)}"><span class="di">${it.icon}</span><span class="dl">${t(it.key)}</span></button>`).join("");
+  d.innerHTML = `<button class="dock-toggle" id="dock-toggle" title="${t("tools")}" aria-label="${t("tools")}">${open ? "›" : "‹"}</button><div class="dock-items">${items}${S.settings.essentialMode ? `<button class="dock-btn" id="dock-advanced">${t("advancedTools")}</button>` : ""}</div>`;
+  if ($("#dock-advanced")) $("#dock-advanced").onclick = () => openMobileTools(true);
   $("#dock-toggle").onclick = () => { S.settings.dockOpen = !S.settings.dockOpen; save(); buildDock(); buzz(8); };
-  $$("#dock .dock-btn").forEach(b => b.onclick = () => {
+  $$("#dock .dock-btn[data-tool]").forEach(b => b.onclick = () => {
     const it = DOCK_TOOLS.find(x => x.key === b.dataset.tool); if (!it) return;
     // Sur mobile, on referme la barre pour ne pas masquer le contenu.
     if (window.matchMedia("(max-width: 700px)").matches) { S.settings.dockOpen = false; save(); buildDock(); }
@@ -663,6 +685,7 @@ function openSettings() {
   openModal(`
     <button class="close-x" onclick="closeModal()">×</button>
     <h3>⚙ ${t("settings")}</h3>
+    <button class="btn small" id="set-interface">${t("interfaceMode")}</button>
     ${isStandalone() ? "" : `<button class="btn gold" id="set-install" style="width:100%;margin-bottom:10px">📲 ${t("installApp")}</button>`}
     <details open><summary>${t("general")}</summary>
     <div class="set-row"><span>🔆 ${t("keepAwake")}</span><label class="switch"><input type="checkbox" id="set-awake" ${st.keepAwake ? "checked" : ""}><span class="slider2"></span></label></div>
@@ -730,6 +753,7 @@ function openSettings() {
     location.reload();
   };
   if ($("#set-install")) $("#set-install").onclick = installApp;
+  $("#set-interface").onclick = openInterfaceMode;
 }
 
 function openAbout() {
@@ -805,15 +829,17 @@ function applySnapshot(snap) {
 }
 function undo() {
   if (!S.history || !S.history.length) { toast(t("nothingUndo")); return; }
+  const action = historyActionLabel("undo");
   S.redo = S.redo || []; S.redo.push(snapshot());
   applySnapshot(S.history.pop());
-  toast("↶ " + t("undo"));
+  toast("↶ " + action);
 }
 function redo() {
   if (!S.redo || !S.redo.length) { toast(t("nothingUndo")); return; }
+  const action = historyActionLabel("redo");
   S.history = S.history || []; S.history.push(snapshot());
   applySnapshot(S.redo.pop());
-  toast("↪ " + t("redo"));
+  toast("↪ " + action);
 }
 function logEvent(text, icon) {
   S.log = S.log || [];
@@ -1128,7 +1154,7 @@ function viewSignature(view) {
   const common = [S.lang, S.scriptId, S.phase, S.night.number, S.day.number];
   const playerState = S.players;
   const data = {
-    grimoire: [playerState, S.day.nominations, S.settings.gmList, GZOOM],
+    grimoire: [playerState, S.day.nominations, S.settings.gmList, S.settings.seatPlacement, S.settings.essentialMode, GZOOM],
     night: [playerState, S.night, S.day.nominations, S.bluffs, S.nightOrder],
     day: [playerState, S.day],
     setup: [playerState, S.bag, currentScript()?.characters],
@@ -1163,6 +1189,7 @@ function restoreInteraction(root, context, restoreFocus = true) {
 }
 function renderAll() {
   S.players.forEach(p => GameCore.normalizePlayer(p));
+  applyInterfaceMode();
   updatePhaseBadge();
   renderSessionBanner();
   const view = $("#view-" + currentView), signature = viewSignature(currentView);
@@ -1176,6 +1203,7 @@ function renderAll() {
     restoreInteraction(view, context);
   }
   paintTimer();
+  updateUndoUI();
 }
 
 /* =========================================================================
@@ -1195,6 +1223,7 @@ function renderGrimoire() {
       <button class="btn small ghost" id="g-layout">${S.settings.gmList ? tr("Cercle", "Circle") : tr("Liste MJ", "GM list")}</button>
       <button class="btn small ghost" id="g-checklist">${tr("Préparation", "Preparation")}</button>
       <button class="btn small ghost" id="g-tour">${t("roleTour")}</button>
+      <button class="btn small ghost seat-mode" id="g-placement" aria-pressed="${!!S.settings.seatPlacement}">${S.settings.seatPlacement ? tr("Placement : déplacer les sièges", "Placement: move seats") : tr("Partie : sièges verrouillés", "Play: seats locked")}</button>
       <button class="btn small ghost" id="g-zoomout">➖</button>
       <button class="btn small ghost" id="g-zoomin">➕</button>
       <input type="text" id="g-search" class="g-search" placeholder="🔍 ${t("searchPlayer")}" autocomplete="off">
@@ -1210,8 +1239,9 @@ function renderGrimoire() {
   $("#g-layout").onclick = () => { S.settings.gmList = !S.settings.gmList; save(); renderGrimoire(); };
   $("#g-checklist").onclick = openSetupChecklist;
   $("#g-tour").onclick = openRoleDistributionTour;
-  $("#g-undo").onclick = undo;
-  $("#g-redo").onclick = redo;
+  $("#g-undo").onclick = () => openHistoryPreview("undo");
+  $("#g-redo").onclick = () => openHistoryPreview("redo");
+  $("#g-placement").onclick = toggleSeatPlacement;
   $("#g-zoomin").onclick = () => { GZOOM = Math.min(1.8, GZOOM + 0.15); if ($("#circle")) $("#circle").style.transform = `scale(${GZOOM})`; };
   $("#g-zoomout").onclick = () => { GZOOM = Math.max(0.6, GZOOM - 0.15); if ($("#circle")) $("#circle").style.transform = `scale(${GZOOM})`; };
   const gsearch = $("#g-search");
@@ -1233,6 +1263,7 @@ function renderGrimoire() {
     gsearch.oninput = () => { const q = gsearch.value.toLowerCase(); [...list.children].forEach(row => row.hidden = !row.textContent.toLowerCase().includes(q)); };
     restoreInteraction(v, ui);
     VIEW_SIGNATURES.set("grimoire", viewSignature("grimoire"));
+    updateUndoUI();
     return;
   }
 
@@ -1305,13 +1336,15 @@ function renderGrimoire() {
     attachSeatPointer(seat, p.id, i);
     circle.appendChild(seat);
   });
-  if (n > 1) { const h = document.createElement("div"); h.className = "hint"; h.style.textAlign = "center"; h.style.marginTop = "6px"; h.textContent = "↔ " + t("dragHint") + " · " + t("longPressHint"); v.appendChild(h); }
+  if (n > 1) { const h = document.createElement("div"); h.className = "hint"; h.style.textAlign = "center"; h.style.marginTop = "6px"; h.textContent = (S.settings.seatPlacement ? "↔ " + t("dragHint") : tr("Sièges fixes. Activez Placement pour les déplacer.", "Seats are fixed. Enable Placement to move them.")) + " · " + t("longPressHint"); v.appendChild(h); }
   attachReminderDrags();
   restoreInteraction(v, ui);
   VIEW_SIGNATURES.set("grimoire", viewSignature("grimoire"));
+  updateUndoUI();
 }
 function attachReminderDrags() {
   $$("#circle .badge.custom[data-pid]").forEach(el => {
+    el.style.touchAction = "none";
     el.addEventListener("pointerdown", (e) => {
       e.stopPropagation();
       const rd = { pid: el.dataset.pid, ridx: +el.dataset.ridx, el, moved: false };
@@ -1362,17 +1395,17 @@ function roleSigil(id) {
 let DRAG = null;
 let LONGPRESS = null;
 function attachSeatPointer(seat, pid, idx) {
-  seat.style.touchAction = "none";
+  seat.style.touchAction = S.settings.seatPlacement ? "none" : "pan-y";
   seat.addEventListener("pointerdown", (e) => {
     DRAG = { pid, idx, x0: e.clientX, y0: e.clientY, moved: false, el: seat, longFired: false };
-    try { seat.setPointerCapture(e.pointerId); } catch (_) {}
+    if (S.settings.seatPlacement) { try { seat.setPointerCapture(e.pointerId); } catch (_) {} }
     LONGPRESS = setTimeout(() => { if (DRAG && !DRAG.moved) { DRAG.longFired = true; buzz(25); quickActions(pid, e.clientX, e.clientY); } }, 500);
   });
   seat.addEventListener("pointermove", (e) => {
     if (!DRAG || DRAG.pid !== pid) return;
     const dx = e.clientX - DRAG.x0, dy = e.clientY - DRAG.y0;
     if (!DRAG.moved && Math.hypot(dx, dy) > 8) { DRAG.moved = true; clearTimeout(LONGPRESS); }
-    if (DRAG.moved) {
+    if (DRAG.moved && S.settings.seatPlacement) {
       seat.style.zIndex = 20;
       seat.querySelector(".token").style.transform = `translate(${dx}px,${dy}px) scale(1.08)`;
       highlightNearest(e.clientX, e.clientY, idx);
@@ -1383,6 +1416,7 @@ function attachSeatPointer(seat, pid, idx) {
     if (!DRAG || DRAG.pid !== pid) return;
     if (DRAG.longFired) { DRAG = null; return; }
     if (!DRAG.moved) { DRAG = null; openSeatModal(pid); return; }
+    if (!S.settings.seatPlacement) { DRAG = null; return; }
     const target = nearestSeatIdx(e.clientX, e.clientY);
     DRAG = null;
     if (target != null && target !== idx) reorderPlayer(idx, target);
@@ -1428,6 +1462,10 @@ function highlightNearest(x, y, exceptIdx) {
   });
 }
 function reorderPlayer(from, to) {
+  if (!S.settings.seatPlacement) return toast(tr("Activez Placement pour déplacer les sièges.", "Enable Placement to move seats."));
+  if (!Number.isInteger(from) || !Number.isInteger(to) || from < 0 || to < 0 || from >= S.players.length || to >= S.players.length) return toast(tr("Placement invalide.", "Invalid seating change."));
+  if (from === to) return;
+  pushHistory();
   const [p] = S.players.splice(from, 1);
   S.players.splice(to, 0, p);
   save(); renderGrimoire();
@@ -1472,7 +1510,7 @@ function openAddMenu() {
   $("#am-shuffle").onclick = () => { closeModal(); shuffleSeats(); };
   $("#am-demo").onclick = () => { closeModal(); loadDemoGame(); };
 }
-function shuffleSeats() { if (!S.players.length) return; pushHistory(); S.players = shuffleArr(S.players); save(); renderGrimoire(); toast("🔀"); }
+function shuffleSeats() { if (!S.settings.seatPlacement) return toast(tr("Activez Placement pour mélanger les sièges.", "Enable Placement to shuffle seats.")); if (!S.players.length) return toast(t("needRoles")); pushHistory(); S.players = shuffleArr(S.players); save(); renderGrimoire(); toast("🔀"); }
 function loadDemoGame() {
   return startTestGame();
 }
@@ -1600,6 +1638,7 @@ function openSeatModal(pid) {
       <span style="color:var(--muted);font-size:.72rem;flex:1;min-width:140px">${t("isDrunkHint")}</span>
     </div>` : ""}
     ${playerExtrasHtml(p)}
+    ${roleAssistanceHTML(shownRole(p) || role, !!p.shownRoleId)}
     <button class="btn small" id="s-links">↔ ${t("playerLinks")}</button>
 
     <label class="field">💬 ${t("claim")} <span style="opacity:.6">(${t("claimHint")})</span></label>
@@ -1925,6 +1964,7 @@ function renderNight() {
     if (s.key === "meta:demoninfo") extra = bluffsBlock();
     let infoHtml = "";
     if (s.type === "char") { infoHtml = infoBlock(s.charId, s.playerId); extra += infoHtml; }
+    if (s.type === "char") extra += roleAssistanceHTML(charById(s.charId), S.players.find(p => p.id === s.playerId)?.roleId !== s.charId);
     // Rappel « fausse info » si le porteur est ivre/empoisonné et qu'aucun calcul ne l'a déjà signalé
     if (s.type === "char" && !infoHtml) {
       const holderImpaired = S.players.some(p => p.id === s.playerId && GameCore.isImpaired(p));
@@ -2163,6 +2203,7 @@ function renderDay() {
   }
   restoreInteraction(v, ui);
   VIEW_SIGNATURES.set("day", viewSignature("day"));
+  updateUndoUI();
 }
 function renderVoteResults() {
   const root = $("#view-day");
@@ -2182,6 +2223,7 @@ function renderVoteResults() {
   const leading = S.day.nominations.find(n => n.id === leader.nominationId);
   $("#day-leader").textContent = S.day.execution ? tr("Exécution du jour effectuée.", "Today's execution is complete.") : leader.tied ? tr("Égalité en tête : personne au billot.", "Top vote tied: nobody on the block.") : leading ? tr("Au billot : ", "On the block: ") + (S.players.find(p => p.id === leading.nomineeId)?.name || leading.nominee) : tr("Personne au billot.", "Nobody on the block.");
   VIEW_SIGNATURES.set("day", viewSignature("day"));
+  updateUndoUI();
 }
 
 function openVoters(nomId) {
@@ -2536,6 +2578,7 @@ function renderReference() {
         <div class="cn"><span>${escapeHtml(loc(c.name))}</span></div>
         <div class="ca">${escapeHtml(loc(c.ability))}</div>
         <div class="cmeta">${fn}${on}${setup}</div>
+        ${roleAssistanceHTML(c)}
       </div>`;
     }).join("");
     html += `<div class="team-block">
@@ -2707,22 +2750,7 @@ function openGlossary() {
     <div class="modal-actions"><button class="btn gold" onclick="closeModal()">${t("close")}</button></div>`);
 }
 function printSheet() {
-  const sc = currentScript();
-  const rows = S.players.map((p, i) => { const c = p.roleId && charById(p.roleId); return `<tr><td>${i + 1}</td><td>${escapeHtml(p.name)}</td><td>${c ? escapeHtml(loc(c.name)) : "—"}</td><td>${c ? teamName(c.team) : ""}</td><td>${p.alive ? "" : "✝"}</td></tr>`; }).join("");
-  const order = ["townsfolk", "outsider", "minion", "demon"].map(tm => {
-    const cs = sc.characters.filter(c => c.team === tm);
-    return cs.length ? `<h3>${teamName(tm)}</h3><ul>${cs.map(c => `<li><b>${escapeHtml(loc(c.name))}</b> — ${escapeHtml(loc(c.ability))}</li>`).join("")}</ul>` : "";
-  }).join("");
-  const w = window.open("", "_blank");
-  if (!w) { toast("⚠"); return; }
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${loc(sc.meta.name)}</title>
-    <style>body{font-family:Georgia,serif;color:#111;padding:20px}h1{color:#5a2a6a}h3{color:#7a3a1e;margin:14px 0 4px;border-bottom:1px solid #ccc}table{width:100%;border-collapse:collapse;margin:10px 0}td,th{border:1px solid #999;padding:5px 8px;text-align:left}li{margin:3px 0}</style>
-    </head><body><h1>🕰️ ${loc(sc.meta.name)}</h1>
-    <h3>${t("players")} (${S.players.length})</h3>
-    <table><tr><th>#</th><th>${t("playerName")}</th><th>${t("role")}</th><th>${t("alignment")}</th><th></th></tr>${rows}</table>
-    ${order}
-    </body></html>`);
-  w.document.close(); setTimeout(() => w.print(), 400);
+  openRescueSheet();
 }
 function addFabledPrompt() {
   const fabled = MASTER ? Object.values(MASTER.rolesById).filter(r => r.team === "fabled") : [];
