@@ -1,0 +1,46 @@
+.session-overview { min-width: 0; }
+
+@media screen and (max-width: 700px) {
+  .session-overview {
+    display: flex; align-items: center; gap: 4px;
+    border-bottom: 1px solid var(--line); background: var(--bg);
+  }
+  .session-overview #statusbar {
+    flex: 1; min-width: 0; gap: 8px; padding: 4px 8px;
+    border: 0; background: transparent; justify-content: flex-start;
+  }
+  .session-overview .sb-item { white-space: nowrap; }
+  .session-overview .sb-item:last-child { display: none; }
+  #interface-controls { flex: 0 0 auto; padding: 2px 8px 2px 0; }
+  #interface-controls .interface-hint { display: none; }
+  #ui-mode { min-height: 44px; }
+  .topbar { min-height: 56px; padding-block: 6px; gap: 4px; }
+  .topbar .icon-btn { min-height: 44px; min-width: 44px; }
+  .topbar #btn-fs, .topbar #btn-sound, .topbar .lang-btn { display: none; }
+  .topbar .phase-badge { min-height: 44px; display: inline-flex; align-items: center; }
+  .topbar .topbar-center { justify-content: flex-start; }
+  #tabs { gap: 0; overflow: visible; }
+  #tabs .tab { flex: 1 1 0; min-width: 0; min-height: 48px; padding: 4px 2px; white-space: normal; font-size: .76rem; }
+  #tabs .tab[data-view="setup"], #tabs .tab[data-view="reference"], #tabs .tab[data-view="scripts"] { display: none; }
+  #tabs #btn-messages { display: block; }
+  .sc-favourites {
+    flex-wrap: nowrap; overflow-x: auto; padding: 2px 8px; gap: 6px;
+    scroll-padding-inline: 8px; overscroll-behavior-x: contain; scrollbar-width: thin;
+  }
+  .sc-favourites-phase { display: none; }
+  .sc-favourites .sc-favourite, .sc-favourites .sc-customize {
+    flex: 0 0 auto; min-height: 44px; max-width: 230px; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis;
+  }
+  .sc-favourites .sc-warning { flex: 0 0 240px; white-space: normal; }
+  #session-banner { padding: 2px 8px; gap: 4px; font-size: .76rem; }
+  .session-banner .btn { min-height: 44px; }
+  #app > .view { padding-top: 8px; }
+  .grimoire-toolbar { gap: 6px; align-items: center; }
+  .grimoire-toolbar #g-search { max-width: none; min-width: 0; min-height: 44px; flex: 1 1 100%; order: 5; }
+  .grimoire-toolbar > #g-undo { flex: 1 1 120px; min-width: 0; max-width: calc(100% - 160px); }
+  .grimoire-toolbar .btn.small, .grimoire-more > summary { min-height: 44px; }
+  .grimoire-more > summary { display: flex; align-items: center; }
+}
+
+@media print { .session-overview { display: none; } }

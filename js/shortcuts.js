@@ -349,7 +349,7 @@ function scExpiry(reminder) {
 function scPlayerCardButton(player, label) {
   const button = scButton(label + " : " + scPersonLabel(player), "btn small ghost", () => {
     if (!player || !S.players.some(current => current.id === player.id) || typeof openSeatModal !== "function") return;
-    closeModal(); openSeatModal(player.id);
+    openSeatModal(player.id);
   });
   button.disabled = !player || !!scBlocked() || typeof openSeatModal !== "function";
   return button;
@@ -436,6 +436,7 @@ function openPlayerLinks(playerId) {
     }
   };
   select.addEventListener("change", render);
+  if (typeof modalSetRestore === "function") modalSetRestore(() => openPlayerLinks(select.value));
   const actions = scNode("div", "modal-actions");
   actions.appendChild(scButton(t("sc.close"), "btn ghost", closeModal)); root.appendChild(actions);
   render();

@@ -34,21 +34,44 @@ les exceptions et la fin de partie. Ce n'est pas un moteur complet des règles.
 | **Personnages** | Référence consultable indépendamment du script actif, capacités reformulées, recherche et jinx. |
 | **Scripts** | Trois scripts inclus, bibliothèque personnalisée et import JSON validé. Activer un script est une action séparée, avec confirmation et sauvegarde. |
 
-**Essentiel / Complet** : le mode **Complet** reste le choix par défaut pour conserver
-l'interface habituelle. Le contrôle global ou Réglages permet de passer à **Essentiel** :
-Grimoire, Nuit, Jour, Messages et **Plus d'outils** restent au premier plan.
-L'activation choisit la nuit guidée, mais **Tout voir** reste sélectionnable.
-Dépliez **Tous les outils** pour les fonctions avancées, dont Setup, Personnages et
-Scripts. Aucun état ni outil n'est supprimé ; vos favoris sont conservés.
+**Navigation compacte (v29)** : jusqu'à **700 px de largeur**, cinq accès restent en
+bas en **Complet comme en Essentiel** : Grimoire, Nuit, Jour, Messages et Outils
+(**Plus d'outils** en Essentiel). Setup, Personnages et Scripts restent accessibles
+dans la boîte à outils. Sur grand écran, Complet conserve ses onglets avancés.
+Le bouton **Complet / Essentiel ▾ → Affichage et langue** propose **Français**,
+**English**, **Plein écran** et **Sons : activés / désactivés**. Ces commandes sont
+retirées de l'en-tête seulement jusqu'à 700 px ; le plein écran dépend du navigateur.
+
+**Essentiel / Complet** : **Complet** reste le choix par défaut. Passer à Essentiel
+depuis le contrôle global ou Réglages choisit la nuit guidée, mais **Tout voir**
+reste sélectionnable. Aucun état ni outil n'est supprimé ; vos favoris sont conservés.
+
+**Grimoire et fiches** : Annuler, Cercle/Liste MJ et la recherche restent directement
+accessibles. **Plus ▾** regroupe ajout, attribution, préparation, placement, zoom,
+rétablir et nouvelle partie. La fiche commence par les identités réelle/montrée et
+les actions Révéler, Message privé et Carnet d'informations ; attribution, état avancé et rappels/effets
+se déplient à la demande. Ces vues contiennent des secrets et restent réservées au MJ.
+La recherche de joueur (Grimoire ou Ctrl+K) accepte le nom et les personnages
+réel/montré en FR/EN, sans tenir compte des accents ; les résultats proposent
+**Fiche / Note / Message / Effets**. Note ouvre le carnet du joueur ; Effets ouvre
+sa fiche directement sur les rappels.
 
 **Partie / Placement** : par défaut, **Partie : sièges verrouillés** empêche le
 réordonnancement et le mélange des sièges (`seatPlacement: false`). Activez
-**Placement : déplacer les sièges** dans le grimoire pour organiser la table.
+**Plus → Placement : déplacer les sièges** dans le grimoire pour organiser la table.
 Les changements d'ordre sont annulables. Revenez en Partie ensuite : toucher,
 appui long, fiches et déplacement des rappels restent disponibles, sans déplacer les sièges.
 
-**Outils** : sur téléphone, un panneau inférieur avec libellés remplace le dock latéral.
-Il donne accès notamment au **Carnet d'informations** par joueur et par phase, aux
+**Outils** : la boîte à outils classe le catalogue complet par intention :
+**Préparer / Animer / Consulter / Sauvegarder**. **Tous les outils** affiche aussi les
+fonctions avancées. La recherche accepte les noms et des synonymes FR/EN, avec ou sans
+accents, et parcourt toujours tout le catalogue, même en Essentiel ou après un filtre.
+Par exemple, cherchez « réveil », « imprimer » ou « backup ». Sur téléphone, elle
+s'ouvre dans un panneau inférieur avec libellés ; sur grand écran, le dock propose
+les quatre intentions et **Tous les outils**, plutôt qu'une longue liste d'icônes.
+Ouvrir un outil en dialogue conserve le catalogue, la recherche et le défilement
+pour le retour ; ouvrir une vue quitte le catalogue. Le guide s'ouvre dans un autre onglet.
+Le catalogue donne accès notamment au **Carnet d'informations** par joueur et par phase, aux
 **Messages privés**, à la **Distribution privée des rôles**, aux **Groupes et sacs**,
 aux **Exercices guidés**, aux sauvegardes, au mode Table public, au journal et aux
 comparaisons de captures, ainsi qu'au verrou, aux notes, au guide et à l'impression.
@@ -56,8 +79,25 @@ La palette de commandes reste accessible avec Ctrl+K. Les réglages de confort d
 des capacités du navigateur. Les vues et fenêtres conservent leur focus et leur position
 de défilement ; les mises à jour du minuteur et des votes évitent un rechargement complet.
 
+**Retour et brouillons** : **Retour** revient au dialogue précédent ; **Tout fermer**
+retrouve la vue de travail. Le retour du navigateur suit le contexte de l'app.
+Sans dialogue ni vue précédente, il reste dans l'app ; il ne déverrouille pas l'écran.
+Retour, Échap et un toucher hors du dialogue préservent les saisies en mémoire ;
+**Abandonner le brouillon** dans la barre du dialogue demande confirmation.
+Les brouillons de message privé, de carnet et de préparation de réveil non enregistrée
+sont conservés **en mémoire limitée pour chaque joueur et partie**, avec entraînement
+séparé, pas après rechargement ou remplacement de partie. Utilisez leur action
+**Abandonner le brouillon** pour les effacer, ou enregistrez explicitement la note.
+Dans le carnet, **Annuler** revient à la liste sans effacer le brouillon.
+La revendication de la fiche conserve son enregistrement automatique au changement
+du champ ; ce n'est pas une note de carnet en attente.
+Reprendre un brouillon ne montre rien au joueur. Depuis un écran public, Retour
+mène uniquement à l'écran neutre ; seul **Retour au Conteur** restaure le privé.
+
 **Outils → Favoris par phase** permet de choisir jusqu'à **quatre raccourcis pour la nuit
 et quatre pour le jour**, dans une barre libellée intégrée à la page, sans superposition.
+Sur mobile, les favoris restent sur une seule ligne à défilement horizontal,
+avec une barre de défilement fine selon le navigateur.
 Les choix sont conservés dans `S.settings.favourites`. Les favoris utilisent les outils
 de l'app et leurs restrictions : nominer reste indisponible la nuit, après l'exécution
 ou sur un écran joueur.
@@ -98,6 +138,20 @@ Scripts inclus : **Trouble Brewing**, **Sects & Violets**, **Bad Moon Rising** +
   Ils prennent en compte l'alignement enregistré ; les paires de candidats restent
   stables pour une même nuit. Un joueur ivre ou empoisonné peut recevoir une information
   correcte **ou** incorrecte. Le Conteur décide et consigne ce qu'il communique.
+- **Information préparée par réveil** : dans la nuit, ouvrez **Préparer l'information**,
+  choisissez manuellement un nombre, un personnage ou du texte, puis
+  **Enregistrer la préparation**. Rien n'est encore montré ni ajouté au carnet.
+  Relisez l'aperçu, utilisez **Montrer uniquement l'information**, masquez vers le
+  neutre, revenez au Conteur, puis **Consigner l'information montrée**.
+  Cette dernière action ajoute au carnet le texte exact affiché, pas une modification
+  ultérieure. Si rôles, effets ou état ont changé, revérifiez et enregistrez la
+  préparation avant un nouvel affichage. Aucun calcul de vérité ni effet automatique.
+  Une préparation enregistrée appartient au script, à la phase, au numéro et au
+  type de nuit courants ; elle ne se reporte pas automatiquement à la suivante.
+  Son texte privé fait partie des sauvegardes et exports (`S.night.preparations`),
+  contrairement aux brouillons de saisie en mémoire. Une entrée consignée garde l'affichage exact :
+  ajoutez une note de correction plutôt que de le réécrire ; sa suppression reste possible.
+  Limites : **80 préparations courantes** et **4 000 caractères** pour le texte libre.
 - **Écran joueur** : nombre, deux personnages, alignement ou texte choisi uniquement,
   avec enregistrement dans le carnet. Les bluffs s'affichent seulement si trois choix
   distincts sont valides. Masquer l'information mène à un écran neutre ; seul
@@ -281,6 +335,18 @@ Chaque exercice affiche sa consigne, son résultat attendu et une vérification 
 avec possibilité de recommencer. Ces vérifications ne certifient pas toutes les règles
 ni l'exactitude d'une information choisie par le Conteur.
 
+## Six essais d'usage avec un vrai MJ
+
+La [section 17 du guide](guide.html#usability-check) propose six tâches courtes :
+se repérer sur téléphone, retrouver un outil, agir sur un joueur, reprendre une
+saisie, préparer une information de réveil et contrôler le retour depuis l'écran public.
+Essayez-les en entraînement, avec un vrai MJ, et relevez hésitations, erreurs et
+résultats attendus dans **Signaler une difficulté**. **Aucune observation terrain
+n'a été conduite** : ce protocole reste à réaliser, il ne prouve ni l'ergonomie
+en partie réelle ni une automatisation parfaite des règles.
+Les mesures de fenêtre des scénarios navigateur sont des contrôles locaux
+reproductibles, pas des observations d'un vrai MJ.
+
 ## Lancer en local
 
 L'app charge ses données via `fetch()`, il faut donc un petit serveur HTTP
@@ -322,6 +388,9 @@ blood-clocktower-mj/
 ├─ manifest.webmanifest  # PWA
 ├─ sw.js                 # service worker (hors-ligne)
 ├─ css/theme.css
+├─ css/compact.css        # navigation mobile compacte
+├─ css/navigation.css     # dialogues contextuels et fiches condensées
+├─ css/toolbox.css        # catalogue d'outils par intention
 ├─ js/app.js
 ├─ js/game-core.js        # état de jeu et contrôles ciblés
 ├─ js/session-core.js     # minuteur, effectifs et captures
@@ -333,6 +402,9 @@ blood-clocktower-mj/
 ├─ js/presentation.js     # cartes de communication et débrief choisi
 ├─ js/usability-core.js   # descriptions d'historique et aides par rôle
 ├─ js/usability.js        # modes d'interface, placement et aperçu d'annulation
+├─ js/navigation.js       # retours contextuels et protection des saisies en mémoire
+├─ js/toolbox.js          # catalogue complet, recherche et filtres d'intention
+├─ js/wake-preparation.js # information manuelle préparée, montrée puis consignée
 ├─ js/rescue-sheet.js     # capture confidentielle et impression A4
 ├─ js/feedback.js         # signalements locaux et diagnostics limités
 ├─ js/persistence.js      # sauvegardes et protection du stockage

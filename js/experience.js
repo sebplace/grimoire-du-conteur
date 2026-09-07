@@ -362,12 +362,17 @@ function xpModal(title, key = title) {
   const old = document.querySelector("#modal .xp-modal");
   const position = old?.dataset.xpModal === key ? xpCaptureModalPosition(old) : null;
   const opener = old?.xpOpener || document.activeElement;
-  closeModal();
-  openModal(`<div class="xp-modal"><h2>${escapeHtml(title)}</h2><div class="xp-modal-content"></div><div class="modal-actions xp-modal-actions"></div></div>`);
+  openModal(`<div class="xp-modal"><h2>${escapeHtml(title)}</h2><div class="xp-modal-content"></div><div class="modal-actions xp-modal-actions"></div></div>`, "xp:" + key);
   const root = document.querySelector("#modal .xp-modal");
   root.dataset.xpModal = key;
   root.xpOpener = opener;
-  const close = () => { closeModal(); if (opener?.isConnected) opener.focus({ preventScroll: true }); };
+  const close = () => {
+    closeModal();
+    if (document.getElementById("modal-overlay")?.classList.contains("hidden") &&
+        !playerScreenActive() && opener?.isConnected && !opener.closest("[inert]")) {
+      opener.focus({ preventScroll: true });
+    }
+  };
   root.querySelector(".xp-modal-actions").appendChild(xpButton(t("xp.close"), close, "btn ghost"));
   root.addEventListener("keydown", event => {
     if (event.key === "Escape") { event.stopPropagation(); close(); }
@@ -413,6 +418,67 @@ function xpInformationEntry(text, overrides = {}) {
     id: uid(), night: S.night.number, day: S.day.number,
     phase: S.phase, text, ts: Date.now()
   }, overrides);
+}
+
+function xpReadOnly() {
+  return typeof READ_ONLY !== "undefined" && READ_ONLY;
+}
+
+function xpSavedChange(change) {
+  if (xpReadOnly()) throw new Error("Read-only game");
+  const game = S;
+  const previous = {};
+  for (const key of ["players", "night", "history", "redo", "log"]) {
+    previous[key] = { owned: Object.prototype.hasOwnProperty.call(game, key), value: game[key] };
+  }
+  try {
+    game.history = (game.history || []).slice();
+    pushHistory();
+    game.players = JSON.parse(JSON.stringify(game.players));
+    game.night = JSON.parse(JSON.stringify(game.night));
+    game.log = (game.log || []).slice();
+    const result = change();
+    if (S !== game || save() === false) throw new Error("Save rejected");
+    return result;
+  } catch (error) {
+    for (const [key, old] of Object.entries(previous)) {
+      if (old.owned) game[key] = old.value;
+      else delete game[key];
+    }
+    throw error;
+  }
+}
+
+const xpEditorDrafts = new WeakMap();
+function xpResetInformationDrafts(game = S) {
+  if (!game || typeof game !== "object") return;
+  xpEditorDrafts.delete(game);
+  if (typeof wakeEditorDrafts !== "undefined") wakeEditorDrafts.delete(game);
+}
+
+function xpDrafts(game = S) {
+  const training = typeof TRAINING !== "undefined" && TRAINING;
+  if (!xpEditorDrafts.has(game) || xpEditorDrafts.get(game).training !== training) xpEditorDrafts.set(game, {
+    training, message: new Map(), notebook: new Map(), selectedMessage: null, selectedNotebook: null
+  });
+  const store = xpEditorDrafts.get(game);
+  for (const type of ["message", "notebook"]) {
+    for (const id of store[type].keys()) if (!game.players.some(p => p.id === id)) store[type].delete(id);
+  }
+  return store;
+}
+
+function xpKeepDraft(store, id, draft) {
+  if (!store.has(id) && store.size >= 80) throw new Error("Draft limit");
+  store.set(id, draft);
+}
+
+function xpDraftText(fr, en) { return S.lang === "en" ? en : fr; }
+
+function xpDraftHint(body) {
+  body.appendChild(xpNode("p", "hint xp-draft-hint", xpDraftText(
+    "Brouillon conservé en mémoire pour ce joueur en fermant ou en revenant. « Abandonner le brouillon » l’efface. Un rechargement ou un remplacement de partie l’efface également.",
+    "Draft kept in memory for this player when closing or returning. Discard draft clears it. Reloading or replacing the game also clears it.")));
 }
 
 function xpParticipatingPlayers() {
@@ -697,22 +763,43 @@ function openMultiTargetPicker(sourceId, kind) {
 function openMessageComposer(pid) {
   if (playerScreenActive()) return;
   if (!S.players.length) return toast(t("xp.noPlayers"));
-  const root = xpModal(t("xp.message"));
+  const game = S, store = xpDrafts();
+  const root = xpModal(t("xp.message"), "message");
+  if (typeof modalManageDraft === "function") modalManageDraft();
   const body = root.querySelector(".xp-modal-content");
   body.appendChild(xpNode("p", "hint", t("xp.privateHelp")));
-  const players = xpPlayerSelect(body, pid);
+  xpDraftHint(body);
+  const players = xpPlayerSelect(body, pid || store.selectedMessage);
+  if (typeof modalSetDiscard === "function") modalSetDiscard(() => store.message.delete(players.value));
   const type = xpField(body, t("xp.type"), xpSelect(
     ["number", "characters", "alignment", "text"].map(key => [key, t("xp." + key)])
   ));
   const fields = xpNode("div", "xp-message-fields");
   body.appendChild(fields);
-  let read;
+  let read, draft;
+  const remember = () => {
+    if (S !== game) return;
+    draft.type = type.value;
+    store.selectedMessage = players.value;
+    xpKeepDraft(store.message, players.value, draft);
+  };
+  const field = (name, label, control, fallback = "") => {
+    control.value = draft[name] ?? fallback;
+    const capture = () => {
+      if (draft[name] !== control.value) delete draft.recorded;
+      draft[name] = control.value;
+      remember();
+    };
+    control.addEventListener("input", capture);
+    control.addEventListener("change", capture);
+    return xpField(fields, label, control);
+  };
   const renderFields = () => {
     fields.replaceChildren();
     if (type.value === "number") {
-      const number = xpField(fields, t("xp.number"), xpSelect(
+      const number = field("number", t("xp.number"), xpSelect(
         Array.from({ length: 21 }, (_, i) => [String(i), String(i)])
-      ));
+      ), "0");
       read = () => {
         const value = Number(number.value);
         return number.value !== "" && Number.isInteger(value) && value >= 0 && value <= 20 ? [String(value)] : null;
@@ -720,49 +807,75 @@ function openMessageComposer(pid) {
     } else if (type.value === "characters") {
       const options = [["", t("xp.choose")], ...(currentScript()?.characters || [])
         .filter(c => c.team !== "fabled").map(c => [c.id, loc(c.name)])];
-      const first = xpField(fields, t("xp.firstCharacter"), xpSelect(options));
-      const second = xpField(fields, t("xp.secondCharacter"), xpSelect(options));
+      const first = field("first", t("xp.firstCharacter"), xpSelect(options));
+      const second = field("second", t("xp.secondCharacter"), xpSelect(options));
       read = () => {
         if (!first.value || !second.value || first.value === second.value) return null;
         const roles = [charById(first.value), charById(second.value)];
         return roles.every(Boolean) ? roles.map(role => loc(role.name)) : null;
       };
     } else if (type.value === "alignment") {
-      const alignment = xpField(fields, t("xp.alignment"), xpSelect([
+      const alignment = field("alignment", t("xp.alignment"), xpSelect([
         ["good", t("xp.good")], ["evil", t("xp.evil")]
-      ]));
+      ]), "good");
       read = () => ["good", "evil"].includes(alignment.value) ? [t("xp." + alignment.value)] : null;
     } else {
-      const text = xpField(fields, t("xp.text"), xpNode("textarea"));
-      text.rows = 5;
+      const text = field("text", t("xp.text"), xpNode("textarea"));
+      text.rows = 5; text.maxLength = 4000;
       read = () => text.value.trim() ? [text.value] : null;
     }
   };
-  type.addEventListener("change", renderFields);
-  renderFields();
-  root.querySelector(".xp-modal-actions").prepend(xpButton(t("xp.show"), () => {
+  const load = () => {
+    draft = store.message.get(players.value) || { type: "number" };
+    type.value = draft.type;
+    remember(); renderFields();
+  };
+  type.addEventListener("change", () => { delete draft.recorded; remember(); renderFields(); });
+  players.addEventListener("change", load);
+  load();
+  const show = xpButton(t("xp.show"), () => {
+    if (S !== game || xpReadOnly() || document.hidden) return toast(t("xp.saveFailed"));
     const p = S.players.find(player => player.id === players.value);
     const lines = read();
-    if (!p || !lines) return toast(t("xp.invalidMessage"));
-    pushHistory();
-    if (!Array.isArray(p.information)) p.information = [];
-    p.information.push(xpInformationEntry(lines.join("\n")));
-    logEvent(`${t("xp.recorded")} — ${p.name}`, "✉");
-    save();
-    // Cover the page before closing the composer so no secret view can flash.
+    if (!p || !lines || lines.some(line => line.length > 4000)) return toast(t("xp.invalidMessage"));
+    const signature = JSON.stringify([S.phase, S.night.number, S.day.number, p.id, p.roleId, p.shownRoleId, type.value, lines]);
+    if (draft.recorded !== signature) {
+      try {
+        xpSavedChange(() => {
+          const player = S.players.find(item => item.id === p.id);
+          if (!Array.isArray(player.information)) player.information = [];
+          player.information.push(xpInformationEntry(lines.join("\n")));
+          logEvent(`${t("xp.recorded")} — ${player.name}`, "✉");
+        });
+      } catch (_) { return toast(t("xp.saveFailed")); }
+      draft.recorded = signature;
+    }
+    remember();
+    if (typeof modalCommitDraft === "function") modalCommitDraft();
     showPlayerScreen({ title: t("xp.private"), lines, playerId: p.id, kind: type.value });
-    closeModal();
-  }, "btn gold"));
+  }, "btn gold");
+  show.disabled = xpReadOnly();
+  const discard = xpButton(xpDraftText("Abandonner le brouillon", "Discard draft"), () => {
+    store.message.delete(players.value);
+    load();
+    if (typeof modalCommitDraft === "function") modalCommitDraft();
+  }, "btn ghost");
+  root.querySelector(".xp-modal-actions").prepend(show, discard,
+    xpButton(t("xp.notebook"), () => openNotebook(players.value), "btn ghost"));
   players.focus();
 }
 
 function openNotebook(pid) {
   if (playerScreenActive()) return;
   if (!S.players.length) return toast(t("xp.noPlayers"));
+  const game = S, store = xpDrafts();
   const root = xpModal(t("xp.notebook"), "notebook");
+  if (typeof modalManageDraft === "function") modalManageDraft();
   const body = root.querySelector(".xp-modal-content");
   body.appendChild(xpNode("p", "hint", t("xp.notebookHelp")));
-  const players = xpPlayerSelect(body, pid);
+  xpDraftHint(body);
+  const players = xpPlayerSelect(body, pid || store.selectedNotebook);
+  if (typeof modalSetDiscard === "function") modalSetDiscard(() => store.notebook.delete(players.value));
   const content = xpNode("div", "xp-notebook");
   body.appendChild(content);
   const render = restore => {
@@ -770,9 +883,19 @@ function openNotebook(pid) {
     content.replaceChildren();
     const p = S.players.find(player => player.id === players.value);
     if (!p) return;
+    store.selectedNotebook = p.id;
     const add = xpButton(t("xp.add"), () => edit(p, null), "btn gold");
+    add.disabled = xpReadOnly() || S !== game;
     add.dataset.xpFocus = "notebook:add";
     content.appendChild(add);
+    if (store.notebook.has(p.id)) {
+      content.appendChild(xpButton(xpDraftText("Reprendre le brouillon", "Resume draft"), () => edit(p, null, true), "btn"));
+      content.appendChild(xpButton(xpDraftText("Abandonner le brouillon", "Discard draft"), () => {
+        store.notebook.delete(p.id); render();
+        if (typeof modalCommitDraft === "function") modalCommitDraft();
+      }, "btn ghost"));
+      add.disabled = true;
+    }
     const entries = (Array.isArray(p.information) ? p.information : []).map((entry, index) => ({ entry, index }))
       .sort((a, b) => (Number(a.entry.ts) || 0) - (Number(b.entry.ts) || 0) || a.index - b.index);
     if (!entries.length) content.appendChild(xpNode("p", "hint", t("xp.emptyNotebook")));
@@ -783,14 +906,21 @@ function openNotebook(pid) {
       row.appendChild(xpNode("p", "xp-note-text", entry.text ?? ""));
       const actions = xpNode("div", "row");
       const editButton = xpButton(t("xp.edit"), () => edit(p, entry), "btn small");
+      editButton.disabled = !!entry.wakeReceipt || xpReadOnly() || S !== game || store.notebook.has(p.id);
+      if (entry.wakeReceipt) row.appendChild(xpNode("p", "hint", xpDraftText(
+        "Affichage exact conservé. Ajoutez une note pour une correction.", "Exact display preserved. Add a note for a correction.")));
       editButton.dataset.xpFocus = "notebook:edit:" + entry.id;
       actions.appendChild(editButton);
       const deleteButton = xpButton(t("xp.delete"), () => {
         const listPosition = xpCaptureModalPosition(root);
         const confirm = xpButton(t("xp.confirmDelete"), () => {
-          pushHistory();
-          p.information = p.information.filter(item => item !== entry);
-          save();
+          if (S !== game) return toast(t("xp.saveFailed"));
+          try {
+            xpSavedChange(() => {
+              const player = S.players.find(item => item.id === p.id);
+              player.information = player.information.filter(item => item.id !== entry.id);
+            });
+          } catch (_) { return toast(t("xp.saveFailed")); }
           render(listPosition);
           renderGrimoire();
         }, "btn small");
@@ -799,6 +929,7 @@ function openNotebook(pid) {
         );
         confirm.focus({ preventScroll: true });
       }, "btn small ghost");
+      deleteButton.disabled = xpReadOnly() || S !== game;
       deleteButton.dataset.xpFocus = "notebook:delete:" + entry.id;
       actions.appendChild(deleteButton);
       row.appendChild(actions);
@@ -806,45 +937,74 @@ function openNotebook(pid) {
     }
     xpRestoreModalPosition(root, position, position?.focus ? add : null);
   };
-  const edit = (p, entry) => {
+  const edit = (p, entry, resume = false) => {
+    if (S !== game || xpReadOnly()) return toast(t("xp.saveFailed"));
     const listPosition = xpCaptureModalPosition(root);
+    const draft = resume ? store.notebook.get(p.id) : {
+      entryId: entry?.id || null, original: entry ? JSON.stringify(entry) : null,
+      text: entry?.text ?? "", phase: entry?.phase || S.phase,
+      night: String(entry?.night ?? S.night.number), day: String(entry?.day ?? S.day.number)
+    };
+    if (!draft) return;
+    xpKeepDraft(store.notebook, p.id, draft);
     content.replaceChildren();
     players.disabled = true;
     const form = xpNode("form", "xp-note-editor");
     content.appendChild(form);
     const text = xpField(form, t("xp.text"), xpNode("textarea"));
-    text.rows = 5;
-    text.value = entry?.text ?? "";
+    text.rows = 5; text.maxLength = 4000;
+    text.value = draft.text;
     const phase = xpField(form, t("xp.phase"), xpSelect([
       ["night", t("xp.night")], ["day", t("xp.day")]
-    ], entry?.phase || S.phase));
+    ], draft.phase));
     const number = (label, value) => {
       const input = xpNode("input");
       input.type = "number"; input.min = "0"; input.step = "1"; input.required = true;
       input.value = String(value);
       return xpField(form, label, input);
     };
-    const night = number(t("xp.night"), entry?.night ?? S.night.number);
-    const day = number(t("xp.day"), entry?.day ?? S.day.number);
+    const night = number(t("xp.night"), draft.night);
+    const day = number(t("xp.day"), draft.day);
+    const remember = () => Object.assign(draft, { text: text.value, phase: phase.value, night: night.value, day: day.value });
+    for (const control of [text, phase, night, day]) {
+      control.addEventListener("input", remember);
+      control.addEventListener("change", remember);
+    }
     const cancel = () => { players.disabled = false; render(listPosition); };
     const actions = xpNode("div", "row");
     const saveButton = xpButton(t("xp.save"), () => {}, "btn gold");
     saveButton.type = "submit";
-    actions.append(saveButton, xpButton(t("xp.cancel"), cancel, "btn ghost"));
+    actions.append(saveButton, xpButton(t("xp.cancel"), () => { remember(); cancel(); }, "btn ghost"),
+      xpButton(xpDraftText("Abandonner le brouillon", "Discard draft"), () => {
+        store.notebook.delete(p.id); cancel();
+        if (typeof modalCommitDraft === "function") modalCommitDraft();
+      }, "btn ghost"));
     form.appendChild(actions);
     form.addEventListener("submit", event => {
       event.preventDefault();
-      if (!text.value.trim() || ![night, day].every(input => input.value !== "" &&
+      remember();
+      if (S !== game) return toast(t("xp.saveFailed"));
+      if (!text.value.trim() || text.value.length > 4000 || ![night, day].every(input => input.value !== "" &&
           Number.isSafeInteger(Number(input.value)) && Number(input.value) >= 0) ||
           !["night", "day"].includes(phase.value)) return toast(t("xp.invalidNote"));
-      pushHistory();
       const data = { text: text.value, night: Number(night.value), day: Number(day.value), phase: phase.value };
-      if (entry) Object.assign(entry, data);
-      else {
-        if (!Array.isArray(p.information)) p.information = [];
-        p.information.push(xpInformationEntry(text.value, data));
-      }
-      save();
+      try {
+        xpSavedChange(() => {
+          const player = S.players.find(item => item.id === p.id);
+          if (!player) throw new Error("Player removed");
+          if (draft.entryId) {
+            const existing = player.information.find(item => item.id === draft.entryId);
+            if (!existing || existing.wakeReceipt || JSON.stringify(existing) !== draft.original) throw new Error("Note changed");
+            Object.assign(existing, data);
+          } else {
+            if (!Array.isArray(player.information)) player.information = [];
+            player.information.push(xpInformationEntry(text.value, data));
+          }
+        });
+      } catch (_) { return toast(xpDraftText("Enregistrement impossible ou note modifiée depuis l’ouverture. Le brouillon est conservé.",
+        "Unable to save or note changed since opening. Draft retained.")); }
+      store.notebook.delete(p.id);
+      if (typeof modalCommitDraft === "function") modalCommitDraft();
       cancel();
       renderGrimoire();
     });
@@ -852,7 +1012,8 @@ function openNotebook(pid) {
   };
   players.addEventListener("change", () => render());
   render();
-  players.focus();
+  if (store.notebook.has(players.value)) edit(S.players.find(p => p.id === players.value), null, true);
+  else players.focus();
 }
 
 function xpAbilityState(p) {
@@ -1024,6 +1185,7 @@ function renderGMList(container) {
 function enhanceNightView(steps) {
   const view = document.getElementById("view-night");
   if (!view || !S.night) return;
+  if (typeof enhanceWakePreparations === "function") enhanceWakePreparations(steps);
   view.querySelector(".xp-night-toolbar")?.remove();
   const elements = [...view.querySelectorAll(".night-step[data-key]")];
   const present = new Set(elements.map(element => element.dataset.key));
@@ -1077,29 +1239,5 @@ function enhanceNightView(steps) {
 }
 
 function openMobileTools(showAll = false) {
-  if (playerScreenActive()) return;
-  const root = xpModal(t("xp.tools"));
-  root.classList.add("xp-tools-sheet");
-  const body = root.querySelector(".xp-modal-content");
-  let advanced = null;
-  if (S.settings.essentialMode) {
-    advanced = xpNode("details", "xp-advanced-tools"); advanced.open = showAll === true;
-    advanced.appendChild(xpNode("summary", "", t("advancedTools")));
-    advanced.appendChild(xpNode("div"));
-    for (const view of PALETTE_VIEWS.filter(item => !["grimoire", "night", "day"].includes(item.view))) {
-      advanced.querySelector("div").appendChild(xpButton(view.icon + " " + t(view.key), () => { closeModal(); switchView(view.view); }, "btn xp-tool-button"));
-    }
-  }
-  for (const tool of DOCK_TOOLS) {
-    const button = xpButton("", () => {
-      closeModal();
-      tool.fn();
-    }, "btn xp-tool-button");
-    const icon = xpNode("span", "xp-tool-icon", tool.icon || "");
-    icon.setAttribute("aria-hidden", "true");
-    button.append(icon, xpNode("span", "", tool.key ? t(tool.key) : loc(tool.name)));
-    if (advanced && !isEssentialTool(tool)) advanced.querySelector("div").appendChild(button);
-    else body.appendChild(button);
-  }
-  if (advanced) body.appendChild(advanced);
+  return openToolbox(showAll);
 }

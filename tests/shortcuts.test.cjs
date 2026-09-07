@@ -384,7 +384,7 @@ test("scheduled expiry passes the complete reminder to the parent formatter", ()
   assert.equal(run(`expiryArguments[0]`), "scheduled");
   assert.equal(run(`expiryArguments[1].schedule.number`), 3);
 });
-test("jumping to a linked player's sheet closes the current modal before opening it", () => {
+test("jumping to a linked player's sheet preserves the links modal as navigation parent", () => {
   const { run, modal } = harness();
   run(`S.players=[
     {id:"source",name:"Source",roleId:"poisoner",alive:true,reminders:[]},
@@ -392,7 +392,8 @@ test("jumping to a linked player's sheet closes the current modal before opening
   ];openPlayerLinks("target");`);
   const jump = modal.querySelectorAll("button").find(button => button.textContent.startsWith("Open player sheet (Recorded source)"));
   assert.ok(jump); jump.click();
-  assert.equal(run(`calls.slice(-2).join(",")`), "close,seat:source");
+  assert.equal(run(`calls.slice(-2).join(",")`), "open,seat:source");
+  assert.equal(run(`calls.includes("close")`), false);
   assert.equal(run(`saves`), 0);
 });
 test("self-links render once and player selection updates only the relationship panel", () => {

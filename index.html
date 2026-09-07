@@ -17,6 +17,9 @@
   <link rel="stylesheet" href="css/usability.css" />
   <link rel="stylesheet" href="css/rescue-sheet.css" />
   <link rel="stylesheet" href="css/feedback.css" />
+  <link rel="stylesheet" href="css/navigation.css" />
+  <link rel="stylesheet" href="css/toolbox.css" />
+  <link rel="stylesheet" href="css/compact.css" />
 </head>
 <body>
   <div id="particles" aria-hidden="true"></div>
@@ -50,8 +53,10 @@
     <button class="tab tools-tab" id="btn-tools" data-i18n="tools">Outils</button>
   </nav>
 
-  <div id="statusbar" class="statusbar"></div>
-  <div id="interface-controls"></div>
+  <div class="session-overview">
+    <div id="statusbar" class="statusbar"></div>
+    <div id="interface-controls"></div>
+  </div>
   <div id="favourites-bar"></div>
   <div id="session-banner" class="session-banner"></div>
   <div id="storage-warning" class="storage-warning hidden" role="alert"></div>
@@ -83,7 +88,10 @@
   <script src="js/voting-core.js"></script>
   <script src="js/session-core.js"></script>
   <script src="js/persistence.js"></script>
+  <script src="js/navigation.js"></script>
+  <script src="js/toolbox.js"></script>
   <script src="js/experience.js"></script>
+  <script src="js/wake-preparation.js"></script>
   <script src="js/workflows.js"></script>
   <script src="js/round-ui.js"></script>
   <script src="js/shortcuts.js"></script>

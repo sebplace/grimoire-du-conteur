@@ -561,24 +561,26 @@ function reviewPendingTransition(nextPhase, commit, nightSteps) {
   }
   function show() {
     const actions = getPendingActions(nextPhase, nightSteps);
+    const draftScope = JSON.stringify([S.scriptId, S.phase, S.night.number, S.night.mode, S.day.number, nextPhase]);
     wfModal(t("pendingActions"), `<p class="hint">${tr("Repères privés du Conteur, pas des obligations garanties par les règles. Résoudre signifie que vous avez arbitré l'action ; cela ne tue personne et n'applique aucun effet. Les étapes de nuit résolues sont cochées.", "Private Storyteller reminders, not guaranteed rules obligations. Resolve means you have adjudicated the action; it kills nobody and applies no effect. Resolved night steps are checked.")}</p>
       ${actions.map((action, index) => {
         const player = S.players.find(item => item.id === action.playerId);
         const stamp = `${tr("Nuit", "Night")} ${action.night ?? "?"} · ${tr("Jour", "Day")} ${action.day ?? "?"}`;
         return `<article class="wf-card"><strong>${escapeHtml(action.text || action.kind || tr("Action", "Action"))}</strong>
           <p class="hint">${escapeHtml(player ? player.name + " · " + stamp : stamp)}</p>
-          <label class="wf-field">${tr("Motif de résolution / non applicable", "Reason for resolution / not applicable")}<input id="wf-reason-${index}" maxlength="1000"></label>
+          <label class="wf-field">${tr("Motif de résolution / non applicable", "Reason for resolution / not applicable")}<input id="wf-reason-${index}" data-nav-draft-key="${escapeHtml(JSON.stringify([draftScope, action.source, action.id]))}" maxlength="1000"></label>
           ${action.source === "scheduled-effect" ? `<p class="hint">${tr("Échéance proposée : l'effet reste actif tant que vous ne confirmez pas son retrait.", "Proposed deadline: the effect remains active until you confirm its removal.")}</p><button class="btn small gold" data-wf-effect-remove="${index}">${tr("Retirer l'effet à échéance", "Remove effect at deadline")}</button>` : ""}
           <button class="btn small" data-wf-resolve="${index}">${action.source === "scheduled-effect" ? tr("Maintenir pour cette transition", "Keep for this transition") : tr("Résoudre / non applicable", "Resolve / not applicable")}</button></article>`;
       }).join("") || `<p>${tr("Aucune action listée. Cela ne garantit pas que toutes les règles ont été vérifiées.", "No actions listed. This does not guarantee that every rule has been checked.")}</p>`}
-      ${typeof commit === "function" ? `<label class="wf-field">${tr("Motif pour continuer avec des actions ouvertes", "Reason to continue with open actions")}<textarea id="wf-continue-reason" maxlength="1000"></textarea></label>
+      ${typeof commit === "function" ? `<label class="wf-field">${tr("Motif pour continuer avec des actions ouvertes", "Reason to continue with open actions")}<textarea id="wf-continue-reason" data-nav-draft-key="${escapeHtml(draftScope)}" maxlength="1000"></textarea></label>
         <div class="row"><button class="btn ghost" onclick="closeModal()">${tr("Retour", "Back")}</button><button class="btn gold" id="wf-continue">${actions.length ? tr("Continuer malgré les actions", "Continue anyway") : tr("Continuer", "Continue")}</button></div>` : ""}`);
     document.querySelectorAll("[data-wf-resolve]").forEach(button => {
       button.onclick = () => wfAction(() => {
         if (!guard() || committed) wfError("La partie ou la phase a changé. Rouvrez le panneau.", "The game or phase changed. Reopen the panel.");
         const index = Number(button.dataset.wfResolve), action = actions[index];
         if (!getPendingActions(nextPhase, nightSteps).some(item => item.id === action.id && item.source === action.source)) wfError("Cette action a changé. Rouvrez le panneau.", "This action changed. Reopen the panel.");
-        wfResolvePending(action, wfElement("wf-reason-" + index).value); show();
+        const reason = wfElement("wf-reason-" + index);
+        wfResolvePending(action, reason.value); reason.value = ""; show();
       });
       document.querySelectorAll("[data-wf-effect-remove]").forEach(button => {
         button.onclick = () => wfAction(() => {

@@ -1,0 +1,32 @@
+.modal-navigation { display:flex; align-items:center; gap:6px; flex-wrap:wrap; padding:0 34px 6px 0; }
+.modal-navigation #modal-close-all { margin-left:auto; }
+.modal-navigation button, #modal .seat-card button, #modal .seat-card summary,
+.player-search-actions button, .grimoire-more > summary { min-height:44px; }
+#modal [hidden], #g-search-results[hidden], #gm-list .xp-gm-row[hidden] { display:none !important; }
+.seat-card h3 { margin:4px 0; }
+.seat-card .seat-primary-actions { display:flex; gap:6px; flex-wrap:wrap; margin:8px 0; }
+.seat-card .seat-primary-actions .btn { flex:1 1 auto; }
+.seat-card .seat-identities { font-size:.85rem; color:var(--muted); margin:4px 0; }
+.seat-card .seat-identities strong { color:var(--text); }
+.seat-card details.seat-section { margin-top:10px; border:1px solid var(--line, #534b55); border-radius:10px; padding:0 10px 10px; }
+.seat-card details.seat-section:not([open]) { padding-bottom:0; }
+.seat-card details.seat-section > summary { cursor:pointer; padding:10px 0; color:var(--gold-soft); }
+.seat-card #role-chips button.chip, .seat-card #rem-src button.chip { white-space:normal; text-align:left; }
+.grimoire-more { position:relative; }
+.grimoire-more > summary { cursor:pointer; display:flex; align-items:center; gap:6px; padding:8px 12px; }
+.grimoire-more-content { display:flex; gap:6px; flex-wrap:wrap; padding:8px; }
+.grimoire-toolbar .grimoire-more { flex:0 0 auto; }
+.grimoire-more[open] { flex:1 1 100%; }
+.grimoire-search-results { margin:8px 0; border:1px solid var(--line, #534b55); border-radius:10px; padding:8px; }
+.player-search-result { padding:8px 0; border-bottom:1px solid var(--line, #534b55); }
+.player-search-result:last-child { border:0; }
+.player-search-actions { display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+.palette-player { display:flex; align-items:stretch; flex-wrap:wrap; }
+.palette-player > .pal-item { flex:1 1 220px; }
+.palette-player .player-search-actions { padding:0 8px 8px; margin:0; }
+@media (max-width:600px) {
+  .modal-navigation { gap:4px; padding-bottom:4px; }
+  .modal-navigation .btn { padding:5px 9px; font-size:.8rem; }
+  .seat-card .seat-primary-actions { margin:6px 0; }
+  .seat-card .seat-primary-actions .btn { padding:6px 9px; }
+}

@@ -1,0 +1,41 @@
+.toolbox { min-width: 0; overflow-wrap: anywhere; }
+.toolbox-search { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; }
+.toolbox-search label { grid-column: 1 / -1; font-weight: 600; }
+.toolbox-search input {
+  min-width: 0; width: 100%; min-height: 44px; padding: 10px 12px;
+  border: 1px solid var(--line); border-radius: 10px; background: var(--panel);
+  color: var(--ink); font: inherit; appearance: none;
+}
+.toolbox button, .toolbox summary { min-height: 44px; min-width: 44px; }
+.toolbox button { white-space: normal; overflow-wrap: anywhere; }
+.toolbox button:focus-visible, .toolbox input:focus-visible, .toolbox summary:focus-visible,
+.toolbox-dock button:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+.toolbox-scopes, .toolbox-intentions { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0; }
+.toolbox-scopes > button { flex: 1 1 160px; }
+.toolbox-intentions > button { flex: 1 1 auto; }
+.toolbox [aria-pressed="true"] { border-color: var(--gold); color: var(--gold-soft); box-shadow: inset 0 0 0 1px var(--gold); }
+.toolbox-status { min-height: 1.5em; }
+.toolbox-group { padding-bottom: 14px; border-top: 1px solid var(--line); }
+.toolbox-group > h3 { font-family: var(--serif); margin: 16px 0 6px; }
+.toolbox-tool-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; list-style: none; padding: 0; margin: 0; }
+.toolbox-tool-list > li { min-width: 0; }
+.toolbox-tool {
+  width: 100%; height: 100%; min-width: 0; min-height: 52px !important; padding: 12px;
+  display: flex; align-items: center; gap: 10px; text-align: left;
+}
+.toolbox-icon { flex: 0 0 1.4em; text-align: center; }
+.toolbox-tool-text { display: grid; gap: 5px; min-width: 0; }
+.toolbox-tool-note { color: var(--muted); font-size: .8rem; line-height: 1.35; }
+.toolbox-tool:disabled { cursor: not-allowed; border-style: dashed; }
+.toolbox-tool:disabled .toolbox-tool-note { color: var(--warn); }
+.toolbox-issues, .toolbox-empty {
+  padding: 12px; margin: 12px 0; border: 1px solid var(--line); border-radius: 10px; background: var(--panel);
+}
+.toolbox-issues > summary { display: flex; align-items: center; cursor: pointer; color: var(--warn); }
+.toolbox-dock .dock-btn { min-height: 48px; min-width: 44px; white-space: normal; overflow-wrap: anywhere; }
+.toolbox-dock #dock-advanced { padding: 12px 8px; color: var(--gold-soft); }
+@media (max-width: 480px) {
+  .toolbox-tool-list { grid-template-columns: minmax(0, 1fr); }
+  .toolbox-scopes > button { flex-basis: 120px; }
+  .toolbox-intentions > button { flex-basis: calc(50% - 8px); }
+}

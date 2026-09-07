@@ -35,6 +35,7 @@ async (page) => {
     await p.locator("#tm-start").click();
     check("resume uses a new deadline", await p.evaluate(() => S.timer.deadline === window.qaNow + 210000));
     await p.evaluate(() => { pauseTimer(); Date.now = window.qaOriginalNow; switchView("grimoire"); });
+    await p.locator(".grimoire-more > summary").click();
     await p.locator("#g-tour").click();
     check("distribution lists only participating players", await p.locator(".xp-tour-player").count() === 8);
     const showLabel = await p.evaluate(() => t("xp.showCharacter"));
@@ -67,6 +68,7 @@ async (page) => {
     await p.evaluate(() => { closeModal(); S.players[0].align = "evil"; captureSnapshot(); openSnapshotComparison(); });
     check("comparison UI available", (await p.locator("#modal").innerText()).length > 40);
     await p.evaluate(() => { closeModal(); openSeatModal(S.players[0].id); });
+    await p.locator("#seat-assignment > summary").click();
     await p.locator("#role-search").fill("moine");
     await p.locator("#s-poison").click();
     check("player role search survives an unrelated status update", (await p.locator("#role-search").inputValue()) === "moine");

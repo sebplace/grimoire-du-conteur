@@ -8,6 +8,7 @@ async (page) => {
     await p.waitForFunction(()=>typeof TRAINING!=="undefined"&&TRAINING&&S.players.length===7);
     check("full interface and locked seats are safe defaults",await p.evaluate(()=>!S.settings.essentialMode&&!S.settings.seatPlacement));
     const order=await p.evaluate(()=>S.players.map(x=>x.id).join());
+    const expandMore=async()=>{if(!await p.locator(".grimoire-more").evaluate(e=>e.open))await p.locator(".grimoire-more > summary").click();};
     const drag=async(from,to)=>{
       const a=await p.locator(`#circle .seat[data-idx="${from}"] .token`).boundingBox();
       const b=await p.locator(`#circle .seat[data-idx="${to}"] .token`).boundingBox();
@@ -17,14 +18,14 @@ async (page) => {
     await drag(0,2);
     await p.waitForTimeout(600);
     check("locked drag leaves seats unchanged and does not open long-press menu",await p.evaluate(o=>S.players.map(x=>x.id).join()===o&&document.getElementById("modal-overlay").classList.contains("hidden"),order));
-    await p.locator("#g-placement").click();
+    await expandMore();await p.locator("#g-placement").click();await p.locator(".grimoire-more > summary").click();
     await drag(0,2);
     check("placement mode allows reordering",await p.evaluate(o=>S.players.map(x=>x.id).join()!==o,order));
     await p.locator("#g-undo").click();
     check("undo button opens preview before changing state",await p.locator(".history-preview").count()===1&&await p.evaluate(o=>S.players.map(x=>x.id).join()!==o,order));
     await p.locator("#history-apply").click();
     check("confirmed preview restores seating",await p.evaluate(o=>S.players.map(x=>x.id).join()===o,order));
-    await p.locator("#g-placement").click();
+    await expandMore();await p.locator("#g-placement").click();await p.locator(".grimoire-more > summary").click();
     await p.evaluate(()=>{GameCore.addReminder(S.players,S.players[0].id,{label:"QA reminder",effect:null});save();renderGrimoire();});
     const reminderBox=await p.locator("#circle .badge.custom").boundingBox();
     const targetBox=await p.locator('#circle .seat[data-idx="2"] .token').boundingBox();
@@ -36,8 +37,8 @@ async (page) => {
     check("essential mode does not change roles",await p.evaluate(o=>S.players.map(x=>x.id).join()===o,order));
     check("essential mode selects guided night",await p.evaluate(()=>S.night.guided));
     await p.locator("#btn-tools").click();
-    await p.locator(".xp-advanced-tools summary").click();
-    await p.locator(".xp-advanced-tools").getByRole("button",{name:"⚙ Setup",exact:true}).click();
+    await p.locator("#toolbox-all").click();
+    await p.locator('[data-toolbox-key="view:setup"]').click();
     check("advanced setup remains accessible",await p.locator("#view-setup").isVisible()&&await p.evaluate(()=>S.settings.essentialMode));
     await p.evaluate(()=>switchView("grimoire"));
     await p.locator("#circle .seat").first().click();
@@ -51,16 +52,17 @@ async (page) => {
     await p.locator("#history-apply").click();
     check("undo restores poison state",await p.evaluate(()=>!S.players[0].statuses.poisoned));
     await p.evaluate(()=>{openSeatModal(S.players[0].id);});
+    await p.locator(".role-assistance").evaluate(e=>{for(let p=e.parentElement;p;p=p.parentElement)if(p.tagName==="DETAILS")p.open=true;});
     await p.locator(".role-assistance summary").click();
     check("player assistance is factual and explicitly advisory",(await p.locator(".role-assistance").innerText()).includes("Calcul indicatif"));
     await p.evaluate(()=>{closeModal();switchView("reference");});
     check("reference displays per-character assistance",await p.locator("#view-reference .role-assistance").count()>10);
     await p.locator("#ui-mode").click();await p.locator("#mode-full").click();
-    check("full mode restores advanced navigation",await p.locator('.tab[data-view="scripts"]').isVisible()&&await p.evaluate(()=>!S.settings.essentialMode));
     await p.setViewportSize({width:1180,height:900});
+    check("full mode restores advanced navigation",await p.locator('.tab[data-view="scripts"]').isVisible()&&await p.evaluate(()=>!S.settings.essentialMode));
     await p.evaluate(()=>{setEssentialMode(true);S.settings.dockOpen=true;buildDock();});
     await p.locator("#dock-advanced").click();
-    check("desktop essential dock opens all tools",await p.locator(".xp-advanced-tools").evaluate(e=>e.open));
+    check("desktop essential dock opens all tools",await p.locator(".toolbox-tool").count()===await p.evaluate(()=>DOCK_TOOLS.length+3));
     await p.evaluate(()=>{closeModal();setEssentialMode(false);});
     await p.reload();await p.waitForFunction(()=>typeof experienceInitialized!=="undefined"&&experienceInitialized);
     check("interface and seat settings survive reload",await p.evaluate(()=>!S.settings.essentialMode&&!S.settings.seatPlacement));

@@ -34,18 +34,41 @@ exceptions and game end. This is not a complete rules engine.
 | **Characters** | Reference browsing independent of the active script, reworded abilities, search and jinxes. |
 | **Scripts** | Three included scripts, custom library and validated JSON import. Activation is separate, with confirmation and a backup. |
 
-**Essential / Full**: **Full** remains the default to preserve the familiar interface.
-Use the global control or Settings to choose **Essential**: Grimoire, Night, Day,
-Messages and **More tools** remain prominent. Enabling it selects guided night,
-but **Full list** can still be selected. Expand **All tools** for advanced features,
-including Setup, Characters and Scripts. No state or tool is removed; favourites are preserved.
+**Compact navigation (v29)**: at **700 px wide or less**, five entries stay at the
+bottom in **both Full and Essential**: Grimoire, Night, Day, Messages and Tools
+(**More tools** in Essential). Setup, Characters and Scripts remain available in
+the toolbox. On larger screens, Full retains its advanced tabs.
+**Full / Essential ▾ → Display and language** offers **Français**, **English**,
+**Fullscreen** and **Sound: on / off**. These controls leave the header only at
+700 px or less; fullscreen depends on the browser.
+
+**Essential / Full**: **Full** remains the default. Choosing Essential from the
+global control or Settings selects guided night, but **Full list** remains
+selectable. No state or tool is removed; favourites are preserved.
+
+**Grimoire and cards**: Undo, Circle/GM list and search stay directly accessible.
+**More ▾** groups adding, assignment, preparation, placement, zoom, redo and new game.
+Player cards start with actual/shown identities and Reveal, Private message and Information notebook
+actions; assignment, advanced state and reminders/effects expand on demand.
+These views contain secrets and remain for the Storyteller only.
+Player search (Grimoire or Ctrl+K) accepts names and actual/shown characters in
+French or English, ignoring accents; results offer **Card / Note / Message / Effects**.
+Note opens that player's notebook; Effects opens their card at the reminders.
 
 **Play / Placement**: **Play: seats locked** is the default, preventing seat reordering
-and shuffling (`seatPlacement: false`). Enable **Placement: move seats** in the grimoire
+and shuffling (`seatPlacement: false`). Enable **More → Placement: move seats** in the grimoire
 to arrange the table. Seating changes are undoable. Return to Play afterwards:
 taps, long-press, player cards and reminder dragging remain available without moving seats.
 
-**Tools**: on phones, a labelled bottom sheet replaces the side dock. It includes the
+**Tools**: the toolbox groups the complete catalogue by task:
+**Prepare / Run / Consult / Save**. **All tools** also shows advanced features.
+Search accepts names and French/English synonyms, with or without accents, and always
+covers the whole catalogue, even in Essential or after a filter.
+For example, search “wake”, “print” or “backup”. On phones it opens in a labelled
+bottom sheet; on larger screens, the dock offers the four tasks and **All tools**
+rather than a long icon list. Opening a dialog tool retains the catalogue, search
+and scrolling for Back; opening a view leaves the catalogue. The guide opens in
+another tab. The catalogue includes the
 per-player, per-phase **Information notebook**, **Private messages**, **Private role
 distribution**, **Groups and bags**, **Guided exercises**, backups, public Table mode,
 log and capture comparison, plus screen lock, notes, guide and printing.
@@ -53,8 +76,25 @@ The command palette remains available with Ctrl+K. Comfort settings depend on br
 support. Views and dialogs preserve focus and scroll position; timer and vote updates
 avoid a full refresh.
 
+**Back and drafts**: **Back** returns to the preceding dialog; **Close all** returns
+to the working view. Browser Back follows the app context.
+With no dialog or preceding view, it stays in the app; it does not unlock the screen.
+Back, Escape and tapping outside a dialog preserve in-memory input;
+**Discard draft** in the dialog toolbar asks for confirmation.
+Private-message, notebook and unsaved wake-preparation drafts are kept
+**in bounded memory per player and game**, with training separate,
+not across reloading or replacing the game. Use their **Discard draft** action to
+clear them, or explicitly save the note. Resuming a draft shows nothing to a player.
+In the notebook, **Cancel** returns to the list without clearing the draft.
+The player-card claim retains its existing save-on-field-change behavior;
+it is not an unfinished notebook note.
+From a public screen, Back only leads to the neutral screen;
+only **Return to Storyteller** restores the private interface.
+
 **Tools → Phase favourites** offers up to **four night shortcuts and four day shortcuts**
 in a labelled in-page bar, not an overlay. Choices are stored in `S.settings.favourites`.
+On mobile, favourites stay in one horizontally scrollable row,
+with a thin scrollbar where supported by the browser.
 Favourites use the app's tools and their restrictions: nominations remain unavailable
 at night, after execution or on a player screen.
 
@@ -93,6 +133,20 @@ Included scripts: **Trouble Brewing**, **Sects & Violets**, **Bad Moon Rising** 
   alignment; candidate pairs stay stable for the same night. A drunk or poisoned player
   may receive correct **or** incorrect information. The Storyteller decides and records
   what they communicate.
+- **Prepared information per wake**: in Night, open **Prepare information**, manually
+  choose a number, one character or text, then **Save preparation**.
+  Nothing is shown or added to the notebook yet. Review the preview, use
+  **Show information only**, hide to neutral, return to the Storyteller, then
+  **Record displayed information**. This last action adds the exact displayed text
+  to the notebook, not a later edit. If characters, effects or state changed,
+  review and save the preparation again before showing. No truth calculation or
+  automatic effect is applied.
+  A saved preparation belongs to the current script, phase, night number and
+  first/other-night mode; it does not automatically carry over to the next night.
+  Its private text is included in saves and exports (`S.night.preparations`),
+  unlike in-memory editing drafts. A recorded entry preserves the exact display: add a
+  correction note rather than rewriting it; deletion remains possible.
+  Limits: **80 current preparations** and **4,000 characters** for free text.
 - **Player screen**: only the selected number, two characters, alignment or text is shown,
   and recorded in the notebook. Bluffs display only with three distinct valid choices.
   Hiding information opens a neutral screen; only **Return to Storyteller** restores
@@ -263,6 +317,18 @@ Each exercise shows instructions, an expected outcome and a targeted result chec
 with an option to restart. These checks certify neither every rule nor the accuracy
 of information chosen by the Storyteller.
 
+## Six usability tasks with a real Storyteller
+
+[Guide section 17](guide.html?lang=en#usability-check) proposes six short tasks:
+find your way on a phone, locate a tool, act on a player, resume editing,
+prepare wake information and check the return from a public screen.
+Try them in training with a real Storyteller and record hesitations, errors and
+expected outcomes in **Report a difficulty**. **No field observation has been
+conducted**: this protocol has yet to be carried out and proves neither usability
+in a real game nor perfect rules automation.
+Browser-scenario viewport measurements are reproducible local checks,
+not observations of a real Storyteller.
+
 ## Run locally
 
 The app loads its data via `fetch()`, so it needs a small HTTP server
@@ -303,6 +369,9 @@ blood-clocktower-mj/
 ├─ manifest.webmanifest  # PWA
 ├─ sw.js                 # service worker (offline)
 ├─ css/theme.css
+├─ css/compact.css        # compact mobile navigation
+├─ css/navigation.css     # contextual dialogs and condensed cards
+├─ css/toolbox.css        # task-based tool catalogue
 ├─ js/app.js
 ├─ js/game-core.js        # game state and targeted checks
 ├─ js/session-core.js     # timer, participant counts and captures
@@ -314,6 +383,9 @@ blood-clocktower-mj/
 ├─ js/presentation.js     # communication cards and selected debrief
 ├─ js/usability-core.js   # history descriptions and per-role assistance
 ├─ js/usability.js        # interface modes, seating and undo preview
+├─ js/navigation.js       # contextual returns and in-memory input protection
+├─ js/toolbox.js          # complete catalogue, search and task filters
+├─ js/wake-preparation.js # manual information prepared, displayed, then recorded
 ├─ js/rescue-sheet.js     # confidential capture and A4 printing
 ├─ js/feedback.js         # local reports and limited diagnostics
 ├─ js/persistence.js      # backups and storage protection

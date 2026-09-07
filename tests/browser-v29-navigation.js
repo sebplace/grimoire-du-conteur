@@ -1,0 +1,125 @@
+async (page) => {
+  const context = await page.context().browser().newContext({
+    viewport: { width: 390, height: 844 }, serviceWorkers: "block"
+  });
+  const p = await context.newPage(), checks = [], errors = [];
+  let acceptDialogs = true;
+  const check = (name, ok) => { checks.push({ name, ok: !!ok }); if (!ok) throw new Error(name); };
+  const back = async () => { await p.evaluate(() => history.back()); await p.waitForTimeout(100); };
+  p.on("pageerror", error => errors.push(error.message));
+  p.on("dialog", dialog => acceptDialogs ? dialog.accept() : dialog.dismiss());
+  const origin = /^http:\/\/(localhost|127\.0\.0\.1)(:|\/)/.test(page.url()) ? new URL(page.url()).origin : "http://127.0.0.1:8793";
+  try {
+    await p.goto(origin + "/index.html?test=1");
+    await p.waitForFunction(() => typeof MODAL_NAV !== "undefined" && MODAL_NAV.initialized && TRAINING && S.players.length === 7);
+    await p.evaluate(() => { closeAllModals(); S.players[0].name = "Élodie"; save(); renderGrimoire(); });
+    await p.locator("#btn-tools").click();
+    check("primary Tools always opens the searchable toolbox", await p.locator("#toolbox-search").isVisible());
+    await p.evaluate(() => openRescueSheet());
+    await back();
+    check("browser Back closes print preview before its originating toolbox", await p.locator("#rescue-sheet-overlay").count() === 0 && await p.locator("#toolbox-search").isVisible());
+    await p.locator("#modal-back").click();
+    await p.setViewportSize({ width: 1180, height: 900 });
+    await p.evaluate(() => { S.settings.dockOpen = true; buildDock(); });
+    check("desktop dock groups tools instead of listing every utility", await p.locator("#dock .dock-btn").count() === 5 && await p.locator("#dock [data-tool]").count() === 0);
+    await p.locator("#dock-advanced").click();
+    check("desktop dock opens the same searchable catalogue", await p.locator("#toolbox-search").isVisible());
+    await p.locator("#modal-back").click();
+    await p.evaluate(() => { S.settings.dockOpen = false; buildDock(); });
+    await p.setViewportSize({ width: 390, height: 844 });
+    check("occasional toolbar controls start collapsed", await p.locator(".grimoire-more").evaluate(node => !node.open));
+    check("toolbar primary controls stay visible", await p.locator("#g-undo").isVisible() && await p.locator("#g-layout").isVisible() && await p.locator("#g-search").isVisible());
+    await p.locator(".grimoire-more > summary").click();
+    await p.evaluate(() => renderGrimoire());
+    check("toolbar expansion survives rerender", await p.locator(".grimoire-more").evaluate(node => node.open));
+    await p.locator(".grimoire-more > summary").click();
+    await p.locator("#g-search").fill("elodie");
+    check("accent insensitive search offers four direct actions", await p.locator("#g-search-results [data-player-action]").count() === 4);
+    await p.locator('#g-search-results [data-player-action="card"]').click();
+    const revealBox = await p.locator("#s-reveal").boundingBox();
+    check("Reveal is visible without scrolling on phone", revealBox && revealBox.y >= 0 && revealBox.y + revealBox.height < 844 && await p.locator("#modal").evaluate(node => node.scrollTop === 0));
+    check("seat primary actions are touch sized", await p.locator("#seat-primary-actions button").evaluateAll(buttons => buttons.length === 3 && buttons.every(button => button.getBoundingClientRect().height >= 44)));
+    check("advanced and assignment controls begin collapsed", await p.locator("#seat-advanced").evaluate(node => !node.open) && await p.locator("#seat-assignment").evaluate(node => !node.open));
+    check("seat shows actual and shown identity explicitly", (await p.locator(".seat-identities").innerText()).includes("Véritable") && (await p.locator(".seat-identities").innerText()).includes("montré"));
+    await p.locator("#modal-back").click();
+    await p.locator("#g-layout").click();
+    check("GM list search also folds accents", await p.locator("#gm-list .xp-gm-row:visible").count() === 1);
+    await p.evaluate(() => { closeAllModals(); switchView("night"); openSeatModal(S.players[0].id); });
+    await p.locator("#s-notebook").click();
+    check("notebook suspends seat over night", await p.evaluate(() => currentView === "night" && MODAL_NAV.parents.at(-1).key === "seat:" + S.players[0].id));
+    await p.evaluate(() => { S.players[0].claim = "new completed change"; save(); });
+    await p.locator("#modal-back").click();
+    check("returning seat rerenders completed state", await p.locator("#s-claim").inputValue() === "new completed change");
+    await p.locator("#modal-back").click();
+    check("seat returns to original night context", await p.evaluate(() => currentView === "night" && document.getElementById("modal-overlay").classList.contains("hidden")));
+
+    await p.evaluate(() => {
+      const root = document.createElement("section");
+      root.innerHTML = '<h3>Draft test</h3><textarea id="nav-draft"></textarea>';
+      openModal(root, "nav-test:draft");
+    });
+    await p.locator("#nav-draft").fill("Private text must stay here");
+    await p.evaluate(() => { document.getElementById("nav-draft").setSelectionRange(7, 11); openModal("<h3>Child</h3>", "nav-test:child"); });
+    await p.locator("#modal-back").click();
+    check("suspended free text and selection survive", await p.locator("#nav-draft").inputValue() === "Private text must stay here" && await p.locator("#nav-draft").evaluate(node => node.selectionStart === 7 && node.selectionEnd === 11));
+    await p.locator("#modal-overlay").click({ position: { x: 3, y: 3 } });
+    await p.evaluate(() => openModal('<h3>Draft test</h3><textarea id="nav-draft"></textarea>', "nav-test:draft"));
+    await p.waitForTimeout(30);
+    check("background dismissal retains reopenable free text", await p.locator("#nav-draft").inputValue() === "Private text must stay here");
+    acceptDialogs = false;
+    await p.locator("#modal-discard").click();
+    check("discard cancellation keeps editor and draft", await p.locator("#nav-draft").inputValue() === "Private text must stay here");
+    acceptDialogs = true;
+    await p.locator("#modal-discard").click();
+    await p.evaluate(() => openModal('<h3>Draft test</h3><textarea id="nav-draft"></textarea>', "nav-test:draft"));
+    await p.waitForTimeout(30);
+    check("confirmed discard really removes draft", await p.locator("#nav-draft").inputValue() === "");
+    await p.evaluate(() => { closeAllModals(); openMessageComposer(S.players[0].id); });
+    await p.locator(".xp-modal-content select").nth(1).selectOption("text");
+    await p.locator(".xp-message-fields textarea").fill("Discard this private message draft");
+    await p.locator("#modal-discard").click();
+    check("top-nav discard clears the composer's managed draft store", await p.evaluate(() => !xpDrafts().message.has(S.players[0].id)));
+    await p.evaluate(() => openMessageComposer(S.players[0].id));
+    check("discarded private composer reopens without old free text", await p.locator(".xp-modal-content select").nth(1).inputValue() === "number");
+    await p.evaluate(() => { closeAllModals(); openNotebook(S.players[0].id); });
+    await p.locator('[data-xp-focus="notebook:add"]').click();
+    await p.locator(".xp-notebook textarea").fill("Discard this notebook draft");
+    await p.locator("#modal-discard").click();
+    check("top-nav discard clears the notebook's managed draft store", await p.evaluate(() => !xpDrafts().notebook.has(S.players[0].id)));
+    await p.evaluate(() => { closeAllModals(); switchView("grimoire"); switchView("day"); openSeatModal(S.players[0].id); });
+    await back();
+    check("browser Back closes dialog before changing view", await p.evaluate(() => currentView === "day" && MODAL_NAV.active === null));
+    await back();
+    check("browser Back then restores previous view", await p.evaluate(() => currentView === "grimoire"));
+
+    await p.evaluate(() => openSeatModal(S.players[0].id));
+    await p.locator("#s-reveal").click();
+    await back();
+    check("browser Back neutralizes private display", await p.evaluate(() => playerScreenActive() && experienceScreen.neutral && document.getElementById("modal-overlay").inert));
+    await back();
+    await p.keyboard.press("Escape");
+    check("Back and Escape never uncover GM from neutral screen", await p.evaluate(() => playerScreenActive() && experienceScreen.neutral && document.getElementById("app").inert));
+    await p.locator("#xp-player-screen button").click();
+    check("explicit Storyteller return restores seat context", await p.locator("#s-reveal").isVisible());
+    await p.evaluate(() => showPrivacy());
+    await back();
+    check("Back does not dismiss privacy curtain", await p.locator("#privacy-overlay").isVisible());
+    await p.evaluate(() => { document.getElementById("privacy-overlay").classList.add("hidden"); lockScreen(); });
+    await back();
+    check("Back does not unlock screen", await p.locator("#lock-overlay").isVisible());
+    await p.evaluate(() => { unlockScreen(); closeAllModals(); openCommandPalette(); });
+    await p.locator("#pal-input").fill("elodie");
+    check("palette player results have direct actions", await p.locator("#pal-list [data-player-action]").count() === 4);
+    await p.locator('#pal-list [data-player-action="note"]').click();
+    check("palette launches notebook without leaving stale palette parent", await p.evaluate(() => !MODAL_NAV.parents.some(frame => /Palette|palette/.test(frame.key))));
+    await p.evaluate(() => { modalDraftSet("test-private", { text: "never in history" }); startTestGame(); });
+    check("training replacement invalidates dialog stack and drafts", await p.evaluate(() => MODAL_NAV.active === null && MODAL_NAV.parents.length === 0 && modalDraftGet("test-private") === undefined));
+    check("history is opaque and URL has no private data", await p.evaluate(() => Object.keys(history.state).every(key => key === "botcNavigation") && !/Élodie|private|never|washerwoman/i.test(location.href + JSON.stringify(history.state))));
+    check("no browser errors", errors.length === 0);
+    return { checks, errors };
+  } catch (error) {
+    throw new Error(JSON.stringify({ failure: error.message, checks, errors }));
+  } finally {
+    await context.close();
+  }
+}

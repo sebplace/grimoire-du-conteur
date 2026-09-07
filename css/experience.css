@@ -21,6 +21,14 @@
 .xp-note-stamp { font-size: .8rem; color: var(--muted); }
 .xp-note-text { white-space: pre-wrap; overflow-wrap: anywhere; }
 .xp-note-editor { margin-top: 12px; }
+.xp-draft-hint { border-left: 2px solid var(--line); padding-left: 10px; }
+.xp-wake-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin-top: 10px; }
+.xp-wake-summary .btn { white-space: normal; text-align: left; }
+.xp-wake-summary .hint { margin: 0; }
+.xp-wake-context { font-size: .85rem; color: var(--muted); }
+.xp-wake-preview, .xp-wake-receipt { padding: 10px; background: var(--panel); border-radius: 8px; white-space: pre-wrap; }
+.xp-wake-preview:empty, .xp-wake-receipt:empty { display: none; }
+.xp-wake-editor input, .xp-wake-editor select { min-height: 44px; }
 .xp-manual-check { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; }
 .xp-manual-check input { flex: 0 0 auto; margin-top: 4px; accent-color: var(--gold); }
 .xp-check > strong { font-size: .9rem; }

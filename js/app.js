@@ -268,8 +268,10 @@ function load() {
   delete S._custom;
 }
 function save() {
+  if (typeof navigationCheckGame === "function") navigationCheckGame();
   if (READ_ONLY) { storageProblem(tr("Une autre fenêtre utilise cette partie. Rechargez après l'avoir fermée.", "Another window is editing this game. Close it, then reload.")); throw new Error("Read-only game"); }
   S.players.forEach(p => GameCore.normalizePlayer(p));
+  if (typeof WakePreparation !== "undefined" && typeof WakePreparation.normalize === "function") WakePreparation.normalize(S);
   const out = Object.assign({}, S, { _custom: CUSTOM, timer: { ...S.timer, remaining: SessionCore.timerRemaining(S.timer) } });
   try { PERSISTENCE.write(out); }
   catch (error) { storageProblem(error.name === "GameConflictError" ? tr("La partie a changé dans un autre onglet. Votre copie n'a pas écrasé la sauvegarde.", "Another tab changed the game. Your copy did not overwrite it.") : tr("Sauvegarde impossible. Exportez la partie avant de fermer.", "Unable to save. Export the game before closing.")); throw error; }
@@ -309,6 +311,7 @@ function normalizeGame(input) {
   if (!state.effectReviews || typeof state.effectReviews !== "object" || Array.isArray(state.effectReviews)) throw new Error("Invalid effect review state");
   if (state.debrief != null && (typeof state.debrief !== "object" || Array.isArray(state.debrief))) throw new Error("Invalid debrief state");
   state.schemaVersion = 4;
+  if (typeof WakePreparation !== "undefined" && typeof WakePreparation.normalize === "function") WakePreparation.normalize(state);
   return state;
 }
 function storageProblem(message) {
@@ -402,6 +405,7 @@ async function boot() {
   for (const id in CUSTOM) registerScript(id, CUSTOM[id], true);
   if (!currentScript()) throw new Error("Saved script unavailable: " + S.scriptId);
   initExperience();
+  initNavigation();
   initWorkflows();
   initRoundUI();
   initShortcuts();
@@ -419,7 +423,7 @@ async function boot() {
   });
   const params = new URLSearchParams(location.search);
   let launched = params.get("test") === "1";
-  if (launched) { params.delete("test"); history.replaceState(null, "", location.pathname + (params.size ? "?" + params : "")); startTestGame(); }
+  if (launched) { params.delete("test"); history.replaceState(history.state, "", location.pathname + (params.size ? "?" + params : "")); startTestGame(); }
   if (READ_ONLY) { storageProblem(tr("La partie est déjà ouverte en écriture dans une autre fenêtre.", "The game is already open for editing in another window.")); return; }
   resumeTimerLoop();
   if (!launched && !S.tutoDone) showWelcome();
@@ -451,9 +455,9 @@ function wireChrome() {
   $("#lang-fr").onclick = () => setLang("fr");
   $("#lang-en").onclick = () => setLang("en");
   $$(".tab[data-view]").forEach(tab => tab.onclick = () => switchView(tab.dataset.view));
-  $("#btn-tools").onclick = openMobileTools;
+  $("#btn-tools").onclick = () => openToolbox();
   $("#btn-messages").onclick = () => openMessageComposer();
-  $("#btn-menu").onclick = () => S.settings.essentialMode ? openMobileTools() : switchView("scripts");
+  $("#btn-menu").onclick = () => openToolbox();
   $("#modal-overlay").onclick = (e) => { if (e.target.id === "modal-overlay") closeModal(); };
   document.addEventListener("keydown", handleModalKeyboard);
   const sb = $("#btn-sound");
@@ -500,7 +504,7 @@ function wireChrome() {
   }, { passive: true });
 }
 function handleShortcuts(e) {
-  if (READ_ONLY || playerScreenActive() || !$("#lock-overlay").classList.contains("hidden") || !$("#table-overlay").classList.contains("hidden")) return;
+  if (READ_ONLY || playerScreenActive() || !$("#privacy-overlay").classList.contains("hidden") || !$("#lock-overlay").classList.contains("hidden") || !$("#table-overlay").classList.contains("hidden")) return;
   if (e.target && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
   if (!$("#modal-overlay").classList.contains("hidden")) return;
   if (e.key === " " && currentView === "night") { e.preventDefault(); const cb = [...document.querySelectorAll(".night-step:not(.checked) .night-check")].find(c => c.getClientRects().length); if (cb) cb.click(); }
@@ -557,15 +561,12 @@ function buildDock() {
   const open = !!(S.settings && S.settings.dockOpen);
   d.classList.toggle("open", open);
   document.body.classList.toggle("dock-open", open);
-  const items = DOCK_TOOLS.filter(it => !S.settings.essentialMode || isEssentialTool(it)).map(it => `<button class="dock-btn" data-tool="${it.key}" title="${t(it.key)}"><span class="di">${it.icon}</span><span class="dl">${t(it.key)}</span></button>`).join("");
-  d.innerHTML = `<button class="dock-toggle" id="dock-toggle" title="${t("tools")}" aria-label="${t("tools")}">${open ? "›" : "‹"}</button><div class="dock-items">${items}${S.settings.essentialMode ? `<button class="dock-btn" id="dock-advanced">${t("advancedTools")}</button>` : ""}</div>`;
-  if ($("#dock-advanced")) $("#dock-advanced").onclick = () => openMobileTools(true);
+  d.innerHTML = `<button class="dock-toggle" id="dock-toggle" title="${t("tools")}" aria-label="${t("tools")}">${open ? "›" : "‹"}</button><div class="dock-items"></div>`;
+  renderToolboxDock($("#dock .dock-items"));
   $("#dock-toggle").onclick = () => { S.settings.dockOpen = !S.settings.dockOpen; save(); buildDock(); buzz(8); };
-  $$("#dock .dock-btn[data-tool]").forEach(b => b.onclick = () => {
-    const it = DOCK_TOOLS.find(x => x.key === b.dataset.tool); if (!it) return;
-    // Sur mobile, on referme la barre pour ne pas masquer le contenu.
-    if (window.matchMedia("(max-width: 700px)").matches) { S.settings.dockOpen = false; save(); buildDock(); }
-    it.fn();
+  $("#dock .dock-items").addEventListener("click", event => {
+    if (!event.target.closest(".dock-btn") || !window.matchMedia("(max-width: 700px)").matches) return;
+    S.settings.dockOpen = false; save(); buildDock();
   });
   const bd = $("#dock-backdrop");
   if (bd) bd.onclick = () => { S.settings.dockOpen = false; save(); buildDock(); };
@@ -821,6 +822,7 @@ function applySnapshot(snap) {
   delete restored._custom;
   if (restored.timer) { restored.timer.running = false; restored.timer.deadline = null; }
   S = normalizeGame(Object.assign({}, S, restored));
+  if (typeof resetNavigation === "function") resetNavigation({ skipView: true });
   delete S._custom;
   if (TIMER_HANDLE) { clearInterval(TIMER_HANDLE); TIMER_HANDLE = null; }
   SessionCore.pauseTimer(S.timer);
@@ -1100,7 +1102,10 @@ function applyLang() {
 let currentView = "grimoire";
 let GZOOM = 1;
 let NIGHT_CHAR_ORDER = [];
-function switchView(view) {
+function switchView(view, options = {}) {
+  if (!["grimoire", "night", "day", "setup", "reference", "scripts"].includes(view)) return;
+  if (typeof navigationProtected === "function" && navigationProtected()) return;
+  if (!options.fromNavigation && typeof navigationView === "function" && !navigationView(view)) return;
   const leaving = currentView !== view;
   if (leaving) VIEW_POSITIONS[currentView] = { x: window.scrollX, y: window.scrollY };
   currentView = view;
@@ -1215,22 +1220,25 @@ function renderGrimoire() {
   const n = S.players.length;
   v.innerHTML = `
     <div class="grimoire-toolbar">
+      <button class="btn small ghost" id="g-undo">↶ ${t("undo")}</button>
+      <button class="btn small ghost" id="g-layout">${S.settings.gmList ? tr("Cercle", "Circle") : tr("Liste MJ", "GM list")}</button>
+      <input type="text" id="g-search" class="g-search" aria-label="${t("searchPlayer")}" aria-controls="g-search-results" placeholder="🔍 ${t("searchPlayer")}" autocomplete="off">
+      <details class="grimoire-more"><summary>${tr("Plus", "More")} ▾</summary><div class="grimoire-more-content">
       <button class="btn small" id="g-addmenu">＋ ${t("add")} ▾</button>
       <button class="btn small ghost" id="g-shuffle">🎲 ${t("shuffle")}</button>
       <button class="btn small ghost" id="g-clear">✧ ${t("clearRoles")}</button>
-      <button class="btn small ghost" id="g-undo">↶ ${t("undo")}</button>
       <button class="btn small ghost" id="g-redo">↪ ${t("redo")}</button>
-      <button class="btn small ghost" id="g-layout">${S.settings.gmList ? tr("Cercle", "Circle") : tr("Liste MJ", "GM list")}</button>
       <button class="btn small ghost" id="g-checklist">${tr("Préparation", "Preparation")}</button>
       <button class="btn small ghost" id="g-tour">${t("roleTour")}</button>
       <button class="btn small ghost seat-mode" id="g-placement" aria-pressed="${!!S.settings.seatPlacement}">${S.settings.seatPlacement ? tr("Placement : déplacer les sièges", "Placement: move seats") : tr("Partie : sièges verrouillés", "Play: seats locked")}</button>
       <button class="btn small ghost" id="g-zoomout">➖</button>
       <button class="btn small ghost" id="g-zoomin">➕</button>
-      <input type="text" id="g-search" class="g-search" placeholder="🔍 ${t("searchPlayer")}" autocomplete="off">
       <span class="spacer"></span>
       <span class="badge">${participantCounts().total} ${t("players")}</span>
       <button class="btn small primary" id="g-new">${t("newGame")}</button>
+      </div></details>
     </div>
+    <section id="g-search-results" class="grimoire-search-results" aria-label="${tr("Joueurs trouvés", "Matching players")}" hidden></section>
     <div class="circle-wrap" id="circle" style="transform:scale(${GZOOM});transform-origin:top center"></div>
   `;
   $("#g-addmenu").onclick = openAddMenu;
@@ -1246,21 +1254,21 @@ function renderGrimoire() {
   $("#g-zoomout").onclick = () => { GZOOM = Math.max(0.6, GZOOM - 0.15); if ($("#circle")) $("#circle").style.transform = `scale(${GZOOM})`; };
   const gsearch = $("#g-search");
   if (gsearch) gsearch.oninput = () => {
-    const q = gsearch.value.trim().toLowerCase();
+    const q = searchFold(gsearch.value.trim());
     $$("#circle .seat").forEach(s => {
       const p = S.players[+s.dataset.idx]; if (!p) return;
-      const hay = ((p.name || "") + " " + (p.roleId ? loc((charById(p.roleId) || { name: p.roleId }).name) : "")).toLowerCase();
-      const hit = !!q && hay.includes(q);
+      const hit = !!q && playerSearchMatches(p, q);
       s.classList.toggle("seat-dim", !!q && !hit);
       s.classList.toggle("seat-match", hit);
     });
+    $$("#gm-list .xp-gm-row").forEach((row, index) => { row.hidden = !!q && !playerSearchMatches(S.players[index], q); });
+    renderPlayerSearchResults($("#g-search-results"), q);
   };
   $("#g-new").onclick = newGame;
   if (S.settings.gmList) {
     const list = $("#circle"); list.id = "gm-list"; list.className = "gm-list"; list.removeAttribute("style");
     renderGMList(list);
     $("#g-zoomin").disabled = true; $("#g-zoomout").disabled = true;
-    gsearch.oninput = () => { const q = gsearch.value.toLowerCase(); [...list.children].forEach(row => row.hidden = !row.textContent.toLowerCase().includes(q)); };
     restoreInteraction(v, ui);
     VIEW_SIGNATURES.set("grimoire", viewSignature("grimoire"));
     updateUndoUI();
@@ -1442,7 +1450,7 @@ function quickActions(pid) {
   $("#qa-poison").onclick = () => { toggleManualStatus(p, "poisoned"); rr(); };
   $("#qa-protect").onclick = () => { toggleManualStatus(p, "protected"); rr(); };
   $("#qa-drunk").onclick = () => { toggleManualStatus(p, "drunk"); rr(); };
-  $("#qa-full").onclick = () => { closeModal(); openSeatModal(pid); };
+  $("#qa-full").onclick = () => modalNavigate(() => openSeatModal(pid));
 }
 function nearestSeatIdx(x, y) {
   let best = null, bestD = Infinity;
@@ -1479,13 +1487,13 @@ function addPlayerPrompt() {
     <div class="modal-actions">
       <button class="btn gold" id="np-ok">${t("confirm")}</button>
       <button class="btn ghost" onclick="closeModal()">${t("cancel")}</button>
-    </div>`);
+    </div>`, "add-player");
   const inp = $("#np");
   const add = () => {
     const name = inp.value.trim() || (t("players").slice(0, 6) + " " + (S.players.length + 1));
     S.players.push({ id: uid(), name, roleId: null, alive: true, ghostUsed: false,
       statuses: { poisoned: false, drunk: false, protected: false }, reminders: [] });
-    save(); closeModal(); renderGrimoire();
+    save(); closeModal({ committed: true }); renderGrimoire();
   };
   $("#np-ok").onclick = add;
   inp.onkeydown = (e) => { if (e.key === "Enter") add(); };
@@ -1504,11 +1512,11 @@ function openAddMenu() {
       <button class="btn ghost" id="am-demo">🎲 ${t("demoGame")}</button>
     </div>
     <div class="modal-actions"><button class="btn ghost" onclick="closeModal()">${t("cancel")}</button></div>`);
-  $("#am-player").onclick = () => { closeModal(); addPlayerPrompt(); };
-  $("#am-trav").onclick = () => { closeModal(); addTravelerPrompt(); };
-  $("#am-fabled").onclick = () => { closeModal(); addFabledPrompt(); };
-  $("#am-shuffle").onclick = () => { closeModal(); shuffleSeats(); };
-  $("#am-demo").onclick = () => { closeModal(); loadDemoGame(); };
+  $("#am-player").onclick = () => modalNavigate(addPlayerPrompt);
+  $("#am-trav").onclick = () => modalNavigate(addTravelerPrompt);
+  $("#am-fabled").onclick = () => modalNavigate(addFabledPrompt);
+  $("#am-shuffle").onclick = () => modalNavigate(shuffleSeats);
+  $("#am-demo").onclick = () => modalNavigate(loadDemoGame);
 }
 function shuffleSeats() { if (!S.settings.seatPlacement) return toast(tr("Activez Placement pour mélanger les sièges.", "Enable Placement to shuffle seats.")); if (!S.players.length) return toast(t("needRoles")); pushHistory(); S.players = shuffleArr(S.players); save(); renderGrimoire(); toast("🔀"); }
 function loadDemoGame() {
@@ -1563,7 +1571,7 @@ function addTravelerPrompt() {
     S.players.push({ id: uid(), name, roleId, alive: true, ghostUsed: false, align,
       statuses: { poisoned: false, drunk: false, protected: false }, reminders: [], claim: "" });
     logEvent(`${name} — ${t("traveler")} (${loc(charById(roleId).name)})`, "🧳");
-    save(); closeModal(); renderGrimoire(); toast("🧳");
+    save(); closeModal({ committed: true }); renderGrimoire(); toast("🧳");
   };
   $$("[data-tv]").forEach(c => c.onclick = () => { roleId = c.dataset.tv; refresh(); });
   $("#tv-good").onclick = () => { align = "good"; refresh(); };
@@ -1587,6 +1595,7 @@ function highlightNeighbours(pid) {
   });
 }
 function openSeatModal(pid) {
+  if (typeof navigationProtected === "function" && navigationProtected()) return;
   const p = S.players.find(x => x.id === pid); if (!p) return;
   GameCore.normalizePlayer(p);
   const sc = currentScript();
@@ -1600,7 +1609,7 @@ function openSeatModal(pid) {
     if (!byTeam[team]) return;
     roleChips += `<div style="margin:6px 0 2px;color:var(--muted);font-size:.75rem">${teamName(team)}</div><div class="chip-wrap">`;
     byTeam[team].forEach(c => {
-      roleChips += `<span class="chip t-${c.team} ${p.roleId === c.id ? "on" : ""}" data-role="${c.id}">${escapeHtml(loc(c.name))}</span>`;
+      roleChips += `<button type="button" class="chip t-${c.team} ${p.roleId === c.id ? "on" : ""}" data-role="${c.id}">${escapeHtml(loc(c.name))}</button>`;
     });
     roleChips += `</div>`;
   });
@@ -1608,24 +1617,30 @@ function openSeatModal(pid) {
   // jetons de rappel
   const roleReminders = role && role.reminders ? role.reminders : [];
   let remChips = roleReminders.map(r =>
-    `<span class="chip" data-rem="${escapeHtml(loc(r))}" data-remkey="${escapeHtml(r.en || "")}">＋ ${escapeHtml(loc(r))}</span>`).join("");
+    `<button type="button" class="chip" data-rem="${escapeHtml(loc(r))}" data-remkey="${escapeHtml(r.en || "")}">＋ ${escapeHtml(loc(r))}</button>`).join("");
   if (!remChips) remChips = `<span style="color:var(--muted);font-size:.8rem">${t("noReminders")}</span>`;
   const activeRem = (p.reminders || []).map((r, i) =>
     `<button class="chip on" data-remdel="${i}">${escapeHtml(r.label)}${r.sourceRoleId ? " · " + escapeHtml(loc((charById(r.sourceRoleId) || { name: r.sourceRoleId }).name)) : ""}${r.effect ? " · " + t(r.effect) + " (" + expiryName(r.expires, r) + ")" : ""} ✕</button>`).join("");
 
   openModal(`
     <button class="close-x" onclick="closeModal()">×</button>
-    <h3>${escapeHtml(p.name)} ${role ? `<span style="color:var(--muted);font-size:.8rem">— ${escapeHtml(loc(role.name))}</span>` : ""}</h3>
-    ${role ? `<p class="hint">${escapeHtml(loc(role.ability))}</p>` : ""}
-
-    <div class="row">
+    <section class="seat-card">
+    <h3>${escapeHtml(p.name)}</h3>
+    <p class="seat-identities">${tr("Véritable personnage", "Actual character")} : <strong>${role ? escapeHtml(loc(role.name)) : t("xp.noRole")}</strong><br>
+    ${t("xp.shown")} : <strong>${shownRole(p) ? escapeHtml(loc(shownRole(p).name)) : t("xp.noRole")}</strong></p>
+    <div class="seat-primary-actions" id="seat-primary-actions">
+      <button type="button" class="btn gold" id="s-reveal">👁 ${t("reveal")}</button>
+    </div>
+    <div class="row seat-status-actions">
       <button class="btn small ${p.alive ? "gold" : "ghost"}" id="s-alive">${p.alive ? "🌿 " + t("alive") : "💀 " + t("dead")}</button>
       ${!p.alive ? `<button class="btn small ${p.ghostUsed ? "gold" : "ghost"}" id="s-ghost">👻 ${t("ghostVote")}${p.ghostUsed ? " ✔" : ""}</button>` : ""}
       <button class="btn small ${p.statuses.poisoned ? "gold" : "ghost"}" id="s-poison">☠ ${t("poisoned")}</button>
       <button class="btn small ${p.statuses.drunk ? "gold" : "ghost"}" id="s-drunk">🍺 ${t("drunk")}</button>
       <button class="btn small ${p.statuses.protected ? "gold" : "ghost"}" id="s-protect">🛡 ${t("protected")}</button>
     </div>
-
+    ${role ? `<p class="hint">${escapeHtml(loc(role.ability))}</p>` : ""}
+    <details class="seat-section" id="seat-advanced">
+    <summary>${tr("État avancé, alignement et capacité", "Advanced state, alignment and ability")}</summary>
     <div class="row" style="margin-top:8px">
       <span style="color:var(--muted);font-size:.85rem">${t("alignment")} :</span>
       <button class="btn small ${p.align === "good" ? "gold" : "ghost"}" id="s-good">🔵 ${t("good")}</button>
@@ -1638,35 +1653,52 @@ function openSeatModal(pid) {
       <span style="color:var(--muted);font-size:.72rem;flex:1;min-width:140px">${t("isDrunkHint")}</span>
     </div>` : ""}
     ${playerExtrasHtml(p)}
+    </details>
     ${roleAssistanceHTML(shownRole(p) || role, !!p.shownRoleId)}
     <button class="btn small" id="s-links">↔ ${t("playerLinks")}</button>
 
     <label class="field">💬 ${t("claim")} <span style="opacity:.6">(${t("claimHint")})</span></label>
-    <input type="text" id="s-claim" value="${escapeHtml(p.claim || "")}" placeholder="${t("claimNone")}" />
+    <input type="text" id="s-claim" data-nav-autosave value="${escapeHtml(p.claim || "")}" placeholder="${t("claimNone")}" />
 
-    <h3>${t("assignRole")}</h3>
+    <details class="seat-section" id="seat-assignment">
+    <summary>${t("assignRole")}</summary>
     <input type="text" id="role-search" placeholder="🔎 ${t("searchRole")}" style="width:100%;margin-bottom:6px" />
     <div id="role-chips">${roleChips}</div>
+    </details>
 
+    <details class="seat-section" id="seat-effects">
+    <summary>${tr("Rappels et effets", "Reminders and effects")} (${p.reminders.length})</summary>
     <h3>${t("addReminder")}</h3>
     <p class="hint">${tr("Les boutons de statut sont des effets manuels. Un effet provenant d'un jeton se retire en supprimant ce jeton. Les notes libres n'activent aucun pouvoir.", "Status buttons control manual effects. Remove a sourced effect by removing its token. Free-text notes never activate abilities.")}</p>
     <button class="btn small" id="s-rempicker">${tr("Choisir un jeton d'un autre rôle", "Choose another character's reminder")}</button>
     <div class="chip-wrap" id="rem-src">${remChips}
-      <span class="chip" data-remcustom="1">✎ ${t("customReminder")}</span>
+      <button type="button" class="chip" data-remcustom="1">✎ ${t("customReminder")}</button>
     </div>
     ${activeRem ? `<div class="chip-wrap">${activeRem}</div><p class="hint">${tr("Les échéances avancées sont proposées au MJ, jamais retirées automatiquement.", "Advanced deadlines are presented for review, never removed automatically.")}</p><div class="chip-wrap">${p.reminders.map((r, i) => `<button class="btn small ghost" data-rem-schedule="${i}">⌛ ${escapeHtml(r.label)}</button>`).join("")}</div>` : ""}
+    </details>
 
     <div class="modal-actions">
-      <button class="btn small" id="s-reveal">👁 ${t("reveal")}</button>
       <button class="btn small ghost" id="s-rename">✎ ${t("rename")}</button>
       <button class="btn small ghost" id="s-remove" style="color:var(--blood-bright)">🗑 ${t("remove")}</button>
       <span class="spacer"></span>
       <button class="btn gold" onclick="closeModal()">${t("close")}</button>
     </div>
+    </section>
   `, "seat:" + pid);
 
-  const rerender = () => { scheduleRoleAnnouncement(p); save(); renderAll(); openSeatModal(pid); };
+  const game = S;
+  const current = () => S === game && S.players.find(x => x.id === pid) === p;
+  const rerender = () => { if (!current()) return; scheduleRoleAnnouncement(p); save(); renderAll(); openSeatModal(pid); };
+  if (typeof modalSetRestore === "function") modalSetRestore(() => {
+    if (S !== game) return;
+    if (S.players.some(x => x.id === pid)) openSeatModal(pid);
+    else closeModal();
+  });
   wirePlayerExtras(p, rerender);
+  for (const [selector, id] of [["[data-xp-message]", "s-message"], ["[data-xp-notebook]", "s-notebook"]]) {
+    const button = $("#modal " + selector);
+    if (button) { button.id = id; $("#seat-primary-actions").appendChild(button); }
+  }
   $("#s-links").onclick = () => openPlayerLinks(pid);
   $$("[data-rem-schedule]").forEach(b => b.onclick = () => editReminderSchedule(pid, p.reminders[+b.dataset.remSchedule].id));
   $("#s-rempicker").onclick = () => openReminderPicker(pid);
@@ -1692,7 +1724,7 @@ function openSeatModal(pid) {
   $("#s-good").onclick = () => { pushHistory(); p.align = (p.align === "good") ? null : "good"; rerender(); };
   $("#s-evil").onclick = () => { pushHistory(); p.align = (p.align === "evil") ? null : "evil"; rerender(); };
   const claimEl = $("#s-claim");
-  if (claimEl) claimEl.onchange = () => { p.claim = claimEl.value.trim(); save(); renderGrimoire(); };
+  if (claimEl) claimEl.onchange = () => { if (!current()) return; p.claim = claimEl.value.trim(); save(); if (typeof modalCommitDraft === "function") modalCommitDraft(); renderGrimoire(); };
   const rs = $("#role-search");
   if (rs) rs.oninput = () => {
     const q = rs.value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -1756,6 +1788,7 @@ function shuffleArr(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) {
 function newGame() {
   if (!confirm(t("confirmNew"))) return;
   backupBefore(t("newGame"));
+  if (typeof resetNavigation === "function") resetNavigation();
   const keepPlayers = S.players.map(p => ({ id: uid(), name: p.name, roleId: null, alive: true, ghostUsed: false, statuses: { poisoned: false, drunk: false, protected: false }, reminders: [], claim: "" }));
   S.players = keepPlayers;
   S.night = { mode: "first", number: 1, checked: {} };
@@ -2719,8 +2752,8 @@ function openNotes() {
     <button class="close-x" onclick="closeModal()">×</button>
     <h3>📝 ${t("notes")}</h3>
     <textarea id="st-notes" style="width:100%;min-height:220px;resize:vertical;background:#170c1d;color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px;font-family:var(--font)" placeholder="${t("notes")}…">${escapeHtml(S.notes || "")}</textarea>
-    <div class="modal-actions"><button class="btn gold" id="notes-ok">${t("save")}</button></div>`);
-  $("#notes-ok").onclick = () => { S.notes = $("#st-notes").value; save(); closeModal(); toast("✔"); };
+    <div class="modal-actions"><button class="btn gold" id="notes-ok">${t("save")}</button></div>`, "gm-notes");
+  $("#notes-ok").onclick = () => { S.notes = $("#st-notes").value; save(); closeModal({ committed: true }); toast("✔"); };
 }
 function openGlossary() {
   const fabled = MASTER ? Object.values(MASTER.rolesById).filter(r => r.team === "fabled") : [];
@@ -2777,12 +2810,18 @@ function addFabledPrompt() {
 let MODAL_RETURN_FOCUS = null;
 let MODAL_CONTEXT = "";
 function openModal(html, key) {
+  if (typeof navigationOpenModal === "function") {
+    const opened = navigationOpenModal(html, key);
+    if (opened) MODAL_CONTEXT = MODAL_NAV.active.key;
+    return opened;
+  }
   const m = $("#modal");
   const wasOpen = !$("#modal-overlay").classList.contains("hidden");
   const context = wasOpen ? rememberInteraction(m) : null;
   const previousTitle = MODAL_CONTEXT;
   if (!wasOpen && !playerScreenActive()) MODAL_RETURN_FOCUS = document.activeElement;
-  m.innerHTML = html;
+  if (html && typeof html === "object" && html.nodeType === 1) m.replaceChildren(html);
+  else m.innerHTML = html;
   MODAL_CONTEXT = key || m.querySelector("h2,h3")?.textContent || "";
   $("#modal-overlay").classList.remove("hidden");
   document.body.classList.add("modal-open");
@@ -2793,7 +2832,14 @@ function openModal(html, key) {
   const f = m.querySelector("input:not([type=hidden]), select, textarea, .btn.gold, .btn:not(.close-x)");
   if (f) f.focus({ preventScroll: true });
 }
-function closeModal() {
+function closeModal(options = {}) {
+  if (typeof navigationCloseModal === "function") {
+    if (options.committed) modalCommitDraft();
+    const closed = navigationCloseModal();
+    MODAL_CONTEXT = MODAL_NAV.active?.key || "";
+    if (closed) $$("#circle .seat .token").forEach(el => el.style.outline = "");
+    return closed;
+  }
   $("#modal-overlay").classList.add("hidden"); $("#modal").innerHTML = ""; MODAL_CONTEXT = "";
   document.body.classList.remove("modal-open");
   $$("#circle .seat .token").forEach(el => el.style.outline = "");
@@ -2801,7 +2847,7 @@ function closeModal() {
   if (!playerScreenActive() && previous?.isConnected && !previous.closest("[inert]")) previous.focus({ preventScroll: true });
 }
 function handleModalKeyboard(event) {
-  if (playerScreenActive() || $("#modal-overlay").classList.contains("hidden")) return;
+  if (playerScreenActive() || (typeof navigationProtected === "function" && navigationProtected()) || $("#modal-overlay").classList.contains("hidden")) return;
   if (event.key === "Escape") { event.preventDefault(); closeModal(); return; }
   if (event.key !== "Tab") return;
   const focusable = [...$("#modal").querySelectorAll("button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),a[href],summary,[tabindex='0']")].filter(el => el.getClientRects().length);
@@ -2836,6 +2882,59 @@ const PALETTE_SHORTCUTS = [
   { k: "N", d: { fr: "Aller à la Nuit", en: "Go to Night" } },
   { k: "J / D", d: { fr: "Aller au Jour", en: "Go to Day" } }
 ];
+function searchFold(value) {
+  return String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+}
+function playerSearchText(player) {
+  if (!player) return "";
+  const names = [player.name];
+  for (const id of new Set([player.roleId, player.shownRoleId])) {
+    const name = id && charById(id)?.name;
+    if (name) names.push(typeof name === "string" ? name : Object.values(name).join(" "));
+  }
+  return searchFold(names.join(" "));
+}
+function playerSearchMatches(player, query) {
+  return playerSearchText(player).includes(searchFold(query));
+}
+function playerSearchActionsHTML(pid) {
+  return `<div class="player-search-actions">${[
+    ["card", tr("Fiche", "Card")], ["note", tr("Note", "Note")],
+    ["message", tr("Message", "Message")], ["effects", tr("Effets", "Effects")]
+  ].map(([action, label]) => `<button type="button" class="btn small ghost" data-player-action="${action}" data-player-id="${escapeHtml(pid)}">${label}</button>`).join("")}</div>`;
+}
+function wirePlayerSearchActions(root, replaceLauncher = false) {
+  const game = S;
+  root.querySelectorAll("[data-player-action]").forEach(button => {
+    button.onclick = () => {
+      if (S !== game || !S.players.some(p => p.id === button.dataset.playerId)) return;
+      const run = () => {
+        const pid = button.dataset.playerId;
+        if (button.dataset.playerAction === "note") openNotebook(pid);
+        else if (button.dataset.playerAction === "message") openMessageComposer(pid);
+        else {
+          openSeatModal(pid);
+          if (button.dataset.playerAction === "effects") {
+            const effects = $("#seat-effects");
+            if (effects) { effects.open = true; effects.scrollIntoView({ block: "nearest" }); }
+          }
+        }
+      };
+      if (replaceLauncher) modalNavigate(run); else run();
+    };
+  });
+}
+function renderPlayerSearchResults(root, query) {
+  if (!root) return;
+  root.hidden = !query;
+  if (!query) { root.replaceChildren(); return; }
+  const matches = S.players.filter(player => playerSearchMatches(player, query));
+  root.innerHTML = matches.length ? matches.map(player => {
+    const role = player.roleId && charById(player.roleId);
+    return `<article class="player-search-result"><strong>${escapeHtml(player.name)}</strong>${role ? " · " + escapeHtml(loc(role.name)) : ""}${playerSearchActionsHTML(player.id)}</article>`;
+  }).join("") : `<p class="hint" role="status">${t("noMatch")}</p>`;
+  wirePlayerSearchActions(root);
+}
 function paletteEntries() {
   const out = [];
   PALETTE_VIEWS.forEach(v => out.push({ icon: v.icon, label: t(v.key), cat: t("catView"), run: () => switchView(v.view) }));
@@ -2843,7 +2942,7 @@ function paletteEntries() {
   (S.players || []).forEach(p => {
     if (!p.name) return;
     const rn = p.roleId ? loc((charById(p.roleId) || { name: p.roleId }).name) : "";
-    out.push({ icon: p.alive ? "🟢" : "✝", label: p.name + (rn ? " · " + rn : ""), cat: t("catPlayer"), run: () => highlightPlayer(p.id) });
+    out.push({ icon: p.alive ? "🟢" : "✝", label: p.name + (rn ? " · " + rn : ""), search: playerSearchText(p), playerId: p.id, cat: t("catPlayer"), run: () => highlightPlayer(p.id) });
   });
   return out;
 }
@@ -2861,19 +2960,20 @@ function openCommandPalette() {
   const input = $("#pal-input"), list = $("#pal-list");
   const scrollSel = () => { const el = $("#pal-list .pal-item.sel"); if (el) el.scrollIntoView({ block: "nearest" }); };
   const render = () => {
-    const q = input.value.trim().toLowerCase();
-    filtered = q ? all.filter(e => (e.label + " " + e.cat).toLowerCase().includes(q)) : all;
+    const q = searchFold(input.value.trim());
+    filtered = q ? all.filter(e => searchFold(e.label + " " + e.cat + " " + (e.search || "")).includes(q)) : all;
     if (sel >= filtered.length) sel = 0;
     list.innerHTML = filtered.length
-      ? filtered.map((e, i) => `<button class="pal-item${i === sel ? " sel" : ""}" data-i="${i}"><span class="pi-ic">${e.icon}</span><span class="pi-lb">${escapeHtml(e.label)}</span><span class="pi-cat">${e.cat}</span></button>`).join("")
+      ? filtered.map((e, i) => `${e.playerId ? '<div class="palette-player">' : ""}<button class="pal-item${i === sel ? " sel" : ""}" data-i="${i}"><span class="pi-ic">${e.icon}</span><span class="pi-lb">${escapeHtml(e.label)}</span><span class="pi-cat">${e.cat}</span></button>${e.playerId ? playerSearchActionsHTML(e.playerId) + "</div>" : ""}`).join("")
       : `<div class="list-empty">${t("noMatch")}</div>`;
-    $$("#pal-list .pal-item").forEach(b => b.onclick = () => { const e = filtered[+b.dataset.i]; closeModal(); e.run(); });
+    $$("#pal-list .pal-item").forEach(b => b.onclick = () => { const e = filtered[+b.dataset.i]; modalNavigate(e.run); });
+    wirePlayerSearchActions(list, true);
   };
   input.oninput = () => { sel = 0; render(); };
   input.onkeydown = (e) => {
     if (e.key === "ArrowDown") { e.preventDefault(); sel = Math.min(filtered.length - 1, sel + 1); render(); scrollSel(); }
     else if (e.key === "ArrowUp") { e.preventDefault(); sel = Math.max(0, sel - 1); render(); scrollSel(); }
-    else if (e.key === "Enter") { e.preventDefault(); const e2 = filtered[sel]; if (e2) { closeModal(); e2.run(); } }
+    else if (e.key === "Enter") { e.preventDefault(); const e2 = filtered[sel]; if (e2) modalNavigate(e2.run); }
   };
   render();
 }
@@ -2970,7 +3070,7 @@ function openReminderPicker(targetId, roleId, remIdx = 0, sourceId) {
   if (!roleId) {
     const roles = currentScript().characters.filter(c => c.reminders?.length);
     openModal(`<h3>${t("addReminder")} : ${escapeHtml(target.name)}</h3><p class="hint">${tr("Choisissez le rôle à l'origine du rappel, puis son jeton.", "Choose the source character, then its reminder.")}</p><div class="chip-wrap">${roles.map(c => `<button class="chip" data-remrole="${escapeHtml(c.id)}">${escapeHtml(loc(c.name))}</button>`).join("")}</div><button class="btn" onclick="closeModal()">${t("close")}</button>`);
-    $$("[data-remrole]").forEach(b => b.onclick = () => openReminderPicker(targetId, b.dataset.remrole));
+    $$("[data-remrole]").forEach(b => b.onclick = () => modalNavigate(() => openReminderPicker(targetId, b.dataset.remrole)));
     return;
   }
   const role = charById(roleId);
@@ -3029,7 +3129,7 @@ function openReminderPicker(targetId, roleId, remIdx = 0, sourceId) {
     }
     logEvent(line, "🌙");
     if (source) { source.information.push({ id: uid(), phase: S.phase, night: S.night.number, day: S.day.number, text: line, ts: Date.now() }); }
-    save(); closeModal(); renderAll(); toastUndo(line);
+    save(); closeModal({ committed: true }); renderAll(); toastUndo(line);
     if (selectedEffect === "death" && !choiceOnly) announceEndIfAny();
   };
   $("#rem-apply").onclick = () => record(false);

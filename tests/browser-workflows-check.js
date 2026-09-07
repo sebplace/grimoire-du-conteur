@@ -31,6 +31,7 @@ async (page) => {
         await p.locator("#wf-second-vote").click();
       }else if(ids[i]==="drunk-monk"){
         await p.evaluate(()=>openSeatModal(S.players[4].id));
+        await p.locator("#seat-advanced > summary").click();
         await p.locator("[data-xp-usage]").selectOption("spent");
         await p.evaluate(()=>closeModal());
         await p.locator('[data-check="char:monk"]').check();

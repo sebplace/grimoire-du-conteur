@@ -76,9 +76,9 @@ function serviceWorker() {
   };
 }
 
-test("v28 precaches every boot module and bundled data without forced activation", async () => {
+test("v29 precaches every boot module and bundled data without forced activation", async () => {
   const sw = serviceWorker();
-  assert.equal(sw.CACHE, "grimoire-mj-v28");
+  assert.equal(sw.CACHE, "grimoire-mj-v29");
   assert.ok(sw.ASSETS.includes("css/experience.css"));
   assert.ok(sw.ASSETS.includes("css/workflows.css"));
   for (const css of ["round-ui", "shortcuts", "presentation", "usability", "rescue-sheet", "feedback"]) assert.ok(sw.ASSETS.includes("css/" + css + ".css"));
@@ -87,6 +87,10 @@ test("v28 precaches every boot module and bundled data without forced activation
   }
   for (const file of sw.ASSETS) {
     assert.ok(fs.existsSync(path.join(root, file)), `Missing precache asset: ${file}`);
+  }
+  const index = fs.readFileSync(path.join(root, "index.html"), "utf8");
+  for (const [, file] of index.matchAll(/(?:src|href)="((?:js|css)\/[^"]+)"/g)) {
+    assert.ok(sw.ASSETS.includes(file), `Uncached boot dependency: ${file}`);
   }
   await sw.dispatch("install");
   assert.equal(sw.skipped, 0);
@@ -189,7 +193,7 @@ test("offline readiness checks every asset rather than cache presence", async ()
   }
   const status = await sw.status();
   assert.equal(status.type, "OFFLINE_STATUS");
-  assert.equal(status.version, "grimoire-mj-v28");
+  assert.equal(status.version, "grimoire-mj-v29");
   assert.equal(status.ready, true);
 });
 

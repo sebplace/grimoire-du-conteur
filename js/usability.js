@@ -44,9 +44,20 @@ function openInterfaceMode() {
   openModal(`<h3>${t("interfaceMode")}</h3>
     <p class="hint">${tr("Essentiel garde le grimoire, la nuit guidée, les votes et les messages. Aucun personnage, effet ou outil n'est supprimé. Vos favoris restent disponibles.", "Essential keeps the grimoire, guided night, voting and messages. No character, effect or tool is removed. Your favourites remain available.")}</p>
     <div class="row"><button class="btn ${S.settings.essentialMode ? "gold" : ""}" id="mode-essential">${tr("Utiliser Essentiel", "Use Essential")}</button><button class="btn ${S.settings.essentialMode ? "" : "gold"}" id="mode-full">${tr("Utiliser Complet", "Use Full")}</button></div>
-    <div class="modal-actions"><button class="btn ghost" onclick="closeModal()">${t("close")}</button></div>`);
+    <h3>${tr("Affichage et langue", "Display and language")}</h3>
+    <div class="row">
+      <button class="btn" id="mode-fr" aria-pressed="${S.lang === "fr"}">Français</button>
+      <button class="btn" id="mode-en" aria-pressed="${S.lang === "en"}">English</button>
+      <button class="btn" id="mode-fullscreen">${tr("Plein écran", "Fullscreen")}</button>
+      <button class="btn" id="mode-sound" aria-pressed="${!!S.sound}">${tr("Sons", "Sound")} : ${S.sound ? tr("activés", "on") : tr("désactivés", "off")}</button>
+    </div>
+    <div class="modal-actions"><button class="btn ghost" onclick="closeModal()">${t("close")}</button></div>`, "interface-mode");
   $("#mode-essential").onclick = () => { setEssentialMode(true); closeModal(); };
   $("#mode-full").onclick = () => { setEssentialMode(false); closeModal(); };
+  $("#mode-fr").onclick = () => { setLang("fr"); openInterfaceMode(); };
+  $("#mode-en").onclick = () => { setLang("en"); openInterfaceMode(); };
+  $("#mode-fullscreen").onclick = toggleFullscreen;
+  $("#mode-sound").onclick = () => { $("#btn-sound").click(); openInterfaceMode(); };
 }
 
 function toggleSeatPlacement() {
